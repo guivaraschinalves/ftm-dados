@@ -45,8 +45,10 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (ftm-dados)", "Accept": "application/json"
 # download
 # --------------------------------------------------------------------------
 
-def http_json(url, tentativas=4):
-    """GET com espera crescente (1,5s / 3s / 6s), como a macro. Não insiste em 404."""
+def http_json(url, tentativas=6):
+    """GET com espera crescente (1,5s, 3s, 6s… até ~24s), como a macro. Não insiste
+    em 404. O SGS às vezes responde 200 com corpo vazio quando está sobrecarregado;
+    isso conta como falha e é repetido."""
     ultimo = None
     for i in range(tentativas):
         try:
