@@ -7,8 +7,11 @@ sem build: `index.html` + `app.js` + `styles.css`, com os dados em
 
 - **Modo escuro/claro** — botão no topo; o escuro é o padrão e usa o fundo de
   notas dos slides do FtM.
-- **Baixar** — em cada gráfico: PNG 1920×1080 (no tema da tela), SVG editável
-  e CSV com todas as séries do gráfico.
+- **Baixar** — em cada gráfico, no tema da tela, em PNG, JPG, PDF ou SVG
+  editável, e o CSV com todas as séries. Tamanhos (todos em 2×, para sair
+  nítido): apresentação 16:9 (3840×2160) e Instagram feed 4:5 (2160×2700),
+  feed 3:4 (2160×2880), quadrado 1:1 (2160×2160) e Stories 9:16 (2160×3840,
+  com o gráfico dentro da área segura, longe das barras do app).
 - **Período** — Tudo / 20 / 10 / 5 anos. Passe o mouse (ou toque) para ver os
   valores do mês.
 
