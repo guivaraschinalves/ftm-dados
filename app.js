@@ -278,8 +278,21 @@
       el("rect", { x: L.x0, y: L.y0 - 2, width: pw, height: ph + 4 })
     ])]));
 
-    // grade e eixo Y (dos dois lados, como nos slides)
+    // Onde cada rótulo do último ponto vai ficar, afastando os que se
+    // encostam. Fica antes do eixo porque o eixo da direita só imprime o
+    // número onde não houver rótulo — e o que vale é a posição final dele.
     var rotY = rotulos.map(function (r) { return Math.min(Math.max(Y(r.p.v), L.y0), L.y1); });
+    var ordem = rotulos.map(function (r, k) { return { r: r, y: rotY[k] }; }).sort(function (a, b) { return a.y - b.y; });
+    var passoRot = L.rotulo * 1.08;
+    for (var a = 1; a < ordem.length; a++) {
+      if (ordem[a].y - ordem[a - 1].y < passoRot) ordem[a].y = ordem[a - 1].y + passoRot;
+    }
+    for (var b2 = ordem.length - 1; b2 >= 0; b2--) {
+      var teto = b2 === ordem.length - 1 ? L.y1 : ordem[b2 + 1].y - passoRot;
+      if (ordem[b2].y > teto) ordem[b2].y = teto;
+    }
+
+    // grade e eixo Y (dos dois lados, como nos slides)
     esc.ticks.forEach(function (t) {
       var y = Y(t), zero = Math.abs(t) < 1e-9;
       svg.appendChild(el("line", {
@@ -288,7 +301,7 @@
       }));
       var at = { y: y, "font-size": L.tick, fill: pal.eixo, "dominant-baseline": "central" };
       svg.appendChild(texto(F.eixo(t), Object.assign({ x: L.x0 - 14, "text-anchor": "end" }, at)));
-      if (L.eixoDuplo && rotY.every(function (ry) { return Math.abs(ry - y) > L.rotulo * 0.9; })) {
+      if (L.eixoDuplo && ordem.every(function (o) { return Math.abs(o.y - y) > L.rotulo * 0.9; })) {
         svg.appendChild(texto(F.eixo(t), Object.assign({ x: L.x1 + 14, "text-anchor": "start" }, at)));
       }
     });
@@ -369,16 +382,6 @@
       }));
     });
 
-    // rótulo colorido no último ponto, afastando os que se encostam
-    var ordem = rotulos.map(function (r, k) { return { r: r, y: rotY[k] }; }).sort(function (a, b) { return a.y - b.y; });
-    var passoRot = L.rotulo * 1.08;
-    for (var a = 1; a < ordem.length; a++) {
-      if (ordem[a].y - ordem[a - 1].y < passoRot) ordem[a].y = ordem[a - 1].y + passoRot;
-    }
-    for (var b2 = ordem.length - 1; b2 >= 0; b2--) {
-      var teto = b2 === ordem.length - 1 ? L.y1 : ordem[b2 + 1].y - passoRot;
-      if (ordem[b2].y > teto) ordem[b2].y = teto;
-    }
     ordem.forEach(function (o) {
       var cor = corNoTema(o.r.s.cor, pal);
       var px = X(o.r.p.i + 0.5), py = Y(o.r.p.v), lx = L.x1 + L.rotuloX;

@@ -64,7 +64,7 @@ e cada anexo vira um cartão:
 
 | Anexo | Cartão | Recortes |
 |---|---|---|
-| 1.2 | Emissões e resgates da DPF, por indexador (resgates para baixo) | interna (DPMFi) / externa (DPFe) |
+| 1.2 | Emissão líquida da DPF (emissões menos resgates) por indexador, com o total do mês em linha | interna (DPMFi) / externa (DPFe) |
 | 2.4 | Composição da DPF por indexador | % do total / R$ bilhões |
 | 2.7 | Detentores da dívida interna | % do total / R$ bilhões |
 | 2.8 | Detentores de cada título | LFT, LTN, NTN-B, NTN-F, Outros |
@@ -72,7 +72,7 @@ e cada anexo vira um cartão:
 | 3.1 | Estrutura de vencimentos, por faixa de prazo | DPF / DPMFi / DPFe |
 | 3.2 | Estrutura de vencimentos por indexador | prefixados, taxa flutuante, índice de preços, câmbio, demais |
 | 3.4 | Cronograma de vencimentos | mês a mês / acumulado (a tabela do fim da aba) |
-| 3.8 | Prazo médio da dívida interna e da externa | dois cartões |
+| 3.8 | Prazo médio da dívida interna e da externa | dois cartões, cada um com média de 12 meses / mês a mês |
 | 4.1 | Custo médio mensal da dívida interna e da externa | dois cartões |
 | 4.2 | Custo acumulado em 12 meses, interna e externa | dois cartões |
 | 4.1+4.2 | Custo da DPMFi: mensal e acumulado em 12 meses, só duas linhas | — |
@@ -86,10 +86,19 @@ Duas decisões que valem registro:
   título; o script volta para reais (participação × estoque do título) para
   poder somar os títulos de um mesmo detentor e tirar o % da carteira dele.
 
-Nos gráficos por componente da dívida externa entram as linhas que ainda têm
-dados (Global USD, Euros, Global BRL e dívida contratual); as encerradas há
-tempo — Reestruturada, Clube de Paris — ficam de fora. Nos da dívida interna
-por título entram LFT, LTN, NTN-B, NTN-C e NTN-F.
+Quais séries entram em cada um:
+
+- **composição, detentores e vencimentos em %**: linhas, uma por categoria, com
+  o valor do último mês na ponta. Em R$ bilhões (composição e detentores) a
+  mesma coisa vira barra empilhada, que é onde o total importa. A exceção é a
+  estrutura de vencimentos **por indexador** (3.2), que continua empilhada;
+- **prazo médio**: sai em **média de 12 meses**. O prazo anda em serrote (sobe
+  quando sai um título novo e cai um mês por mês até o próximo), e a média é o
+  que deixa a tendência visível; o mês a mês está no segundo recorte. Da dívida
+  externa entram as linhas que ainda têm dados (Global USD, Euros, Global BRL e
+  dívida contratual) — Reestruturada e Clube de Paris ficaram para trás;
+- **custo**: a dívida interna sai com DPMFi, LFT, LTN e NTN-B; a externa, só
+  com a linha da DPFe.
 
 ## As contas do IPCA (as fórmulas da planilha)
 

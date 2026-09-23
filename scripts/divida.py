@@ -137,6 +137,23 @@ def meses_do_cabecalho(linha):
 # montagem das séries
 # --------------------------------------------------------------------------
 
+def media_movel(dados, n=12):
+    """Média dos últimos n meses. O prazo médio anda em serrote (sobe quando sai
+    um título novo e cai um mês por mês até o próximo), então a média de 12
+    meses é o que deixa a tendência visível."""
+    ms = sorted(dados)
+    def num(m):
+        a, b = m.split("-")
+        return int(a) * 12 + int(b) - 1
+    fora = {}
+    for i in range(n - 1, len(ms)):
+        janela = ms[i - n + 1:i + 1]
+        if num(janela[-1]) - num(janela[0]) != n - 1:
+            continue          # buraco na série: não inventa média
+        fora[ms[i]] = sum(dados[m] for m in janela) / n
+    return fora
+
+
 def serie(nome, cor, dados, casas=2, **extra):
     pares = [[m, round(v, casas)] for m, v in sorted(dados.items())]
     return dict(nome=nome, cor=cor, dados=pares, **extra)
@@ -224,31 +241,34 @@ BI = "R$ bilhões"
 PCT = "% do total"
 
 
-def emissoes_resgates(p):
-    """Anexo 1.2 — emissões (para cima) e resgates (para baixo) por indexador,
-    em R$ bilhões. A planilha traz os resgates positivos; aqui eles descem."""
+def emissao_liquida(p):
+    """Anexo 1.2 — emissão líquida por indexador (emissões menos resgates),
+    em R$ bilhões, com o total do mês em linha por cima."""
     g = p.grade("1.2")
     meses = meses_do_cabecalho(g[5])
-    blocos = {
-        "dpmfi": ("Dívida interna (DPMFi)", [
+    blocos = [
+        ("Dívida interna (DPMFi)", [
             ("Prefixados", 10, 25), ("Índice de Preços", 11, 26), ("Taxa Flutuante", 12, 27),
             ("Câmbio", 13, 28), ("Demais", 14, 29)]),
-        "dpfe": ("Dívida externa (DPFe)", [
+        ("Dívida externa (DPFe)", [
             ("Dólar", 17, 32), ("Euro", 18, 33), ("Real", 19, 34), ("Demais", 20, 35)]),
-    }
+    ]
     cores = {"Dólar": VERDE, "Euro": AZUL, "Real": LARANJA}
     vars_ = []
-    for chave, (rot, itens) in blocos.items():
-        series = []
+    for rot, itens in blocos:
+        series, total = [], {}
         for nome, lin_e, lin_r in itens:
             cor = COR_INDEXADOR.get(nome) or cores.get(nome) or CINZA
             emi = deitada(g, lin_e, meses, 0.001)
-            res = {m: -v for m, v in deitada(g, lin_r, meses, 0.001).items()}
-            series.append(serie(nome, cor, emi, tipo="barra"))
-            series.append(serie(nome + " (resgate)", cor, res, tipo="barra", legenda=False))
+            res = deitada(g, lin_r, meses, 0.001)
+            liq = {m: v - res.get(m, 0) for m, v in emi.items()}
+            for m, v in liq.items():
+                total[m] = total.get(m, 0) + v
+            series.append(serie(nome, cor, liq, tipo="barra"))
+        series.append(serie("Total", BRANCO, total, largura=4))
         vars_.append(variante(rot, series, "bi"))
-    return grafico("divida-emissoes-resgates", "Emissões e resgates da Dívida Pública Federal",
-                   "Por indexador, em R$ bilhões — resgates com sinal negativo",
+    return grafico("divida-emissoes-resgates", "Emissão líquida da Dívida Pública Federal",
+                   "Emissões menos resgates, por indexador, em R$ bilhões",
                    variantes=vars_, periodoPadrao="10")
 
 
@@ -260,12 +280,12 @@ def composicao_dpf(p):
             (8, "Câmbio"), (10, "Demais")]
     pct = participacao(g, linhas, cols, 12)
     val = valores(g, linhas, cols)
-    def series(fonte):
-        return [serie(n, COR_INDEXADOR[n], fonte[n], tipo="barra") for _, n in cols]
+    def series(fonte, **extra):
+        return [serie(n, COR_INDEXADOR[n], fonte[n], **extra) for _, n in cols]
     return grafico("divida-composicao", "Composição da Dívida Pública Federal", "Por indexador",
                    variantes=[
-                       variante(PCT, series(pct), "%", eixo=dict(min=0, max=100), barra=1),
-                       variante(BI, series(val), "bi", barra=1),
+                       variante(PCT, series(pct, rotulo=True), "%"),
+                       variante(BI, series(val, tipo="barra"), "bi", barra=1),
                    ])
 
 
@@ -278,12 +298,12 @@ def detentores(p):
             (14, "Seguradoras"), (16, "Outros")]
     pct = participacao(g, linhas, cols, 18)
     val = valores(g, linhas, cols)
-    def series(fonte):
-        return [serie(n, COR_DETENTOR[n], fonte[n], tipo="barra") for _, n in cols]
+    def series(fonte, **extra):
+        return [serie(n, COR_DETENTOR[n], fonte[n], **extra) for _, n in cols]
     return grafico("divida-detentores", "Detentores da dívida interna (DPMFi)", "Quem carrega os títulos",
                    variantes=[
-                       variante(PCT, series(pct), "%", eixo=dict(min=0, max=100), barra=1),
-                       variante(BI, series(val), "bi", barra=1),
+                       variante(PCT, series(pct, rotulo=True), "%"),
+                       variante(BI, series(val, tipo="barra"), "bi", barra=1),
                    ])
 
 
@@ -308,8 +328,8 @@ def detentores_por_titulo(p, tabela):
     """Um título por vez: como os detentores dele se dividem."""
     vars_ = []
     for _, _, titulo in BLOCOS_2_8:
-        series = [serie(n, COR_DETENTOR[n], tabela[titulo][n], tipo="barra") for _, n in COLS_2_8]
-        vars_.append(variante(titulo, series, "%", eixo=dict(min=0, max=100), barra=1))
+        series = [serie(n, COR_DETENTOR[n], tabela[titulo][n], rotulo=True) for _, n in COLS_2_8]
+        vars_.append(variante(titulo, series, "%"))
     return grafico("divida-detentores-por-titulo", "Detentores de cada título",
                    "Participação no estoque do título, em %", variantes=vars_)
 
@@ -336,8 +356,8 @@ def titulos_por_detentor(p, tabela):
         series = []
         for _, _, titulo in BLOCOS_2_8:
             dados = {m: v / total[m] * 100 for m, v in carteira[titulo].items() if total.get(m)}
-            series.append(serie(titulo, COR_TITULO[titulo], dados, tipo="barra"))
-        vars_.append(variante(detentor, series, "%", eixo=dict(min=0, max=100), barra=1))
+            series.append(serie(titulo, COR_TITULO[titulo], dados, rotulo=True))
+        vars_.append(variante(detentor, series, "%"))
     return grafico("divida-titulos-por-detentor", "Carteira de cada detentor",
                    "Composição por título, em % da carteira", variantes=vars_)
 
@@ -351,8 +371,8 @@ def vencimentos(p):
     for ini, fim, rot in [(5, 258, "DPF"), (258, 584, "DPMFi"), (584, 837, "DPFe")]:
         linhas = linhas_de_dados(g, ini, fim)
         pct = participacao(g, linhas, cols, 14)
-        series = [serie(n, COR_PRAZO[k], pct[n], tipo="barra") for k, (_, n) in enumerate(cols)]
-        vars_.append(variante(rot, series, "%", eixo=dict(min=0, max=100), barra=1))
+        series = [serie(n, COR_PRAZO[k], pct[n], rotulo=True) for k, (_, n) in enumerate(cols)]
+        vars_.append(variante(rot, series, "%"))
     return grafico("divida-vencimentos", "Estrutura de vencimentos da dívida",
                    "Participação de cada faixa de prazo, em %", variantes=vars_)
 
@@ -403,26 +423,35 @@ def cronograma(p, fechamento):
 
 
 def prazo_medio(p):
-    """Anexo 3.8 — prazo médio, em anos."""
+    """Anexo 3.8 — prazo médio, em anos. Sai em média de 12 meses (o serrote
+    das emissões esconde a tendência), com o mês a mês num segundo recorte."""
     g = p.grade("3.8")
     meses = meses_do_cabecalho(g[5])
-    def linha(r, nome, cor, **extra):
-        return serie(nome, cor, deitada(g, r, meses), casas=3, **extra)
-    interna = grafico("divida-prazo-dpmfi", "Prazo médio da dívida interna (DPMFi)",
-                      "Em anos, por indexador", unidade="anos", series=[
-                          linha(9, "DPMFi", BRANCO, rotulo=True),
-                          linha(10, "Prefixados", AZUL, rotulo=True),
-                          linha(11, "Índice de Preços", LARANJA, rotulo=True),
-                          linha(12, "Taxa Flutuante", CIANO, rotulo=True),
-                          linha(13, "Câmbio", VERMELHO)])
-    externa = grafico("divida-prazo-dpfe", "Prazo médio da dívida externa (DPFe)",
-                      "Em anos, por tipo de dívida", unidade="anos", series=[
-                          linha(16, "DPFe", BRANCO, rotulo=True),
-                          linha(18, "Global USD", VERDE, rotulo=True),
-                          linha(19, "Euros", AZUL, rotulo=True),
-                          linha(20, "Global BRL", LARANJA, rotulo=True),
-                          linha(23, "Dívida Contratual", ROXO, rotulo=True)])
-    return interna, externa
+    interna = [(9, "DPMFi", BRANCO, True), (10, "Prefixados", AZUL, True),
+               (11, "Índice de Preços", LARANJA, True), (12, "Taxa Flutuante", CIANO, True),
+               (13, "Câmbio", VERMELHO, False)]
+    externa = [(16, "DPFe", BRANCO, True), (18, "Global USD", VERDE, True),
+               (19, "Euros", AZUL, True), (20, "Global BRL", LARANJA, True),
+               (23, "Dívida Contratual", ROXO, True)]
+
+    def series(linhas, suavizar):
+        fora = []
+        for r, nome, cor, rot in linhas:
+            d = deitada(g, r, meses)
+            fora.append(serie(nome, cor, media_movel(d) if suavizar else d, casas=3,
+                              **(dict(rotulo=True) if rot else {})))
+        return fora
+
+    def cartao(id_, titulo, sub, linhas):
+        return grafico(id_, titulo, sub, unidade="anos", variantes=[
+            variante("Média de 12 meses", series(linhas, True), "anos"),
+            variante("Mês a mês", series(linhas, False), "anos"),
+        ])
+
+    return (cartao("divida-prazo-dpmfi", "Prazo médio da dívida interna (DPMFi)",
+                   "Em anos, por indexador", interna),
+            cartao("divida-prazo-dpfe", "Prazo médio da dívida externa (DPFe)",
+                   "Em anos, por tipo de dívida", externa))
 
 
 def custo(p):
@@ -436,14 +465,12 @@ def custo(p):
             for r, nome, cor, extra in linhas], **extra_g)
 
     interna = [(9, "DPMFi", BRANCO, dict(rotulo=True)), (10, "LFT", CIANO, dict(rotulo=True)),
-               (11, "LTN", AZUL, dict(rotulo=True)), (12, "NTN-B", LARANJA, dict(rotulo=True)),
-               (14, "NTN-C", VINHO, {}), (16, "NTN-F", VERDE, dict(rotulo=True))]
-    externa = [(21, "DPFe", BRANCO, dict(rotulo=True)), (23, "Global USD", VERDE, dict(rotulo=True)),
-               (24, "Euro", AZUL, {}), (25, "Global BRL", LARANJA, dict(rotulo=True)),
-               (28, "Dívida Contratual", ROXO, dict(rotulo=True))]
+               (11, "LTN", AZUL, dict(rotulo=True)), (12, "NTN-B", LARANJA, dict(rotulo=True))]
+    externa = [(21, "DPFe", BRANCO, dict(rotulo=True))]
     MENSAL = "Custo médio mensal, em % a.a."
     NOTA_MENSAL = ("O custo de um mês só é anualizado, então oscila muito — na dívida externa, "
-                   "com a variação cambial do mês. Para a tendência, veja o acumulado em 12 meses.")
+                   "com a variação cambial do mês. Para a tendência, veja o mesmo gráfico "
+                   "acumulado em 12 meses.")
     ACUM = "Custo médio acumulado em 12 meses, em % a.a."
     saida = [
         cartao("divida-custo-mensal-dpmfi", "Custo da dívida interna (DPMFi)", MENSAL, g41, m41, interna, nota=NOTA_MENSAL),
@@ -482,7 +509,7 @@ def main():
     prazo_interna, prazo_externa = prazo_medio(p)
 
     secoes = [
-        dict(titulo="Emissões e resgates", graficos=[emissoes_resgates(p)]),
+        dict(titulo="Emissões e resgates", graficos=[emissao_liquida(p)]),
         dict(titulo="Composição e detentores", graficos=[
             composicao_dpf(p), detentores(p),
             detentores_por_titulo(p, tabela28), titulos_por_detentor(p, tabela28)]),
