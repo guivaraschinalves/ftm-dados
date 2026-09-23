@@ -66,7 +66,10 @@
   ];
 
   var cartoes = [];
-  var doc = null;
+  // Um arquivo por categoria (IPCA, Dívida Pública…). Cada um traz categoria,
+  // fonte, mês de referência e as suas seções; um que faltar é só ignorado.
+  var FONTES = ["dados/ipca.json", "dados/divida.json"];
+  var docs = [];
   var logoSvg = null;   // {viewBox, nos}
 
   // ---------- utilidades ----------
@@ -357,7 +360,7 @@
         "font-size": corpoQueCabe(linha, L.sub.fs, L.sub.max, "italic")
       }));
     });
-    svg.appendChild(texto("Fonte: " + doc.fonte + ".", {
+    svg.appendChild(texto("Fonte: " + g.fonte + ".", {
       x: L.fonte.x, y: L.fonte.y, "font-size": L.fonte.fs, fill: pal.texto, "text-anchor": "end"
     }));
     if (logoSvg) {
@@ -424,15 +427,9 @@
     alvo.addEventListener("pointerleave", limpar);
   }
 
-  // ---------- retrátil (seções e cartões) ----------
-  var CHAVE_FECHADOS = "ftm_dados_fechados";
-  var fechados = {};
-  try { fechados = JSON.parse(localStorage.getItem(CHAVE_FECHADOS) || "{}") || {}; } catch (e) {}
-  function estaFechado(id) { return !!fechados[id]; }
-  function guardarEstado(id, fechado) {
-    if (fechado) fechados[id] = 1; else delete fechados[id];
-    try { localStorage.setItem(CHAVE_FECHADOS, JSON.stringify(fechados)); } catch (e) {}
-  }
+  // ---------- retrátil (categorias, seções e cartões) ----------
+  // Tudo começa fechado, toda vez que o site abre: a página inicial é o índice
+  // dos gráficos, e o usuário abre o que quiser ver.
   function seta() {
     return el("svg", { "class": "seta", viewBox: "0 0 16 16", width: "13", height: "13", "aria-hidden": "true" }, [
       el("path", {
@@ -781,7 +778,6 @@
   function criarCartao(g) {
     var cartao = { grafico: g, periodo: "tudo", inicioIdx: null, chave: null };
     var raiz = html("details", { "class": "card", id: g.id });
-    if (!estaFechado(g.id)) raiz.setAttribute("open", "");
 
     var cabecalho = html("summary", { "class": "card-cabecalho" });
     cabecalho.appendChild(seta());
@@ -826,7 +822,6 @@
 
     // fechado não tem largura: o desenho espera o cartão abrir
     raiz.addEventListener("toggle", function () {
-      guardarEstado(g.id, !raiz.open);
       if (raiz.open) desenhar(cartao, true);
     });
 
@@ -1061,22 +1056,17 @@
     return t + " (" + g.subtitulo.split(";")[0].trim().split(" ").slice(-2).join(" ") + ")";
   }
 
-  function montarNav(dados) {
-    var nav = document.getElementById("nav");
+  function montarNav(dados, host) {
     var total = dados.secoes.reduce(function (n, sec) { return n + sec.graficos.length; }, 0);
     var grupo = html("details", { "class": "nav-grupo" });
-    // no celular a barra lateral vira um bloco no topo da página: com o menu
-    // aberto, os 12 links empurrariam o primeiro gráfico para fora da tela
-    grupo.open = !window.matchMedia("(max-width: 860px)").matches;
     var rotulo = html("summary", { "class": "nav-rotulo" });
     rotulo.appendChild(seta());
-    rotulo.appendChild(html("span", { texto: dados.categoria || "IPCA" }));
+    rotulo.appendChild(html("span", { texto: dados.categoria }));
     rotulo.appendChild(html("span", { "class": "nav-conta", texto: total + " gráficos" }));
     grupo.appendChild(rotulo);
 
     dados.secoes.forEach(function (sec, k) {
       var sub = html("details", { "class": "nav-sub" });
-      sub.open = true;
       var subRotulo = html("summary", { "class": "nav-sub-rotulo" });
       subRotulo.appendChild(seta());
       subRotulo.appendChild(html("span", { texto: sec.titulo }));
@@ -1088,11 +1078,11 @@
       });
       grupo.appendChild(sub);
     });
-    nav.appendChild(grupo);
+    host.appendChild(grupo);
   }
 
-  // Link do menu para um gráfico dentro de seção ou cartão fechado: abre tudo
-  // que estiver no caminho antes de rolar até lá.
+  // Link do menu para um gráfico dentro de categoria, seção ou cartão fechado:
+  // abre tudo que estiver no caminho antes de rolar até lá.
   function irPara(id) {
     var alvo = document.getElementById(id);
     if (!alvo) return;
@@ -1102,49 +1092,71 @@
     try { history.replaceState(null, "", "#" + id); } catch (e) {}
   }
 
-  function montarRodape(dados) {
+  function idCategoria(dados) { return "cat-" + slug(dados.categoria); }
+  function slug(t) {
+    return t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  }
+
+  function montarRodape(lista) {
     var rodape = document.getElementById("rodape");
-    var at = dados.atualizado.split("-"), ref = idxMes(dados.referencia);
-    rodape.appendChild(html("p", { style: "margin:0 0 4px", texto: "IPCA até " + rotuloMesLongo(ref).toLowerCase() + "." }));
-    rodape.appendChild(html("p", { style: "margin:0",
-      texto: "Fonte: " + dados.fonte + ". Atualizado em " + at[2] + "/" + at[1] + "/" + at[0] +
-             ", automaticamente, com dados do BCB (SGS) e do IBGE (SIDRA)." }));
+    lista.forEach(function (dados) {
+      var at = dados.atualizado.split("-"), ref = idxMes(dados.referencia);
+      rodape.appendChild(html("p", { style: "margin:0 0 6px",
+        texto: dados.categoria + " até " + rotuloMesLongo(ref).toLowerCase() +
+               ", atualizado em " + at[2] + "/" + at[1] + "/" + at[0] + ". Fonte: " + dados.fonte + "." }));
+    });
+  }
+
+  // Monta uma categoria inteira na página: categoria > seções > gráficos,
+  // tudo fechado — a página inicial é o índice.
+  function montarCategoria(dados, host) {
+    var cat = html("details", { "class": "categoria", id: idCategoria(dados) });
+    var rotulo = html("summary", { "class": "categoria-rotulo" });
+    rotulo.appendChild(seta());
+    rotulo.appendChild(html("span", { texto: dados.categoria }));
+    cat.appendChild(rotulo);
+
+    dados.secoes.forEach(function (sec, k) {
+      var secao = html("details", { "class": "secao", id: "secao-" + slug(dados.categoria) + "-" + k });
+      var rotuloSecao = html("summary", { "class": "secao-rotulo" });
+      rotuloSecao.appendChild(seta());
+      rotuloSecao.appendChild(html("span", { texto: sec.titulo }));
+      secao.appendChild(rotuloSecao);
+
+      var listaGraficos = html("div", { "class": "secao-graficos" });
+      var daSecao = [];
+      sec.graficos.forEach(function (g) {
+        g.fonte = g.fonte || dados.fonte;
+        var c = criarCartao(g);
+        cartoes.push(c);
+        daSecao.push(c);
+        listaGraficos.appendChild(c.raiz);
+      });
+      secao.appendChild(listaGraficos);
+      secao.addEventListener("toggle", function () {
+        if (secao.open) daSecao.forEach(function (c) { desenhar(c, true); });
+      });
+      cat.appendChild(secao);
+    });
+    host.appendChild(cat);
   }
 
   function iniciar() {
     var host = document.getElementById("graficos");
-    Promise.all([fetch("dados/ipca.json").then(function (r) {
-      if (!r.ok) throw new Error("dados/ipca.json → HTTP " + r.status);
-      return r.json();
-    }), carregarLogo()]).then(function (r) {
-      doc = r[0];
+    var nav = document.getElementById("nav");
+    var buscas = FONTES.map(function (url) {
+      return fetch(url).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+    });
+    Promise.all(buscas.concat([carregarLogo()])).then(function (r) {
+      docs = r.slice(0, FONTES.length).filter(Boolean);
+      if (!docs.length) throw new Error("nenhum arquivo de dados foi carregado");
       host.innerHTML = "";
-      doc.secoes.forEach(function (sec, k) {
-        var id = "secao-" + k;
-        var secao = html("details", { "class": "secao", id: id });
-        if (!estaFechado(id)) secao.setAttribute("open", "");
-        var rotulo = html("summary", { "class": "secao-rotulo" });
-        rotulo.appendChild(seta());
-        rotulo.appendChild(html("span", { texto: sec.titulo }));
-        secao.appendChild(rotulo);
-
-        var lista = html("div", { "class": "secao-graficos" });
-        var daSecao = [];
-        sec.graficos.forEach(function (g) {
-          var c = criarCartao(g);
-          cartoes.push(c);
-          daSecao.push(c);
-          lista.appendChild(c.raiz);
-        });
-        secao.appendChild(lista);
-        secao.addEventListener("toggle", function () {
-          guardarEstado(id, !secao.open);
-          if (secao.open) daSecao.forEach(function (c) { desenhar(c, true); });
-        });
-        host.appendChild(secao);
+      docs.forEach(function (dados) {
+        montarCategoria(dados, host);
+        montarNav(dados, nav);
       });
-      montarNav(doc);
-      montarRodape(doc);
+      montarRodape(docs);
       cartoes.forEach(function (c) { desenhar(c, true); });
       if (location.hash.length > 1) irPara(location.hash.slice(1));
     }).catch(function (e) {

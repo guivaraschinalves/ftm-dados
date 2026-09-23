@@ -42,7 +42,6 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(
 .marca-logo { display: block; color: var(--logo); flex: 1 1 auto; min-width: 0; text-decoration: none; }
 .logo { display: block; width: 118px; line-height: 0; }
 .logo svg { width: 100%; height: auto; }
-.marca-tag { margin: -8px 0 0; color: var(--ink-2); font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase; }
 
 .icon-btn {
   display: inline-grid; place-items: center; flex: none; width: 34px; height: 34px;
@@ -92,15 +91,19 @@ details[open] > summary > .seta, details[open] > .nav-rotulo > .seta, details[op
 .estado { color: var(--ink-2); text-align: center; padding: 40px 0; }
 .estado.erro { color: #ff8d7a; }
 
-/* seção retrátil */
-.secao { border-top: 1px solid var(--border); }
-.secao-rotulo {
+/* categoria e seção, as duas retráteis */
+.categoria { border-top: 1px solid var(--border); }
+.categoria-rotulo, .secao-rotulo {
   display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none;
-  margin: 0; padding: 16px 2px 12px; font-size: 21px; font-weight: 700; color: var(--ink);
+  margin: 0; color: var(--ink);
 }
-.secao-rotulo::-webkit-details-marker { display: none; }
-.secao-rotulo:hover { color: var(--accent); }
-.secao-graficos { display: grid; gap: 22px; padding-bottom: 14px; }
+.categoria-rotulo::-webkit-details-marker, .secao-rotulo::-webkit-details-marker { display: none; }
+.categoria-rotulo:hover, .secao-rotulo:hover { color: var(--accent); }
+.categoria-rotulo { padding: 18px 2px; font-size: 25px; font-weight: 700; }
+.categoria[open] > .categoria-rotulo { padding-bottom: 8px; }
+.secao { padding-left: 21px; border-left: 1px solid var(--border); margin-left: 5px; }
+.secao-rotulo { padding: 10px 2px; font-size: 19px; font-weight: 700; }
+.secao-graficos { display: grid; gap: 22px; padding: 6px 0 16px; }
 
 /* ---------- cartão do gráfico (retrátil) ---------- */
 .card {
