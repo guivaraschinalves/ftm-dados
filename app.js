@@ -68,7 +68,7 @@
   var cartoes = [];
   // Um arquivo por categoria (IPCA, Dívida Pública…). Cada um traz categoria,
   // fonte, mês de referência e as suas seções; um que faltar é só ignorado.
-  var FONTES = ["dados/ipca.json", "dados/divida.json"];
+  var FONTES = ["dados/ipca.json", "dados/divida.json", "dados/tesouro-direto.json"];
   var docs = [];
   var logoSvg = null;   // {viewBox, nos}
 
@@ -115,28 +115,47 @@
 
   // Como cada gráfico escreve os seus números: no eixo (curto) e no valor
   // cheio (rótulo do último ponto e caixa do mouse). "%" é o padrão.
+  // casas do eixo conforme o passo da grade: numa janela curta (7,0% a 9,5%) o
+  // eixo sem decimal repetiria "7%, 8%, 8%, 9%"
+  function casasDoPasso(p) {
+    p = Math.abs(p || 1);
+    return p >= 1 ? 0 : p >= 0.1 ? 1 : 2;
+  }
   var UNIDADES = {
-    "%": { eixo: function (v) { return nf(0).format(v) + "%"; },
+    "%": { eixo: function (v, passo) { return nf(casasDoPasso(passo)).format(v) + "%"; },
            valor: function (v) { return pct(v, 2); } },
-    bi: { eixo: function (v) { return nf(0).format(v); },
+    bi: { eixo: function (v, passo) { return nf(casasDoPasso(passo)).format(v); },
           valor: function (v) { return "R$ " + nf(1).format(v) + " bi"; } },
-    anos: { eixo: function (v) { return nf(1).format(v); },
+    anos: { eixo: function (v, passo) { return nf(Math.max(1, casasDoPasso(passo))).format(v); },
             valor: function (v) { return nf(2).format(v) + " anos"; } }
   };
   function unidade(g) { return UNIDADES[g.unidade] || UNIDADES["%"]; }
 
   function idxMes(m) { var p = m.split("-"); return (+p[0]) * 12 + (+p[1] - 1); }
+  // eixo diário: o índice é o dia corrido (UTC, para não pegar fuso nem horário de verão)
+  function idxDia(iso) { var p = iso.split("-"); return Math.round(Date.UTC(+p[0], +p[1] - 1, +p[2]) / 86400000); }
+  function dataDeIdx(i) { return new Date(i * 86400000); }
   function mesDeIdx(i) { return Math.floor(i / 12) + "-" + ("0" + (i % 12 + 1)).slice(-2); }
   function rotuloMesCurto(i) { return MESES[i % 12] + "/" + String(Math.floor(i / 12)).slice(-2); }
   function rotuloMesLongo(i) { return MESES_LONGOS[i % 12] + " de " + Math.floor(i / 12); }
 
   // Eixo X: normalmente é o tempo (um passo por mês); com "categorias" no
   // gráfico, é uma lista de rótulos (o acumulado do cronograma de vencimentos).
-  function idxDe(g, chave) { return g.categorias ? +chave : idxMes(chave); }
+  function idxDe(g, chave) {
+    return g.categorias ? +chave : g.diario ? idxDia(chave) : idxMes(chave);
+  }
   function rotuloX(g, i, longo) {
     if (g.categorias) return g.categorias[i] || "";
+    if (g.diario) {
+      var d = dataDeIdx(i);
+      if (!longo) return MESES[d.getUTCMonth()] + "/" + String(d.getUTCFullYear()).slice(-2);
+      return d.getUTCDate() + " de " + MESES_LONGOS[d.getUTCMonth()].toLowerCase() + " de " + d.getUTCFullYear();
+    }
     return longo ? rotuloMesLongo(i) : rotuloMesCurto(i);
   }
+  // Quantos passos do eixo cabem num ano — o que separa "mês" de "dia" nas
+  // contas de período (Tudo / 10 anos / 5 anos…).
+  function passosPorAno(g) { return g.diario ? 365.25 : 12; }
 
   // Um cartão pode ter variantes (agência, moeda, "% ou R$"…): o gráfico que
   // vale é a base com a variante escolhida por cima. O objeto fica guardado
@@ -253,7 +272,7 @@
     Object.keys(pilhaNeg).forEach(function (i) { mn = Math.min(mn, pilhaNeg[i]); });
     var esc = escalaY(mn, mx, g.eixo);
 
-    var tw = Math.max.apply(null, esc.ticks.map(function (t) { return largura(F.eixo(t), L.tick); }));
+    var tw = Math.max.apply(null, esc.ticks.map(function (t) { return largura(F.eixo(t, esc.passo), L.tick); }));
     var rotulos = [];
     g.series.forEach(function (s, k) {
       if (!s.rotulo || !vis[k].length) return;
@@ -300,9 +319,9 @@
         "stroke-width": zero && esc.min < 0 ? 1.5 : 1.2
       }));
       var at = { y: y, "font-size": L.tick, fill: pal.eixo, "dominant-baseline": "central" };
-      svg.appendChild(texto(F.eixo(t), Object.assign({ x: L.x0 - 14, "text-anchor": "end" }, at)));
+      svg.appendChild(texto(F.eixo(t, esc.passo), Object.assign({ x: L.x0 - 14, "text-anchor": "end" }, at)));
       if (L.eixoDuplo && ordem.every(function (o) { return Math.abs(o.y - y) > L.rotulo * 0.9; })) {
-        svg.appendChild(texto(F.eixo(t), Object.assign({ x: L.x1 + 14, "text-anchor": "start" }, at)));
+        svg.appendChild(texto(F.eixo(t, esc.passo), Object.assign({ x: L.x1 + 14, "text-anchor": "start" }, at)));
       }
     });
     // eixo X: linha de base (zero, se estiver no gráfico; senão a base)
@@ -325,6 +344,37 @@
           "text-anchor": "middle", "dominant-baseline": "hanging"
         }));
       }
+    } else if (g.diario) {
+      // 1º de janeiro de cada ano (de 1, 2, 5 ou 10 em 10, conforme couber);
+      // em janela curta, o primeiro dia de cada mês
+      var marcas = [], ini0 = dataDeIdx(d0), fim0 = dataDeIdx(d1);
+      if (d1 - d0 > 365.25 * 2.5) {
+        for (var y = ini0.getUTCFullYear(); y <= fim0.getUTCFullYear(); y++) {
+          var iy = Math.round(Date.UTC(y, 0, 1) / 86400000);
+          if (iy >= d0 && iy < d1) marcas.push(iy);
+        }
+      } else {
+        var ym = ini0.getUTCFullYear(), mm = ini0.getUTCMonth();
+        for (var k2 = 0; k2 < 400; k2++) {
+          var im = Math.round(Date.UTC(ym, mm, 1) / 86400000);
+          if (im >= d1) break;
+          if (im >= d0) marcas.push(im);
+          if (++mm > 11) { mm = 0; ym++; }
+        }
+      }
+      // rareia até os rótulos não se encostarem, em degraus redondos
+      var espaco = marcas.length > 1 ? pw / (marcas.length - 1) : pw;
+      var pulo = Math.max(1, Math.ceil(L.xlab * 1.3 / espaco));
+      [1, 2, 3, 5, 6, 10, 12, 20, 24].some(function (n) { if (n >= pulo) { pulo = n; return true; } });
+      marcas.forEach(function (im, k3) {
+        if (k3 % pulo !== 0) return;
+        var cxd = X(im + 0.5);
+        svg.appendChild(el("line", { x1: cxd, x2: cxd, y1: L.y1, y2: L.y1 + 7, stroke: pal.zero, "stroke-width": 1.5 }));
+        svg.appendChild(texto(rotuloX(g, im), {
+          x: cxd + 4, y: L.y1 + 16, "font-size": L.xlab, fill: pal.eixo, "text-anchor": "end",
+          "dominant-baseline": "hanging", transform: "rotate(" + L.xRot + " " + (cxd + 4) + " " + (L.y1 + 16) + ")"
+        }));
+      });
     } else {
       // janeiro de cada ano; trimestral em janela curta
       var passoX = g.passoX || 12;
@@ -367,11 +417,14 @@
       });
     });
     // linhas, na ordem da lista (a última fica por cima)
+    // no eixo diário, todo fim de semana é um salto de 3 dias: a linha só corta
+    // quando o buraco for maior que isso (ali o título não estava em oferta)
+    var buracoMax = g.buracoMax || (g.diario ? 6 : 1);
     g.series.forEach(function (s, k) {
       if (s.tipo === "barra" || !vis[k].length) return;
       var d = "", ant = null;
       vis[k].forEach(function (p) {
-        d += (ant === null || p.i - ant > 1 ? "M" : "L") + X(p.i + 0.5).toFixed(1) + " " + Y(p.v).toFixed(1);
+        d += (ant === null || p.i - ant > buracoMax ? "M" : "L") + X(p.i + 0.5).toFixed(1) + " " + Y(p.v).toFixed(1);
         ant = p.i;
       });
       var w = s.largura || L.linha;
@@ -455,6 +508,13 @@
       pt.x = ev.clientX; pt.y = ev.clientY;
       var p = pt.matrixTransform(svg.getScreenCTM().inverse());
       var i = Math.floor(desenho.d0 + (p.x - L.x0) / (L.x1 - L.x0) * (desenho.d1 - desenho.d0));
+      if (g.diario) {
+        // fim de semana e feriado não têm pregão: vale o último dia com taxa
+        for (var volta = 0; volta < 7; volta++) {
+          var achou = porSerie.some(function (m) { return m[i - volta] !== undefined; });
+          if (achou) { i -= volta; break; }
+        }
+      }
       var linhas = [];
       g.series.forEach(function (s, k) {
         if (s.legenda === false || porSerie[k][i] === undefined) return;
@@ -831,12 +891,15 @@
   }
   function periodosDisponiveis(g) {
     if (g.categorias) return [];   // eixo de categorias não tem janela de tempo
-    var e = extensao(g), meses = e.fim - e.ini + 1, lista = [{ id: "tudo", rot: "Tudo" }];
-    [20, 10, 5].forEach(function (a) { if (meses > a * 12 * 1.1) lista.push({ id: String(a), rot: a + " anos" }); });
+    var e = extensao(g), passo = passosPorAno(g), anos = (e.fim - e.ini + 1) / passo;
+    var lista = [{ id: "tudo", rot: "Tudo" }];
+    (g.diario ? [20, 10, 5, 2, 1] : [20, 10, 5]).forEach(function (a) {
+      if (anos > a * 1.1) lista.push({ id: String(a), rot: a === 1 ? "1 ano" : a + " anos" });
+    });
     return lista;
   }
   function inicioDoPeriodo(g, id) {
-    return id === "tudo" ? null : extensao(g).fim - (+id) * 12 + 1;
+    return id === "tudo" ? null : extensao(g).fim - Math.round((+id) * passosPorAno(g)) + 1;
   }
 
   function criarCartao(g) {
@@ -1106,7 +1169,7 @@
       var n = s.nome.replace(/;/g, ",");
       return cols.filter(function (t, j) { return j < k && t.nome === s.nome; }).length ? n + " (2)" : n;
     });
-    var linhas = [(g.categorias ? "faixa" : "mes") + ";" + nomes.join(";")];
+    var linhas = [(g.categorias ? "faixa" : g.diario ? "data" : "mes") + ";" + nomes.join(";")];
     Object.keys(meses).sort().forEach(function (m) {
       linhas.push((g.categorias ? g.categorias[+m] : m) + ";" + mapas.map(function (mp) {
         return mp[m] === undefined ? "" : String(mp[m]).replace(".", ",");

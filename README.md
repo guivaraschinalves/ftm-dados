@@ -7,6 +7,7 @@ Gráficos do chart book desenhados no navegador, sem build: `index.html` +
 |---|---|---|
 | **IPCA** | `dados/ipca.json` | Baixados **sozinhos** todo dia do Banco Central (SGS) e do IBGE (SIDRA) |
 | **Dívida Pública** | `dados/divida.json` | Gerados do Relatório Mensal da Dívida do Tesouro (o `.xlsx` em `dados/`) |
+| **Tesouro Direto** | `dados/tesouro-direto.json` | Baixados **sozinhos** do dado aberto do Tesouro Transparente (taxas diárias desde 2004) |
 
 - **Menu na lateral** — uma categoria retrátil por arquivo de dados (IPCA,
   Dívida Pública), com as subcategorias dentro e os gráficos dentro delas. A
@@ -37,8 +38,8 @@ Gráficos do chart book desenhados no navegador, sem build: `index.html` +
 ## Como o IPCA se atualiza
 
 A Action `.github/workflows/atualizar.yml` roda todo dia às 09:30 e às 17:00
-(Brasília), executa `scripts/atualizar.py` e comita `dados/ipca.json` **só se
-algum número mudou**. O GitHub Pages republica sozinho em seguida. Não há
+(Brasília), executa `scripts/atualizar.py` e `scripts/tesouro_direto.py` e
+comita `dados/` **só se algum número mudou**. O GitHub Pages republica sozinho em seguida. Não há
 chave, senha nem serviço externo: as duas APIs são públicas.
 
 Para rodar na mão (mesmo resultado):
@@ -48,6 +49,41 @@ python3 scripts/atualizar.py
 ```
 
 Ou, no GitHub: **Actions → Atualiza os dados → Run workflow**.
+
+## O Tesouro Direto (taxa por prazo)
+
+`scripts/tesouro_direto.py` roda na mesma Action do IPCA e grava
+`dados/tesouro-direto.json` com a taxa do **Tesouro Prefixado** (2 e 5 anos) e
+do **Tesouro IPCA+** (2, 5, 10 e 20 anos), um ponto por pregão desde 2004.
+
+A fonte é o CSV `precotaxatesourodireto.csv` do CKAN do Tesouro Transparente
+(14 MB, sem chave, atualizado em dia útil). A URL vem do próprio CKAN
+(`package_show`), com uma URL fixa de reserva. **A API da B3
+(`treasurybondsinfo.json`) não serve mais**: responde 410, e as rotas do site
+respondem 403 fora do navegador.
+
+Como cada série é feita, tudo em `scripts/tesouro_direto.py`:
+
+- **taxa** = média entre a taxa de compra e a de venda da manhã, como pedido;
+- **prazo** de cada papel no dia = (vencimento − data base) / 365,25;
+- a taxa de N anos sai por **interpolação linear** entre os dois vencimentos
+  vizinhos ofertados naquele dia. Se o prazo pedido cair fora do que está em
+  oferta, vale o vencimento mais próximo desde que esteja a menos de um ano do
+  alvo; passou disso, o dia fica **sem ponto** e o site corta a linha, em vez
+  de inventar;
+- **papel a menos de um ano do vencimento não entra na conta** (`PRAZO_MINIMO`).
+  Taxa anualizada de papel vincendo explode — o arquivo traz −1,5% e +15% — e
+  no IPCA+ a taxa curta ainda é dominada pelo carrego da inflação já conhecida.
+  Em mai/2026 o papel de 3 meses marcava 10,0% contra 8,0% do de três anos;
+  usá-lo como âncora deformava a linha de 2 anos.
+
+Duas ausências têm explicação no próprio dado:
+
+- **não existe prefixado de 10 anos**: o mais longo que o Tesouro Direto já
+  ofertou tinha 6,9 anos. A linha de 5 anos só começa em 2015, quando passou a
+  existir papel desse prazo;
+- a linha de **2 anos do IPCA+** é interrompida em 2014-2016, 2018-2021 e no
+  fim de 2025: nesses períodos não havia NTN-B Principal curta em oferta.
 
 ## A dívida pública (Relatório Mensal da Dívida)
 
@@ -155,11 +191,13 @@ python3 -m http.server 8000   # http://localhost:8000
 ```
 index.html  styles.css  app.js
 assets/     fundo.jpg (fundo dos slides do FtM), logo-ftm.svg, favicon.svg
-dados/      ipca.json e divida.json (gerados) + o .xlsx do Tesouro
-scripts/    atualizar.py (IPCA, automático), divida.py (dívida, do .xlsx)
+dados/      ipca.json, divida.json, tesouro-direto.json (gerados) + o .xlsx do Tesouro
+scripts/    atualizar.py (IPCA) e tesouro_direto.py (taxas), automáticos;
+            divida.py (dívida, do .xlsx, na mão)
 .github/workflows/atualizar.yml
 ```
 
 O `app.js` é genérico: lê os arquivos de `dados/` e desenha o que vier. Séries
 em linha ou em barra empilhada, unidade `%`, `bi` (R$ bilhões) ou `anos`, eixo
-X no tempo ou por categoria (`categorias`), e cartões com `variantes`.
+X mensal, diário (`diario`) ou por categoria (`categorias`), e cartões com
+`variantes`.

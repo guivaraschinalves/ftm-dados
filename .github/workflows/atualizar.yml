@@ -26,8 +26,12 @@ jobs:
           python-version: "3.12"
 
       # Só biblioteca padrão: nada para instalar.
-      - name: Baixa as séries e refaz as contas
+      - name: IPCA — baixa as séries e refaz as contas
         run: python scripts/atualizar.py
+
+      # O CSV do Tesouro Transparente muda em dia útil, de manhã.
+      - name: Tesouro Direto — taxas por prazo
+        run: python scripts/tesouro_direto.py
 
       - name: Commita, se algum número mudou
         run: |
@@ -38,5 +42,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add dados
-          git commit -m "Atualiza os dados do IPCA"
+          git commit -m "Atualiza os dados (IPCA e Tesouro Direto)"
           git push
