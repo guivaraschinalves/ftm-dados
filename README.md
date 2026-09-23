@@ -1,14 +1,17 @@
 # FtM Dados
 
-Os gráficos do IPCA do chart book, desenhados no navegador e **atualizados
-sozinhos** com dados do Banco Central (SGS) e do IBGE (SIDRA). Site estático,
-sem build: `index.html` + `app.js` + `styles.css`, com os dados em
-`dados/ipca.json`.
+Gráficos do chart book desenhados no navegador, sem build: `index.html` +
+`app.js` + `styles.css`, com um arquivo de dados por categoria em `dados/`.
 
-- **Menu na lateral** — a categoria **IPCA** é retrátil e leva dentro as
-  subcategorias (Visão geral, Aberturas, Núcleos), cada uma com os seus
-  gráficos. Na página, seções e gráficos também abrem e fecham, e o que você
-  deixou fechado continua fechado na próxima visita (fica no navegador).
+| Categoria | Dados | De onde vêm |
+|---|---|---|
+| **IPCA** | `dados/ipca.json` | Baixados **sozinhos** todo dia do Banco Central (SGS) e do IBGE (SIDRA) |
+| **Dívida Pública** | `dados/divida.json` | Gerados do Relatório Mensal da Dívida do Tesouro (o `.xlsx` em `dados/`) |
+
+- **Menu na lateral** — uma categoria retrátil por arquivo de dados (IPCA,
+  Dívida Pública), com as subcategorias dentro e os gráficos dentro delas. A
+  página tem a mesma árvore, e **tudo abre fechado**: a tela inicial é o índice
+  dos gráficos.
 - **Tela cheia** — da página inteira (botão na lateral) e de um gráfico só
   (botão **Tela cheia** no cartão). Em tela cheia os controles do gráfico viram
   um menu de hambúrguer e somem sozinhos depois de uns segundos parados,
@@ -26,8 +29,12 @@ sem build: `index.html` + `app.js` + `styles.css`, com os dados em
   com o gráfico dentro da área segura, longe das barras do app).
 - **Período** — Tudo / 20 / 10 / 5 anos. Passe o mouse (ou toque) para ver os
   valores do mês.
+- **Recortes** — alguns cartões mostram um recorte por vez, escolhido em
+  botões ao lado do período: dívida interna ou externa, "% do total" ou
+  "R$ bilhões", um título, um detentor, um indexador. O recorte escolhido
+  entra no subtítulo do gráfico, então a imagem baixada diz qual é.
 
-## Como os dados se atualizam
+## Como o IPCA se atualiza
 
 A Action `.github/workflows/atualizar.yml` roda todo dia às 09:30 e às 17:00
 (Brasília), executa `scripts/atualizar.py` e comita `dados/ipca.json` **só se
@@ -42,7 +49,49 @@ python3 scripts/atualizar.py
 
 Ou, no GitHub: **Actions → Atualiza os dados → Run workflow**.
 
-## As contas (as fórmulas da planilha)
+## A dívida pública (Relatório Mensal da Dívida)
+
+Essa parte **não** se atualiza sozinha: vem do `.xlsx` dos anexos do Relatório
+Mensal da Dívida, que fica em `dados/`. Todo mês:
+
+1. baixar o novo *Relatório da Dívida `<Mês><Ano>`.xlsx* no site do Tesouro
+   Nacional (Relatório Mensal da Dívida → anexos) e jogar em `dados/`;
+2. `python3 scripts/divida.py` (ele pega o `.xlsx` mais novo da pasta);
+3. commit de `dados/` e push.
+
+`scripts/divida.py` também só usa a biblioteca padrão. Uma função por gráfico,
+e cada anexo vira um cartão:
+
+| Anexo | Cartão | Recortes |
+|---|---|---|
+| 1.2 | Emissões e resgates da DPF, por indexador (resgates para baixo) | interna (DPMFi) / externa (DPFe) |
+| 2.4 | Composição da DPF por indexador | % do total / R$ bilhões |
+| 2.7 | Detentores da dívida interna | % do total / R$ bilhões |
+| 2.8 | Detentores de cada título | LFT, LTN, NTN-B, NTN-F, Outros |
+| 2.8 | Carteira de cada detentor (o mesmo anexo lido de lado) | um detentor por vez |
+| 3.1 | Estrutura de vencimentos, por faixa de prazo | DPF / DPMFi / DPFe |
+| 3.2 | Estrutura de vencimentos por indexador | prefixados, taxa flutuante, índice de preços, câmbio, demais |
+| 3.4 | Cronograma de vencimentos | mês a mês / acumulado (a tabela do fim da aba) |
+| 3.8 | Prazo médio da dívida interna e da externa | dois cartões |
+| 4.1 | Custo médio mensal da dívida interna e da externa | dois cartões |
+| 4.2 | Custo acumulado em 12 meses, interna e externa | dois cartões |
+| 4.1+4.2 | Custo da DPMFi: mensal e acumulado em 12 meses, só duas linhas | — |
+
+Duas decisões que valem registro:
+
+- **os percentuais são recalculados aqui** (valor ÷ total da linha). As colunas
+  de % da planilha ora vêm em fração (0,31), ora em pontos percentuais (9,82) —
+  na mesma linha. Dividir é o que sempre bate com o total;
+- na **carteira de cada detentor**, o anexo 2.8 só traz o % dentro de cada
+  título; o script volta para reais (participação × estoque do título) para
+  poder somar os títulos de um mesmo detentor e tirar o % da carteira dele.
+
+Nos gráficos por componente da dívida externa entram as linhas que ainda têm
+dados (Global USD, Euros, Global BRL e dívida contratual); as encerradas há
+tempo — Reestruturada, Clube de Paris — ficam de fora. Nos da dívida interna
+por título entram LFT, LTN, NTN-B, NTN-C e NTN-F.
+
+## As contas do IPCA (as fórmulas da planilha)
 
 Estão todas em `scripts/atualizar.py`, que só usa a biblioteca padrão do Python.
 
@@ -97,7 +146,11 @@ python3 -m http.server 8000   # http://localhost:8000
 ```
 index.html  styles.css  app.js
 assets/     fundo.jpg (fundo dos slides do FtM), logo-ftm.svg, favicon.svg
-dados/      ipca.json (gerado)
-scripts/    atualizar.py
+dados/      ipca.json e divida.json (gerados) + o .xlsx do Tesouro
+scripts/    atualizar.py (IPCA, automático), divida.py (dívida, do .xlsx)
 .github/workflows/atualizar.yml
 ```
+
+O `app.js` é genérico: lê os arquivos de `dados/` e desenha o que vier. Séries
+em linha ou em barra empilhada, unidade `%`, `bi` (R$ bilhões) ou `anos`, eixo
+X no tempo ou por categoria (`categorias`), e cartões com `variantes`.

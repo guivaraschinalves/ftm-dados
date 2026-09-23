@@ -113,9 +113,50 @@
   }
   function pct(v, casas) { return nf(casas === undefined ? 2 : casas).format(v) + "%"; }
 
+  // Como cada gráfico escreve os seus números: no eixo (curto) e no valor
+  // cheio (rótulo do último ponto e caixa do mouse). "%" é o padrão.
+  var UNIDADES = {
+    "%": { eixo: function (v) { return nf(0).format(v) + "%"; },
+           valor: function (v) { return pct(v, 2); } },
+    bi: { eixo: function (v) { return nf(0).format(v); },
+          valor: function (v) { return "R$ " + nf(1).format(v) + " bi"; } },
+    anos: { eixo: function (v) { return nf(1).format(v); },
+            valor: function (v) { return nf(2).format(v) + " anos"; } }
+  };
+  function unidade(g) { return UNIDADES[g.unidade] || UNIDADES["%"]; }
+
   function idxMes(m) { var p = m.split("-"); return (+p[0]) * 12 + (+p[1] - 1); }
+  function mesDeIdx(i) { return Math.floor(i / 12) + "-" + ("0" + (i % 12 + 1)).slice(-2); }
   function rotuloMesCurto(i) { return MESES[i % 12] + "/" + String(Math.floor(i / 12)).slice(-2); }
   function rotuloMesLongo(i) { return MESES_LONGOS[i % 12] + " de " + Math.floor(i / 12); }
+
+  // Eixo X: normalmente é o tempo (um passo por mês); com "categorias" no
+  // gráfico, é uma lista de rótulos (o acumulado do cronograma de vencimentos).
+  function idxDe(g, chave) { return g.categorias ? +chave : idxMes(chave); }
+  function rotuloX(g, i, longo) {
+    if (g.categorias) return g.categorias[i] || "";
+    return longo ? rotuloMesLongo(i) : rotuloMesCurto(i);
+  }
+
+  // Um cartão pode ter variantes (agência, moeda, "% ou R$"…): o gráfico que
+  // vale é a base com a variante escolhida por cima. O objeto fica guardado
+  // para as séries manterem a identidade entre desenho e interação.
+  function graficoDe(cartao) {
+    var base = cartao.grafico;
+    if (!base.variantes) return base;
+    var k = cartao.variante || 0;
+    if (!cartao.montados) cartao.montados = {};
+    if (!cartao.montados[k]) {
+      var v = base.variantes[k] || base.variantes[0], fora = {};
+      for (var a in base) if (a !== "variantes") fora[a] = base[a];
+      for (var b in v) if (b !== "rot") fora[b] = v[b];
+      // o recorte escolhido entra no subtítulo: sem isso, a imagem baixada não
+      // diz qual deles está na tela
+      fora.subtitulo = (base.subtitulo ? base.subtitulo + " · " : "") + v.rot;
+      cartao.montados[k] = fora;
+    }
+    return cartao.montados[k];
+  }
 
   // Branco e amarelo somem no fundo claro: no tema claro viram tinta escura / ocre.
   function corNoTema(cor, pal) {
@@ -175,7 +216,7 @@
 
   // ---------- desenho ----------
   function construir(cartao, L0, nomeTema) {
-    var g = cartao.grafico, pal = PALETAS[nomeTema];
+    var g = graficoDe(cartao), pal = PALETAS[nomeTema], F = unidade(g);
     var L = Object.assign({}, L0);
 
     // subtítulo que não cabe numa linha quebra em duas (versão estreita)
@@ -189,7 +230,7 @@
     var y0 = topoLegenda + (legenda.linhas - 1) * L.legenda.passo + 42;
 
     // período visível
-    var todas = g.series.map(function (s) { return s.dados.map(function (d) { return { i: idxMes(d[0]), v: d[1] }; }); });
+    var todas = g.series.map(function (s) { return s.dados.map(function (d) { return { i: idxDe(g, d[0]), v: d[1] }; }); });
     var ini = Infinity, fim = -Infinity;
     todas.forEach(function (pts) { pts.forEach(function (p) { if (p.i < ini) ini = p.i; if (p.i > fim) fim = p.i; }); });
     var d0 = cartao.inicioIdx === null ? ini : Math.max(ini, cartao.inicioIdx), d1 = fim + 1;
@@ -212,12 +253,12 @@
     Object.keys(pilhaNeg).forEach(function (i) { mn = Math.min(mn, pilhaNeg[i]); });
     var esc = escalaY(mn, mx, g.eixo);
 
-    var tw = Math.max.apply(null, esc.ticks.map(function (t) { return largura(pct(t, 0), L.tick); }));
+    var tw = Math.max.apply(null, esc.ticks.map(function (t) { return largura(F.eixo(t), L.tick); }));
     var rotulos = [];
     g.series.forEach(function (s, k) {
       if (!s.rotulo || !vis[k].length) return;
       var u = vis[k][vis[k].length - 1];
-      rotulos.push({ s: s, p: u, txt: pct(u.v, 2) });
+      rotulos.push({ s: s, p: u, txt: F.valor(u.v) });
     });
     var rw = Math.max.apply(null, [0].concat(rotulos.map(function (r) { return largura(r.txt, L.rotulo, "bold"); })));
     L.x0 = 26 + tw + 14;
@@ -246,9 +287,9 @@
         "stroke-width": zero && esc.min < 0 ? 1.5 : 1.2
       }));
       var at = { y: y, "font-size": L.tick, fill: pal.eixo, "dominant-baseline": "central" };
-      svg.appendChild(texto(pct(t, 0), Object.assign({ x: L.x0 - 14, "text-anchor": "end" }, at)));
+      svg.appendChild(texto(F.eixo(t), Object.assign({ x: L.x0 - 14, "text-anchor": "end" }, at)));
       if (L.eixoDuplo && rotY.every(function (ry) { return Math.abs(ry - y) > L.rotulo * 0.9; })) {
-        svg.appendChild(texto(pct(t, 0), Object.assign({ x: L.x1 + 14, "text-anchor": "start" }, at)));
+        svg.appendChild(texto(F.eixo(t), Object.assign({ x: L.x1 + 14, "text-anchor": "start" }, at)));
       }
     });
     // eixo X: linha de base (zero, se estiver no gráfico; senão a base)
@@ -257,29 +298,48 @@
       svg.appendChild(el("line", { x1: L.x0, x2: L.x1, y1: yBase, y2: yBase, stroke: pal.zero, "stroke-width": 1.5 }));
     }
 
-    // rótulos do eixo X: janeiro de cada ano; trimestral em janela curta
-    var passoX = g.passoX || 12;
-    if (d1 - d0 <= 72) passoX = Math.min(passoX, 3);
-    var degraus = [3, 6, 12, 24, 36, 60];
-    while (pxMes * passoX < L.xlab * 1.3) {
-      var prox = degraus.filter(function (n) { return n > passoX; })[0];
-      if (!prox) break;
-      passoX = prox;
-    }
-    for (var i = d0; i < d1; i++) {
-      if (i % passoX !== 0) continue;
-      var cx = X(i + 0.5);
-      svg.appendChild(el("line", { x1: cx, x2: cx, y1: L.y1, y2: L.y1 + 7, stroke: pal.zero, "stroke-width": 1.5 }));
-      svg.appendChild(texto(rotuloMesCurto(i), {
-        x: cx + 4, y: L.y1 + 16, "font-size": L.xlab, fill: pal.eixo, "text-anchor": "end",
-        "dominant-baseline": "hanging", transform: "rotate(" + L.xRot + " " + (cx + 4) + " " + (L.y1 + 16) + ")"
-      }));
+    // rótulos do eixo X
+    if (g.categorias) {
+      // uma coluna por categoria: rótulo em pé, do tamanho que couber na coluna
+      var fsCat = Math.min(L.xlab * 1.2, corpoQueCabe(
+        g.categorias.reduce(function (a, b) { return a.length > b.length ? a : b; }, ""),
+        L.xlab * 1.2, pxMes * 0.95));
+      for (var ci = d0; ci < d1; ci++) {
+        var cxc = X(ci + 0.5);
+        svg.appendChild(el("line", { x1: cxc, x2: cxc, y1: L.y1, y2: L.y1 + 7, stroke: pal.zero, "stroke-width": 1.5 }));
+        svg.appendChild(texto(rotuloX(g, ci), {
+          x: cxc, y: L.y1 + 14, "font-size": fsCat, fill: pal.eixo,
+          "text-anchor": "middle", "dominant-baseline": "hanging"
+        }));
+      }
+    } else {
+      // janeiro de cada ano; trimestral em janela curta
+      var passoX = g.passoX || 12;
+      if (d1 - d0 <= 72) passoX = Math.min(passoX, 3);
+      var degraus = [3, 6, 12, 24, 36, 60];
+      while (pxMes * passoX < L.xlab * 1.3) {
+        var prox = degraus.filter(function (n) { return n > passoX; })[0];
+        if (!prox) break;
+        passoX = prox;
+      }
+      for (var i = d0; i < d1; i++) {
+        if (i % passoX !== 0) continue;
+        var cx = X(i + 0.5);
+        svg.appendChild(el("line", { x1: cx, x2: cx, y1: L.y1, y2: L.y1 + 7, stroke: pal.zero, "stroke-width": 1.5 }));
+        svg.appendChild(texto(rotuloMesCurto(i), {
+          x: cx + 4, y: L.y1 + 16, "font-size": L.xlab, fill: pal.eixo, "text-anchor": "end",
+          "dominant-baseline": "hanging", transform: "rotate(" + L.xRot + " " + (cx + 4) + " " + (L.y1 + 16) + ")"
+        }));
+      }
     }
 
     // barras empilhadas
     var area = el("g", { "clip-path": "url(#" + idClip + ")" });
     svg.appendChild(area);
-    var baseP = {}, baseN = {}, bw = Math.max(2, pxMes * 0.86);
+    // barra=1 (composição): 1px a mais tira a fresta entre uma coluna e outra,
+    // e a pilha fica com cara de área empilhada
+    var fBarra = g.barra || 0.86;
+    var baseP = {}, baseN = {}, bw = Math.max(2, pxMes * fBarra + (fBarra >= 1 ? 1 : 0));
     g.series.forEach(function (s, k) {
       if (s.tipo !== "barra") return;
       var cor = corNoTema(s.cor, pal);
@@ -377,7 +437,7 @@
 
   // ---------- passar o mouse ----------
   function ligarHover(cartao, desenho) {
-    var svg = desenho.svg, L = desenho.L, pal = desenho.pal, g = cartao.grafico;
+    var svg = desenho.svg, L = desenho.L, pal = desenho.pal, g = graficoDe(cartao), F = unidade(g);
     var camada = el("g", { "pointer-events": "none" });
     var alvo = el("rect", { x: L.x0, y: L.y0, width: L.x1 - L.x0, height: L.y1 - L.y0, fill: "transparent" });
     svg.appendChild(alvo);
@@ -403,9 +463,9 @@
       camada.appendChild(el("line", {
         x1: x, x2: x, y1: L.y0, y2: L.y1, stroke: pal.suave, "stroke-width": 1.5, "stroke-dasharray": "6 6"
       }));
-      var titulo = rotuloMesLongo(i);
+      var titulo = rotuloX(g, i, true);
       var w = Math.max(largura(titulo, fs, "bold"), Math.max.apply(null, linhas.map(function (l) {
-        return largura(l.s.nome + "  " + pct(l.v, 2), fs) + fs * 1.1;
+        return largura(l.s.nome + "  " + F.valor(l.v), fs) + fs * 1.1;
       }))) + pad * 2;
       var h = (linhas.length + 1) * fs * 1.3 + pad;
       var bx = x + 22; if (bx + w > L.x1) bx = x - 22 - w;
@@ -416,7 +476,7 @@
         var ty = by + pad + fs * 0.8 + (k + 1) * fs * 1.3;
         camada.appendChild(el("rect", { x: bx + pad, y: ty - fs * 0.62, width: fs * 0.7, height: fs * 0.7, rx: 2, fill: corNoTema(l.s.cor, pal) }));
         camada.appendChild(texto(l.s.nome, { x: bx + pad + fs * 1.1, y: ty, "font-size": fs, fill: pal.suave }));
-        camada.appendChild(texto(pct(l.v, 2), { x: bx + w - pad, y: ty, "font-size": fs, "font-weight": "bold", fill: pal.texto, "text-anchor": "end" }));
+        camada.appendChild(texto(F.valor(l.v), { x: bx + w - pad, y: ty, "font-size": fs, "font-weight": "bold", fill: pal.texto, "text-anchor": "end" }));
         if (desenho.vis[g.series.indexOf(l.s)] && l.s.tipo !== "barra") {
           camada.appendChild(el("circle", { cx: x, cy: desenho.Y(l.v), r: 6, fill: corNoTema(l.s.cor, pal), stroke: pal.bg, "stroke-width": 2 }));
         }
@@ -761,12 +821,13 @@
     var ini = Infinity, fim = -Infinity;
     g.series.forEach(function (s) {
       if (!s.dados.length) return;
-      ini = Math.min(ini, idxMes(s.dados[0][0]));
-      fim = Math.max(fim, idxMes(s.dados[s.dados.length - 1][0]));
+      ini = Math.min(ini, idxDe(g, s.dados[0][0]));
+      fim = Math.max(fim, idxDe(g, s.dados[s.dados.length - 1][0]));
     });
     return { ini: ini, fim: fim };
   }
   function periodosDisponiveis(g) {
+    if (g.categorias) return [];   // eixo de categorias não tem janela de tempo
     var e = extensao(g), meses = e.fim - e.ini + 1, lista = [{ id: "tudo", rot: "Tudo" }];
     [20, 10, 5].forEach(function (a) { if (meses > a * 12 * 1.1) lista.push({ id: String(a), rot: a + " anos" }); });
     return lista;
@@ -776,7 +837,7 @@
   }
 
   function criarCartao(g) {
-    var cartao = { grafico: g, periodo: "tudo", inicioIdx: null, chave: null };
+    var cartao = { grafico: g, variante: 0, periodo: "tudo", inicioIdx: null, chave: null };
     var raiz = html("details", { "class": "card", id: g.id });
 
     var cabecalho = html("summary", { "class": "card-cabecalho" });
@@ -787,14 +848,46 @@
     raiz.appendChild(cabecalho);
 
     var ferramentas = html("div", { "class": "card-tools" });
+    var esquerda = html("div", { "class": "card-escolhas" });
+
+    // variantes: o mesmo cartão mostrando um recorte por vez (dívida interna ou
+    // externa, % ou R$, um título ou um detentor…)
+    if (g.variantes) {
+      var grupoVar = html("div", { "class": "periodos", role: "group", "aria-label": "Recorte de " + g.titulo });
+      g.variantes.forEach(function (v, k) {
+        var b = html("button", { type: "button", texto: v.rot, "aria-pressed": String(k === 0) });
+        b.addEventListener("click", function () {
+          cartao.variante = k;
+          Array.prototype.forEach.call(grupoVar.children, function (x, j) {
+            x.setAttribute("aria-pressed", String(j === k));
+          });
+          montarPeriodos();
+          desenhar(cartao, true);
+        });
+        grupoVar.appendChild(b);
+      });
+      esquerda.appendChild(grupoVar);
+    }
+
+    // períodos: dependem da variante (a que tem eixo de categorias não tem)
     var grupo = html("div", { "class": "periodos", role: "group", "aria-label": "Período de " + g.titulo });
-    var periodos = periodosDisponiveis(g);
-    if (periodos.length > 1) {
+    function montarPeriodos() {
+      var efetivo = graficoDe(cartao);
+      var periodos = periodosDisponiveis(efetivo);
+      grupo.innerHTML = "";
+      grupo.hidden = periodos.length < 2;
+      if (grupo.hidden) {
+        cartao.periodo = "tudo";
+        cartao.inicioIdx = null;
+        return;
+      }
+      if (!periodos.some(function (p) { return p.id === cartao.periodo; })) cartao.periodo = "tudo";
+      cartao.inicioIdx = inicioDoPeriodo(efetivo, cartao.periodo);
       periodos.forEach(function (p) {
         var b = html("button", { type: "button", texto: p.rot, "data-p": p.id, "aria-pressed": String(p.id === cartao.periodo) });
         b.addEventListener("click", function () {
           cartao.periodo = p.id;
-          cartao.inicioIdx = inicioDoPeriodo(g, p.id);
+          cartao.inicioIdx = inicioDoPeriodo(graficoDe(cartao), p.id);
           Array.prototype.forEach.call(grupo.children, function (x) {
             x.setAttribute("aria-pressed", String(x.getAttribute("data-p") === p.id));
           });
@@ -803,7 +896,10 @@
         grupo.appendChild(b);
       });
     }
-    ferramentas.appendChild(grupo);
+    cartao.periodo = g.periodoPadrao || "tudo";
+    montarPeriodos();
+    esquerda.appendChild(grupo);
+    ferramentas.appendChild(esquerda);
 
     var acoes = html("div", { "class": "card-acoes" });
     var btnFs = html("button", { type: "button", "class": "btn", title: "Ver só este gráfico, em tela cheia, com anotação à mão" });
@@ -833,7 +929,7 @@
     // cartão (ou seção) fechado mede zero: redesenha quando voltar a aparecer
     if (!cartao.frame.clientWidth) { cartao.chave = null; return; }
     var nomeLayout = cartao.frame.clientWidth < 700 || window.innerWidth < 700 ? "narrow" : "wide";
-    var chave = nomeLayout + "|" + tema() + "|" + cartao.periodo;
+    var chave = nomeLayout + "|" + tema() + "|" + cartao.periodo + "|" + cartao.variante;
     if (!forcar && cartao.chave === chave) return;
     cartao.chave = chave;
     var L = LAYOUTS[nomeLayout];
@@ -916,7 +1012,9 @@
     setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
   }
   function nomeArquivo(cartao, ext, t) {
-    return "ftm-" + cartao.grafico.id + (t && t.id !== "slide" ? "-" + t.id : "") + "." + ext;
+    var g = cartao.grafico;
+    var recorte = g.variantes ? "-" + slug(g.variantes[cartao.variante || 0].rot) : "";
+    return "ftm-" + g.id + recorte + (t && t.id !== "slide" ? "-" + t.id : "") + "." + ext;
   }
   function carregarImagem(src) {
     return new Promise(function (ok, erro) {
@@ -997,7 +1095,7 @@
   }
 
   function baixarCSV(cartao) {
-    var g = cartao.grafico, cols = g.series.filter(function (s) { return s.legenda !== false || s.traco; });
+    var g = graficoDe(cartao), cols = g.series.filter(function (s) { return s.legenda !== false || s.traco; });
     var meses = {};
     cols.forEach(function (s) { s.dados.forEach(function (d) { meses[d[0]] = true; }); });
     var mapas = cols.map(function (s) { return s.dados.reduce(function (o, d) { o[d[0]] = d[1]; return o; }, {}); });
@@ -1005,9 +1103,9 @@
       var n = s.nome.replace(/;/g, ",");
       return cols.filter(function (t, j) { return j < k && t.nome === s.nome; }).length ? n + " (2)" : n;
     });
-    var linhas = ["mes;" + nomes.join(";")];
+    var linhas = [(g.categorias ? "faixa" : "mes") + ";" + nomes.join(";")];
     Object.keys(meses).sort().forEach(function (m) {
-      linhas.push(m + ";" + mapas.map(function (mp) {
+      linhas.push((g.categorias ? g.categorias[+m] : m) + ";" + mapas.map(function (mp) {
         return mp[m] === undefined ? "" : String(mp[m]).replace(".", ",");
       }).join(";"));
     });
@@ -1094,7 +1192,7 @@
 
   function idCategoria(dados) { return "cat-" + slug(dados.categoria); }
   function slug(t) {
-    return t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+    return t.toLowerCase().replace(/%/g, "pct").normalize("NFD").replace(/[̀-ͯ]/g, "")
       .replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   }
 

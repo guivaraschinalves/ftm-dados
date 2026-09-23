@@ -123,6 +123,9 @@ details[open] > summary > .seta, details[open] > .nav-rotulo > .seta, details[op
   gap: 10px; padding: 0 14px 12px;
 }
 .card-acoes { display: flex; align-items: center; gap: 8px; }
+.card-escolhas { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.card-escolhas .periodos + .periodos { border-left: 1px solid var(--border); padding-left: 12px; }
+.card-escolhas .periodos[hidden] { display: none; }
 .periodos { display: flex; flex-wrap: wrap; gap: 6px; }
 .periodos button, .btn {
   font: inherit; font-size: 14px; color: var(--ink-2); cursor: pointer;

@@ -1,3 +1,6 @@
 *.xlsx
 __pycache__/
 .DS_Store
+
+# o Relatório Mensal da Dívida é a fonte dos gráficos da dívida: fica no repo
+!dados/*.xlsx
