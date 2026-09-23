@@ -103,14 +103,14 @@ def dia(s):
 
 
 def ler(bruto):
-    """CSV → {tipo: {data base: [(prazo em anos, taxa média)]}}."""
+    """CSV → {tipo: {data base: [(prazo em anos, taxa média, vencimento)]}}."""
     texto = io.StringIO(bruto.decode("latin-1"))
     fora = {}
     for r in csv.DictReader(texto, delimiter=";"):
         tipo = r["Tipo Titulo"].strip()
         base, venc = dia(r["Data Base"]), dia(r["Data Vencimento"])
         taxa = (num(r["Taxa Compra Manha"]) + num(r["Taxa Venda Manha"])) / 2
-        fora.setdefault(tipo, {}).setdefault(base, []).append(((venc - base).days / ANO, taxa))
+        fora.setdefault(tipo, {}).setdefault(base, []).append(((venc - base).days / ANO, taxa, venc))
     return fora
 
 
@@ -118,12 +118,25 @@ def taxa_no_prazo(pontos, alvo):
     """Taxa do dia no prazo pedido: interpola entre os vizinhos, ou usa o
     vencimento mais próximo se ele estiver a menos de BORDA ano do alvo."""
     p = sorted(pontos)
-    if p[0][0] <= alvo <= p[-1][0]:
-        for (x0, y0), (x1, y1) in zip(p, p[1:]):
-            if x0 <= alvo <= x1:
-                return y0 if x1 == x0 else y0 + (y1 - y0) * (alvo - x0) / (x1 - x0)
-    x, y = min(p, key=lambda q: abs(q[0] - alvo))
-    return y if abs(x - alvo) <= BORDA else None
+    x, y = [q[0] for q in p], [q[1] for q in p]
+    if x[0] <= alvo <= x[-1]:
+        for k in range(len(p) - 1):
+            if x[k] <= alvo <= x[k + 1]:
+                if x[k + 1] == x[k]:
+                    return y[k]
+                return y[k] + (y[k + 1] - y[k]) * (alvo - x[k]) / (x[k + 1] - x[k])
+    perto = min(p, key=lambda q: abs(q[0] - alvo))
+    return perto[1] if abs(perto[0] - alvo) <= BORDA else None
+
+
+def serie_por_vencimento(por_dia, ano):
+    """A taxa de um papel só, dia a dia — sem interpolação nenhuma."""
+    fora = {}
+    for base, pontos in por_dia.items():
+        for _, taxa, venc in sem_furos(pontos):
+            if venc.year == ano:
+                fora[base.isoformat()] = taxa
+    return fora
 
 
 def sem_furos(pontos):
@@ -178,6 +191,19 @@ def main():
         return dict(id=id_, titulo=titulo, subtitulo=subtitulo, unidade="%",
                     diario=True, series=series, nota=nota)
 
+    def cartao_vencimentos(id_, titulo, subtitulo, tipo, anos, nota):
+        series = []
+        for ano, cor in zip(anos, [CIANO, LARANJA, VERMELHO, ROXO]):
+            s = serie_por_vencimento(dados[tipo], ano)
+            if not s:
+                print(f"  {tipo} {ano}: nenhum pregão — fora")
+                continue
+            dias = sorted(s)
+            print(f"  {tipo:<18} venc {ano}: {len(s):5d} pregões, de {dias[0]} a {dias[-1]}")
+            series.append(serie(str(ano), cor, s, rotulo=True))
+        return dict(id=id_, titulo=titulo, subtitulo=subtitulo, unidade="%",
+                    diario=True, series=series, nota=nota)
+
     secoes = [dict(titulo="Taxa por prazo", graficos=[
         cartao("td-prefixado", "Tesouro Prefixado",
                "Taxa contratada na compra, em % a.a. — " + MEDIA,
@@ -195,6 +221,12 @@ def main():
                "Juro real contratado na compra, em % a.a. — " + MEDIA,
                "Tesouro IPCA+", [5, 10, 20],
                "A linha de 20 anos começa em 2010, quando passou a existir papel desse prazo."),
+    ]), dict(titulo="Taxa por vencimento", graficos=[
+        cartao_vencimentos("td-ntnb-vencimentos", "NTN-B por vencimento",
+                           "Tesouro IPCA+ com Juros Semestrais, juro real em % a.a. — " + MEDIA,
+                           "Tesouro IPCA+ com Juros Semestrais", [2035, 2045, 2050],
+                           "Aqui é o papel em si, sem interpolação: cada linha é a taxa daquele "
+                           "vencimento, do dia em que ele entrou em oferta até hoje."),
     ])]
 
     ref = max(max(s["dados"][-1][0] for s in g["series"]) for sec in secoes for g in sec["graficos"])

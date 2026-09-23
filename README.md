@@ -53,9 +53,16 @@ Ou, no GitHub: **Actions → Atualiza os dados → Run workflow**.
 ## O Tesouro Direto (taxa por prazo)
 
 `scripts/tesouro_direto.py` roda na mesma Action do IPCA e grava
-`dados/tesouro-direto.json` com um ponto por pregão desde 2004, em três
-cartões: **Tesouro Prefixado** (2 e 5 anos), **Tesouro Prefixado com Juros
-Semestrais** (2, 5 e 10 anos) e **Tesouro IPCA+** (5, 10 e 20 anos).
+`dados/tesouro-direto.json` com um ponto por pregão desde 2004:
+
+- **taxa por prazo** (constante, interpolada) — **Tesouro Prefixado** (2 e 5
+  anos), **Tesouro Prefixado com Juros Semestrais** (2, 5 e 10 anos) e
+  **Tesouro IPCA+** (5, 10 e 20 anos);
+- **taxa por vencimento** (o papel em si, sem interpolação) — **NTN-B por
+  vencimento**, com 2035, 2045 e 2050. "NTN-B" aqui é o Tesouro IPCA+ **com**
+  juros semestrais, que é o nome certo do papel e o que tem história funda
+  nesses três vencimentos (2045 desde 2004, 2035 desde 2006, 2050 desde 2012);
+  no sem cupom — a NTN-B Principal — o 2050 só existe desde fev/2025.
 
 A fonte é o CSV `precotaxatesourodireto.csv` do CKAN do Tesouro Transparente
 (14 MB, sem chave, atualizado em dia útil). A URL vem do próprio CKAN
@@ -63,7 +70,9 @@ A fonte é o CSV `precotaxatesourodireto.csv` do CKAN do Tesouro Transparente
 (`treasurybondsinfo.json`) não serve mais**: responde 410, e as rotas do site
 respondem 403 fora do navegador.
 
-Como cada série é feita, tudo em `scripts/tesouro_direto.py`:
+As séries **por vencimento** são a taxa do papel, direto do arquivo, sem conta
+nenhuma além da média entre compra e venda. Já as séries **por prazo** são
+construídas, e é assim (tudo em `scripts/tesouro_direto.py`):
 
 - **taxa** = média entre a taxa de compra e a de venda da manhã, como pedido;
 - **prazo** de cada papel no dia = (vencimento − data base) / 365,25;
