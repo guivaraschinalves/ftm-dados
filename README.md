@@ -53,8 +53,9 @@ Ou, no GitHub: **Actions → Atualiza os dados → Run workflow**.
 ## O Tesouro Direto (taxa por prazo)
 
 `scripts/tesouro_direto.py` roda na mesma Action do IPCA e grava
-`dados/tesouro-direto.json` com a taxa do **Tesouro Prefixado** (2 e 5 anos) e
-do **Tesouro IPCA+** (2, 5, 10 e 20 anos), um ponto por pregão desde 2004.
+`dados/tesouro-direto.json` com um ponto por pregão desde 2004, em três
+cartões: **Tesouro Prefixado** (2 e 5 anos), **Tesouro Prefixado com Juros
+Semestrais** (2, 5 e 10 anos) e **Tesouro IPCA+** (5, 10 e 20 anos).
 
 A fonte é o CSV `precotaxatesourodireto.csv` do CKAN do Tesouro Transparente
 (14 MB, sem chave, atualizado em dia útil). A URL vem do próprio CKAN
@@ -75,15 +76,22 @@ Como cada série é feita, tudo em `scripts/tesouro_direto.py`:
   Taxa anualizada de papel vincendo explode — o arquivo traz −1,5% e +15% — e
   no IPCA+ a taxa curta ainda é dominada pelo carrego da inflação já conhecida.
   Em mai/2026 o papel de 3 meses marcava 10,0% contra 8,0% do de três anos;
-  usá-lo como âncora deformava a linha de 2 anos.
+  usá-lo como âncora deformava a linha de 2 anos;
+- **cotação que destoa da curva do dia também sai** (`DESVIO_MAXIMO`, 5 p.p. da
+  mediana do dia). O arquivo do Tesouro traz a NTN-F mais longa a **0,03%** em
+  14 pregões de 2010, o que derrubava a linha de 10 anos de 13% para 2,7%. A
+  separação é limpa: tirando esses 14, o maior desvio de todo o arquivo é de
+  3 p.p.
 
-Duas ausências têm explicação no próprio dado:
+Duas coisas que o dado impõe:
 
-- **não existe prefixado de 10 anos**: o mais longo que o Tesouro Direto já
-  ofertou tinha 6,9 anos. A linha de 5 anos só começa em 2015, quando passou a
-  existir papel desse prazo;
-- a linha de **2 anos do IPCA+** é interrompida em 2014-2016, 2018-2021 e no
-  fim de 2025: nesses períodos não havia NTN-B Principal curta em oferta.
+- **o prefixado de 10 anos só existe com juros semestrais**: a NTN-F chega a 11
+  anos de prazo, enquanto o prefixado sem cupom mais longo já ofertado tinha
+  6,9 anos. Por isso o cartão sem cupom vai só até 5 anos — e essa linha começa
+  em 2015, quando passou a existir papel desse prazo;
+- algumas linhas são interrompidas: a de 2 anos da NTN-F em 2013-2014 e
+  2016-2017, a de 20 anos do IPCA+ antes de 2010. Nesses períodos não havia
+  papel em oferta naquele prazo.
 
 ## A dívida pública (Relatório Mensal da Dívida)
 

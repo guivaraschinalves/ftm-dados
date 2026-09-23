@@ -32,6 +32,7 @@ porque nunca existiu: o mais longo já ofertado tinha 6,9 anos.
 """
 import csv
 import datetime
+import statistics
 import io
 import json
 import os
@@ -61,6 +62,11 @@ BORDA = 1.0
 # exemplo, o papel de 3 meses marcava 10,0% contra 8,0% do de três anos. Usar
 # esse papel como âncora deformava a linha de 2 anos.
 PRAZO_MINIMO = 1.0
+# O arquivo do Tesouro tem cotação furada: a NTN-F mais longa aparece a 0,03% em
+# 14 pregões de 2010, o que derrubava a linha de 10 anos de 13% para 2,7%. Papel
+# que se afasta mais que isto da mediana do dia fica de fora. A separação é
+# limpa: fora esses 14, o maior desvio de todo o arquivo é de 3 p.p.
+DESVIO_MAXIMO = 5.0
 
 
 def baixar(url, tentativas=4):
@@ -120,10 +126,19 @@ def taxa_no_prazo(pontos, alvo):
     return y if abs(x - alvo) <= BORDA else None
 
 
+def sem_furos(pontos):
+    """Tira o papel vincendo e a cotação que destoa do resto da curva do dia."""
+    uteis = [q for q in pontos if q[0] >= PRAZO_MINIMO]
+    if len(uteis) < 3:
+        return uteis
+    meio = statistics.median([q[1] for q in uteis])
+    return [q for q in uteis if abs(q[1] - meio) <= DESVIO_MAXIMO]
+
+
 def serie_por_prazo(por_dia, alvo):
     fora = {}
     for base, pontos in por_dia.items():
-        uteis = [q for q in pontos if q[0] >= PRAZO_MINIMO]
+        uteis = sem_furos(pontos)
         if not uteis:
             continue
         v = taxa_no_prazo(uteis, alvo)
@@ -141,7 +156,7 @@ def main():
     url = url_do_csv()
     print("Baixando", url.rsplit("/", 1)[-1], "…")
     dados = ler(baixar(url))
-    for tipo in ("Tesouro Prefixado", "Tesouro IPCA+"):
+    for tipo in ("Tesouro Prefixado", "Tesouro Prefixado com Juros Semestrais", "Tesouro IPCA+"):
         if tipo not in dados:
             raise SystemExit(f"O CSV não trouxe '{tipo}' — o layout mudou?")
 
@@ -167,14 +182,19 @@ def main():
         cartao("td-prefixado", "Tesouro Prefixado",
                "Taxa contratada na compra, em % a.a. — " + MEDIA,
                "Tesouro Prefixado", [2, 5],
-               "O prefixado de 10 anos não entra porque o Tesouro Direto nunca ofertou um: "
-               "o mais longo da história tinha 6,9 anos. A linha de 5 anos começa em 2015, "
-               "quando passou a existir papel desse prazo."),
+               "Sem o de 10 anos: o prefixado sem cupom mais longo que o Tesouro Direto já "
+               "ofertou tinha 6,9 anos — o de 10 está no cartão seguinte, com juros semestrais. "
+               "A linha de 5 anos começa em 2015, quando passou a existir papel desse prazo."),
+        cartao("td-prefixado-js", "Tesouro Prefixado com Juros Semestrais",
+               "Taxa contratada na compra, em % a.a. — " + MEDIA,
+               "Tesouro Prefixado com Juros Semestrais", [2, 5, 10],
+               "É aqui que existe o prefixado de 10 anos: a NTN-F chega a 11 anos de prazo, "
+               "enquanto o prefixado sem cupom nunca passou de 6,9. A linha de 2 anos é "
+               "interrompida em 2013-2014 e 2016-2017, quando não havia papel curto em oferta."),
         cartao("td-ipca", "Tesouro IPCA+",
                "Juro real contratado na compra, em % a.a. — " + MEDIA,
-               "Tesouro IPCA+", [2, 5, 10, 20],
-               "Cada linha é interrompida nos períodos em que não havia título ofertado "
-               "naquele prazo — o de 2 anos, por exemplo, sumiu entre 2019 e 2021."),
+               "Tesouro IPCA+", [5, 10, 20],
+               "A linha de 20 anos começa em 2010, quando passou a existir papel desse prazo."),
     ])]
 
     ref = max(max(s["dados"][-1][0] for s in g["series"]) for sec in secoes for g in sec["graficos"])
