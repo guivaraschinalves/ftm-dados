@@ -332,6 +332,7 @@ def main():
         atualizado=datetime.date.today().isoformat(),
         referencia=max(ipca),
         fonte="BCB e FtM",
+        categoria="IPCA",   # o nome do grupo retrátil no menu do site
         secoes=secoes,
     )
     # Só regrava quando algum número mudou: a Action roda todo dia e não deve

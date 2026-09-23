@@ -5,7 +5,19 @@ sozinhos** com dados do Banco Central (SGS) e do IBGE (SIDRA). Site estático,
 sem build: `index.html` + `app.js` + `styles.css`, com os dados em
 `dados/ipca.json`.
 
-- **Modo escuro/claro** — botão no topo; o escuro é o padrão e usa o fundo de
+- **Menu na lateral** — a categoria **IPCA** é retrátil e leva dentro as
+  subcategorias (Visão geral, Aberturas, Núcleos), cada uma com os seus
+  gráficos. Na página, seções e gráficos também abrem e fecham, e o que você
+  deixou fechado continua fechado na próxima visita (fica no navegador).
+- **Tela cheia** — da página inteira (botão na lateral) e de um gráfico só
+  (botão **Tela cheia** no cartão). Em tela cheia os controles do gráfico viram
+  um menu de hambúrguer e somem sozinhos depois de uns segundos parados,
+  voltando a qualquer movimento — igual ao chart book.
+- **Anotar à mão** — no gráfico ampliado, ligue **Desenhar** e arraste para
+  rabiscar por cima (Desfazer e Limpar ao lado). Com o desenho desligado, o
+  gráfico continua mostrando os valores do mês ao passar o mouse. O botão
+  **Baixar PNG** do visor sai com as anotações dentro.
+- **Modo escuro/claro** — botão na lateral; o escuro é o padrão e usa o fundo de
   notas dos slides do FtM.
 - **Baixar** — em cada gráfico, no tema da tela, em PNG, JPG, PDF ou SVG
   editável, e o CSV com todas as séries. Tamanhos (todos em 2×, para sair
@@ -49,11 +61,30 @@ batem na segunda casa decimal.
 A contribuição por grupo começa em 2020 porque é quando começa a tabela 7060
 do SIDRA (a estrutura de pesos atual do IPCA).
 
+## O visor (tela cheia de um gráfico)
+
+`abrirVisor` em `app.js` monta um painel único, reaproveitado por todos os
+cartões: ele redesenha o gráfico no layout grande (ou no layout em pé, no
+celular) e põe por cima um `<canvas>` para a anotação.
+
+Os traços ficam guardados como listas de pontos **nas coordenadas do layout**
+(1920×1080) e são repintados do zero a cada mudança. É isso que faz o rabisco
+acompanhar o gráfico em qualquer tamanho de tela e sair certo no PNG baixado,
+que é gerado em 2× — o mesmo traço, na escala do arquivo.
+
+O canvas só recebe o ponteiro quando **Desenhar** está ligado; desligado, ele
+fica transparente ao clique e quem responde é o gráfico (valores do mês).
+
 ## Para mudar um gráfico
 
 Título, subtítulo, cores, séries e janela estão na função `main()` de
-`scripts/atualizar.py`, um bloco por gráfico. O desenho (`app.js`) é genérico:
+`scripts/atualizar.py`, um bloco por gráfico. O nome da categoria retrátil do
+menu é o campo `categoria` do JSON (hoje "IPCA"); as subcategorias são os
+títulos das seções. O desenho (`app.js`) é genérico:
 lê o que vier no JSON. Depois de mudar, rode o script e faça o push.
+
+`index.html` chama `app.js?v=N` e `styles.css?v=N`: **suba o N** a cada mudança
+de código, senão quem já visitou o site continua vendo a versão em cache.
 
 ## Testar localmente
 

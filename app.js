@@ -5,6 +5,9 @@
  * serializa o SVG num canvas por cima da imagem de fundo).
  *
  * Os dados já chegam prontos (em %): as contas ficam em scripts/atualizar.py.
+ *
+ * O mesmo desenho serve para o cartão da página e para o visor (um gráfico só,
+ * grande, com tela cheia e anotação à mão por cima, num <canvas>).
  */
 (function () {
   "use strict";
@@ -421,6 +424,341 @@
     alvo.addEventListener("pointerleave", limpar);
   }
 
+  // ---------- retrátil (seções e cartões) ----------
+  var CHAVE_FECHADOS = "ftm_dados_fechados";
+  var fechados = {};
+  try { fechados = JSON.parse(localStorage.getItem(CHAVE_FECHADOS) || "{}") || {}; } catch (e) {}
+  function estaFechado(id) { return !!fechados[id]; }
+  function guardarEstado(id, fechado) {
+    if (fechado) fechados[id] = 1; else delete fechados[id];
+    try { localStorage.setItem(CHAVE_FECHADOS, JSON.stringify(fechados)); } catch (e) {}
+  }
+  function seta() {
+    return el("svg", { "class": "seta", viewBox: "0 0 16 16", width: "13", height: "13", "aria-hidden": "true" }, [
+      el("path", {
+        d: "M5 3l5 5-5 5", fill: "none", stroke: "currentColor",
+        "stroke-width": "1.8", "stroke-linecap": "round", "stroke-linejoin": "round"
+      })
+    ]);
+  }
+  function icone(d, tam) {
+    return el("svg", { viewBox: "0 0 24 24", width: tam || 16, height: tam || 16, fill: "none",
+      stroke: "currentColor", "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round",
+      "aria-hidden": "true" }, [el("path", { d: d })]);
+  }
+  var ICO_ENTRAR = "M3 9V3h6M21 9V3h-6M3 15v6h6M21 15v6h-6";
+
+  // ---------- tela cheia (API do navegador, com o prefixo do Safari) ----------
+  // requestFullscreen devolve Promise nos navegadores atuais e undefined nos
+  // antigos — daí o teste antes do .catch. Uma recusa (gesto fora do clique,
+  // política de permissão) não deve virar erro no console.
+  function elFullscreen() { return document.fullscreenElement || document.webkitFullscreenElement || null; }
+  function fullscreenSuportado(n) { return !!(n.requestFullscreen || n.webkitRequestFullscreen); }
+  function entrarFullscreen(n) {
+    var p = n.requestFullscreen ? n.requestFullscreen()
+          : n.webkitRequestFullscreen ? n.webkitRequestFullscreen() : null;
+    if (p && p.catch) p.catch(function () {});
+  }
+  function sairFullscreen() {
+    if (!elFullscreen()) return;
+    var p = document.exitFullscreen ? document.exitFullscreen()
+          : document.webkitExitFullscreen ? document.webkitExitFullscreen() : null;
+    if (p && p.catch) p.catch(function () {});
+  }
+  function telaCheiaDaPagina() {
+    var btn = document.getElementById("tela-cheia-pagina");
+    if (!btn) return;
+    if (!fullscreenSuportado(document.documentElement)) { btn.hidden = true; return; }
+    function sincronizar() {
+      var ativo = !!elFullscreen() && !(visor && !visor.box.hidden);
+      btn.setAttribute("aria-pressed", ativo ? "true" : "false");
+      var rot = ativo ? "Sair da tela cheia" : "Ver a página em tela cheia";
+      btn.setAttribute("aria-label", rot);
+      btn.title = rot;
+    }
+    btn.addEventListener("click", function () {
+      if (elFullscreen()) sairFullscreen(); else entrarFullscreen(document.documentElement);
+    });
+    ["fullscreenchange", "webkitfullscreenchange"].forEach(function (t) {
+      document.addEventListener(t, sincronizar);
+    });
+    sincronizar();
+  }
+
+  // ---------- anotação à mão sobre o gráfico ----------
+  // Os traços ficam guardados como listas de pontos nas coordenadas do layout
+  // (1920×1080 e afins) e são repintados do zero a cada mudança: por isso o
+  // canvas acompanha o SVG em qualquer tamanho de tela, e o mesmo traço pode
+  // ser redesenhado em escala 2× no PNG baixado.
+  function anotacao(tela) {
+    var ctx = tela.getContext("2d"), tracos = [], atual = null;
+    function cor() { return tema() === "light" ? "#D92B1F" : "#FF4B3E"; }
+    function espessura() { return Math.max(3, tela.width / 320); }
+    function tracar(c) {
+      c.strokeStyle = cor(); c.lineWidth = espessura(); c.lineCap = "round"; c.lineJoin = "round";
+      tracos.forEach(function (t) {
+        if (t.length < 2) return;
+        c.beginPath(); c.moveTo(t[0].x, t[0].y);
+        for (var i = 1; i < t.length; i++) c.lineTo(t[i].x, t[i].y);
+        c.stroke();
+      });
+    }
+    function repintar() { ctx.clearRect(0, 0, tela.width, tela.height); tracar(ctx); }
+    function ponto(ev) {
+      var r = tela.getBoundingClientRect();
+      return { x: (ev.clientX - r.left) * (tela.width / r.width), y: (ev.clientY - r.top) * (tela.height / r.height) };
+    }
+    tela.addEventListener("pointerdown", function (ev) {
+      ev.preventDefault();
+      try { tela.setPointerCapture(ev.pointerId); } catch (e) {}
+      atual = [ponto(ev)]; tracos.push(atual);
+    });
+    tela.addEventListener("pointermove", function (ev) {
+      if (!atual) return;
+      atual.push(ponto(ev)); repintar();
+    });
+    ["pointerup", "pointercancel", "pointerleave"].forEach(function (t) {
+      tela.addEventListener(t, function () { atual = null; });
+    });
+    return {
+      tamanho: function (w, h) { tela.width = w; tela.height = h; repintar(); },
+      limpar: function () { tracos = []; atual = null; repintar(); },
+      desfazer: function () { tracos.pop(); repintar(); },
+      desenhando: function () { return !!atual; },
+      tem: function () { return tracos.length > 0; },
+      // para o PNG baixado: mesmo traço, na escala do arquivo
+      pintar: function (c, k) { c.save(); c.scale(k, k); tracar(c); c.restore(); }
+    };
+  }
+
+  // ---------- visor: um gráfico só, grande, em tela cheia e anotável ----------
+  var visor = null;
+
+  function montarVisor() {
+    var box = html("div", { "class": "visor", role: "dialog", "aria-modal": "true",
+      "aria-label": "Gráfico ampliado", hidden: "" });
+
+    var btnFechar = html("button", { type: "button", "class": "visor-fechar", "aria-label": "Fechar", texto: "✕" });
+    btnFechar.addEventListener("click", fecharVisor);
+
+    var palco = html("div", { "class": "visor-palco" });
+    var tela = html("canvas", { "class": "visor-tela", "aria-hidden": "true" });
+    palco.appendChild(tela);
+    var anot = anotacao(tela);
+
+    var barra = html("div", { "class": "visor-barra" });
+    var inline = html("div", { "class": "visor-barra-inline" });
+    var dica = html("span", { "class": "visor-dica" });
+
+    var btnFs = html("button", { type: "button", "class": "visor-btn", texto: "Tela cheia", "aria-pressed": "false" });
+    btnFs.hidden = !fullscreenSuportado(box);
+    btnFs.addEventListener("click", function () {
+      if (elFullscreen()) sairFullscreen(); else entrarFullscreen(box);
+    });
+
+    var desenhando = false;
+    function alternarDesenho(ligar) {
+      desenhando = ligar === undefined ? !desenhando : ligar;
+      box.classList.toggle("desenhando", desenhando);
+      btnDesenho.setAttribute("aria-pressed", String(desenhando));
+      btnDesenho.textContent = desenhando ? "Parar de desenhar" : "Desenhar";
+      itemDesenho.textContent = btnDesenho.textContent;
+      dica.textContent = desenhando
+        ? "Arraste sobre o gráfico para anotar"
+        : "Ligue “Desenhar” para anotar — com ele desligado, o gráfico mostra os valores do mês";
+    }
+    var btnDesenho = html("button", { type: "button", "class": "visor-btn", "aria-pressed": "false", texto: "Desenhar" });
+    btnDesenho.addEventListener("click", function () { alternarDesenho(); });
+    var btnDesfazer = html("button", { type: "button", "class": "visor-btn", texto: "Desfazer" });
+    btnDesfazer.addEventListener("click", function () { anot.desfazer(); });
+    var btnLimpar = html("button", { type: "button", "class": "visor-btn", texto: "Limpar anotações" });
+    btnLimpar.addEventListener("click", function () { anot.limpar(); });
+
+    inline.appendChild(btnFs);
+    inline.appendChild(btnDesenho);
+    inline.appendChild(btnDesfazer);
+    inline.appendChild(btnLimpar);
+    inline.appendChild(dica);
+
+    // Em tela cheia os controles passam a flutuar sobre o próprio gráfico —
+    // então viram um hambúrguer só, que abre com um clique, em vez de quatro
+    // botões brotando a cada movimento do mouse (é assim no chart book).
+    var btnMenu = html("button", { type: "button", "class": "visor-menu-btn",
+      "aria-haspopup": "true", "aria-expanded": "false", "aria-label": "Menu" });
+    btnMenu.appendChild(el("svg", { viewBox: "0 0 16 16", width: "16", height: "16", "aria-hidden": "true" },
+      [4, 8, 12].map(function (y) {
+        return el("line", { x1: 2, y1: y, x2: 14, y2: y, stroke: "currentColor", "stroke-width": "1.6", "stroke-linecap": "round" });
+      })));
+    var menu = html("div", { "class": "visor-menu", role: "menu", hidden: "" });
+    var menuAberto = false;
+    function abrirMenu() {
+      menuAberto = true; menu.hidden = false;
+      btnMenu.setAttribute("aria-expanded", "true");
+      mostrarChrome(false);   // enquanto o menu está aberto, nada some
+    }
+    function fecharMenu() {
+      menuAberto = false; menu.hidden = true;
+      btnMenu.setAttribute("aria-expanded", "false");
+    }
+    btnMenu.addEventListener("click", function (ev) { ev.stopPropagation(); if (menuAberto) fecharMenu(); else abrirMenu(); });
+    document.addEventListener("click", function (ev) {
+      if (!menuAberto || ev.target === btnMenu || menu.contains(ev.target)) return;
+      fecharMenu();
+    });
+
+    function itemMenu(rot, acao) {
+      var b = html("button", { type: "button", role: "menuitem", texto: rot });
+      b.addEventListener("click", function () { fecharMenu(); acao(); });
+      menu.appendChild(b);
+      return b;
+    }
+    itemMenu("Sair da tela cheia", function () { sairFullscreen(); });
+    var itemDesenho = itemMenu("Desenhar", function () { alternarDesenho(); });
+    itemMenu("Desfazer", function () { anot.desfazer(); });
+    itemMenu("Limpar anotações", function () { anot.limpar(); });
+    itemMenu("Baixar PNG", function () { baixarDoVisor(); });
+
+    var caixaMenu = html("div", { "class": "visor-menu-caixa" });
+    caixaMenu.appendChild(btnMenu);
+    caixaMenu.appendChild(menu);
+    barra.appendChild(inline);
+    barra.appendChild(caixaMenu);
+
+    var btnBaixar = html("button", { type: "button", "class": "visor-baixar", texto: "Baixar PNG" });
+    btnBaixar.addEventListener("click", function () { baixarDoVisor(); });
+
+    function baixarDoVisor() {
+      if (!visor.cartao) return;
+      exportar(visor.cartao, visor.tamanho, "png", anot.tem() ? anot.pintar : null);
+    }
+
+    // Controles que somem sozinhos depois de um tempo parado e voltam a
+    // qualquer movimento, toque ou foco de teclado — como num player de vídeo.
+    // Só vale em tela cheia: fora dela eles ficam na margem escura, longe do
+    // gráfico, e não atrapalham ninguém.
+    var OCULTAR_APOS = 2600, timerChrome = null;
+    function focoDeTeclado() {
+      var a = document.activeElement;
+      if (!a || a === box || !box.contains(a)) return false;
+      try { return a.matches(":focus-visible"); } catch (e) { return false; }
+    }
+    function mostrarChrome(agendar) {
+      box.classList.remove("chrome-oculto");
+      if (timerChrome) { clearTimeout(timerChrome); timerChrome = null; }
+      if (!agendar || !elFullscreen()) return;
+      timerChrome = setTimeout(function () {
+        timerChrome = null;
+        if (focoDeTeclado() || menuAberto) return;   // não some com o foco ou o menu dentro
+        box.classList.add("chrome-oculto");
+      }, OCULTAR_APOS);
+    }
+    box.addEventListener("pointermove", function () { if (!anot.desenhando()) mostrarChrome(true); });
+    box.addEventListener("pointerdown", function () { mostrarChrome(true); });
+    box.addEventListener("focusin", function () { mostrarChrome(true); });
+    box.addEventListener("focusout", function () { mostrarChrome(true); });
+
+    // Em tela cheia os controles passam a flutuar sobre o gráfico. Colados no
+    // topo eles cobririam o título — então descem para ~11,5% da altura do
+    // palco (entre o subtítulo e a legenda), medida do retângulo real dele:
+    // numa tela que não seja 16:9 o gráfico entra centralizado, com faixa
+    // preta em volta, e a mesma porcentagem da janela cairia em outro lugar.
+    function posicionarChrome() {
+      if (!elFullscreen()) {
+        barra.style.top = barra.style.left = "";
+        btnFechar.style.top = btnFechar.style.right = "";
+        return;
+      }
+      var r = palco.getBoundingClientRect();
+      if (!r.height) return;
+      var topo = (r.top + r.height * 0.115) + "px";
+      barra.style.top = topo;
+      barra.style.left = (r.left + 22) + "px";
+      btnFechar.style.top = topo;
+      btnFechar.style.right = (window.innerWidth - r.right + 22) + "px";
+    }
+    window.addEventListener("resize", posicionarChrome);
+
+    function sincronizarFs() {
+      var ativo = !!elFullscreen();
+      btnFs.textContent = ativo ? "Sair da tela cheia" : "Tela cheia";
+      btnFs.setAttribute("aria-pressed", String(ativo));
+      if (!ativo) fecharMenu();   // o hambúrguer nem aparece fora da tela cheia
+      mostrarChrome(ativo);
+      posicionarChrome();
+      // o retângulo do palco só vale depois que o navegador repinta em tela cheia
+      requestAnimationFrame(posicionarChrome);
+    }
+    ["fullscreenchange", "webkitfullscreenchange"].forEach(function (t) {
+      document.addEventListener(t, sincronizarFs);
+    });
+
+    box.addEventListener("click", function (ev) { if (ev.target === box) fecharVisor(); });
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key !== "Escape" || box.hidden) return;
+      // Em tela cheia, Escape quer dizer "sair da tela cheia" — fechar o visor
+      // junto tiraria o gráfico da tela num passo só.
+      if (elFullscreen()) { sairFullscreen(); return; }
+      fecharVisor();
+    });
+
+    box.appendChild(btnFechar);
+    box.appendChild(barra);
+    box.appendChild(palco);
+    box.appendChild(btnBaixar);
+    document.body.appendChild(box);
+
+    visor = { box: box, palco: palco, tela: tela, anot: anot, fechar: btnFechar,
+              mostrarChrome: mostrarChrome, fecharMenu: fecharMenu, desenho: alternarDesenho,
+              cartao: null, tamanho: TAMANHOS[0], layout: "wide" };
+    alternarDesenho(false);
+  }
+
+  function pintarVisor() {
+    if (!visor || !visor.cartao) return;
+    var L = LAYOUTS[visor.layout];
+    var d = construir(visor.cartao, L, tema());
+    ligarHover(visor.cartao, d);
+    var antigo = visor.palco.querySelector("svg");
+    if (antigo) visor.palco.removeChild(antigo);
+    visor.palco.insertBefore(d.svg, visor.tela);
+    visor.palco.style.setProperty("--ar", L.W / L.H);
+  }
+
+  function abrirVisor(cartao, comTelaCheia) {
+    if (!visor) montarVisor();
+    visor.cartao = cartao;
+    visor.layout = window.innerWidth < 700 ? "narrow" : "wide";
+    visor.tamanho = visor.layout === "wide" ? TAMANHOS[0] : TAMANHOS[1];
+    pintarVisor();
+    visor.anot.tamanho(LAYOUTS[visor.layout].W, LAYOUTS[visor.layout].H);
+    visor.anot.limpar();
+    visor.desenho(false);
+    visor.box.hidden = false;
+    document.body.classList.add("visor-aberto");
+    visor.mostrarChrome(false);
+    visor.fechar.focus();
+    // o clique é o gesto que a API exige — pedir a tela cheia aqui funciona;
+    // se o navegador recusar, o visor continua aberto com o botão à mão.
+    if (comTelaCheia && fullscreenSuportado(visor.box)) entrarFullscreen(visor.box);
+  }
+
+  function fecharVisor() {
+    if (!visor || visor.box.hidden) return;
+    // sem isto, fechar pelo ✕ estando em tela cheia deixaria o navegador em
+    // tela cheia exibindo um elemento já escondido — tela preta
+    sairFullscreen();
+    visor.mostrarChrome(false);
+    visor.fecharMenu();
+    visor.box.hidden = true;
+    visor.anot.limpar();
+    var antigo = visor.palco.querySelector("svg");
+    if (antigo) visor.palco.removeChild(antigo);
+    document.body.classList.remove("visor-aberto");
+    var volta = visor.cartao;
+    visor.cartao = null;
+    if (volta && volta.botaoTelaCheia) volta.botaoTelaCheia.focus();
+  }
+
   // ---------- cartão ----------
   function extensao(g) {
     var ini = Infinity, fim = -Infinity;
@@ -442,8 +780,16 @@
 
   function criarCartao(g) {
     var cartao = { grafico: g, periodo: "tudo", inicioIdx: null, chave: null };
-    var raiz = html("article", { "class": "card", id: g.id });
-    raiz.appendChild(html("h3", { "class": "sr-only", texto: g.titulo + (g.subtitulo ? " — " + g.subtitulo : "") }));
+    var raiz = html("details", { "class": "card", id: g.id });
+    if (!estaFechado(g.id)) raiz.setAttribute("open", "");
+
+    var cabecalho = html("summary", { "class": "card-cabecalho" });
+    cabecalho.appendChild(seta());
+    var titulos = html("div", {}, [html("h3", { "class": "card-titulo", texto: g.titulo })]);
+    if (g.subtitulo) titulos.appendChild(html("p", { "class": "card-sub", texto: g.subtitulo }));
+    cabecalho.appendChild(titulos);
+    raiz.appendChild(cabecalho);
+
     var ferramentas = html("div", { "class": "card-tools" });
     var grupo = html("div", { "class": "periodos", role: "group", "aria-label": "Período de " + g.titulo });
     var periodos = periodosDisponiveis(g);
@@ -462,16 +808,35 @@
       });
     }
     ferramentas.appendChild(grupo);
-    ferramentas.appendChild(menuBaixar(cartao));
+
+    var acoes = html("div", { "class": "card-acoes" });
+    var btnFs = html("button", { type: "button", "class": "btn", title: "Ver só este gráfico, em tela cheia, com anotação à mão" });
+    btnFs.appendChild(icone(ICO_ENTRAR));
+    btnFs.appendChild(html("span", { texto: "Tela cheia" }));
+    btnFs.addEventListener("click", function () { abrirVisor(cartao, true); });
+    cartao.botaoTelaCheia = btnFs;
+    acoes.appendChild(btnFs);
+    acoes.appendChild(menuBaixar(cartao));
+    ferramentas.appendChild(acoes);
     raiz.appendChild(ferramentas);
+
     cartao.frame = html("div", { "class": "frame" });
     raiz.appendChild(cartao.frame);
     if (g.nota) raiz.appendChild(html("p", { "class": "nota", texto: g.nota }));
+
+    // fechado não tem largura: o desenho espera o cartão abrir
+    raiz.addEventListener("toggle", function () {
+      guardarEstado(g.id, !raiz.open);
+      if (raiz.open) desenhar(cartao, true);
+    });
+
     cartao.raiz = raiz;
     return cartao;
   }
 
   function desenhar(cartao, forcar) {
+    // cartão (ou seção) fechado mede zero: redesenha quando voltar a aparecer
+    if (!cartao.frame.clientWidth) { cartao.chave = null; return; }
     var nomeLayout = cartao.frame.clientWidth < 700 || window.innerWidth < 700 ? "narrow" : "wide";
     var chave = nomeLayout + "|" + tema() + "|" + cartao.periodo;
     if (!forcar && cartao.chave === chave) return;
@@ -568,7 +933,8 @@
   }
   function serializar(svg) { return new XMLSerializer().serializeToString(svg); }
 
-  function exportar(cartao, t, formato) {
+  // pintar: função opcional que desenha as anotações do visor por cima (ctx, escala)
+  function exportar(cartao, t, formato, pintar) {
     if (formato === "svg") return baixarSVG(cartao, t);
     var nomeTema = tema(), L = t.layout, d = construir(cartao, L, nomeTema);
     var W = L.W * t.escala, H = L.H * t.escala;
@@ -590,6 +956,7 @@
         x.drawImage(f, (W - fw) / 2, (H - fh) / 2, fw, fh);
       }
       x.drawImage(r[0], 0, 0, W, H);
+      if (pintar) pintar(x, t.escala);
       if (formato === "png") {
         c.toBlob(function (b) { salvar(b, nomeArquivo(cartao, "png", t)); }, "image/png");
       } else if (formato === "jpg") {
@@ -658,6 +1025,7 @@
     document.documentElement.setAttribute("data-theme", novo);
     try { localStorage.setItem("ftm_dados_tema", novo); } catch (e) {}
     cartoes.forEach(function (c) { desenhar(c, true); });
+    if (visor && !visor.box.hidden) pintarVisor();
   }
 
   // ---------- carga ----------
@@ -682,6 +1050,67 @@
     }).catch(function () {});
   }
 
+  function rotuloNav(sec, g) {
+    // o menu inteiro já está dentro de "IPCA": repetir o prefixo em cada linha
+    // só faz o texto quebrar em três linhas na barra lateral
+    var t = g.titulo.replace(/^IPCA: /, "");
+    // dois gráficos com o mesmo título na mesma seção (contribuição em 12 e em
+    // 3 meses) só se distinguem pelo fim do subtítulo ("... em 12 meses")
+    var repetido = sec.graficos.filter(function (o) { return o.titulo === g.titulo; }).length > 1;
+    if (!repetido || !g.subtitulo) return t;
+    return t + " (" + g.subtitulo.split(";")[0].trim().split(" ").slice(-2).join(" ") + ")";
+  }
+
+  function montarNav(dados) {
+    var nav = document.getElementById("nav");
+    var total = dados.secoes.reduce(function (n, sec) { return n + sec.graficos.length; }, 0);
+    var grupo = html("details", { "class": "nav-grupo" });
+    // no celular a barra lateral vira um bloco no topo da página: com o menu
+    // aberto, os 12 links empurrariam o primeiro gráfico para fora da tela
+    grupo.open = !window.matchMedia("(max-width: 860px)").matches;
+    var rotulo = html("summary", { "class": "nav-rotulo" });
+    rotulo.appendChild(seta());
+    rotulo.appendChild(html("span", { texto: dados.categoria || "IPCA" }));
+    rotulo.appendChild(html("span", { "class": "nav-conta", texto: total + " gráficos" }));
+    grupo.appendChild(rotulo);
+
+    dados.secoes.forEach(function (sec, k) {
+      var sub = html("details", { "class": "nav-sub" });
+      sub.open = true;
+      var subRotulo = html("summary", { "class": "nav-sub-rotulo" });
+      subRotulo.appendChild(seta());
+      subRotulo.appendChild(html("span", { texto: sec.titulo }));
+      sub.appendChild(subRotulo);
+      sec.graficos.forEach(function (g) {
+        var a = html("a", { href: "#" + g.id, texto: rotuloNav(sec, g) });
+        a.addEventListener("click", function (ev) { ev.preventDefault(); irPara(g.id); });
+        sub.appendChild(a);
+      });
+      grupo.appendChild(sub);
+    });
+    nav.appendChild(grupo);
+  }
+
+  // Link do menu para um gráfico dentro de seção ou cartão fechado: abre tudo
+  // que estiver no caminho antes de rolar até lá.
+  function irPara(id) {
+    var alvo = document.getElementById(id);
+    if (!alvo) return;
+    for (var n = alvo; n; n = n.parentElement) if (n.tagName === "DETAILS") n.open = true;
+    cartoes.forEach(function (c) { desenhar(c, false); });
+    alvo.scrollIntoView({ block: "start" });
+    try { history.replaceState(null, "", "#" + id); } catch (e) {}
+  }
+
+  function montarRodape(dados) {
+    var rodape = document.getElementById("rodape");
+    var at = dados.atualizado.split("-"), ref = idxMes(dados.referencia);
+    rodape.appendChild(html("p", { style: "margin:0 0 4px", texto: "IPCA até " + rotuloMesLongo(ref).toLowerCase() + "." }));
+    rodape.appendChild(html("p", { style: "margin:0",
+      texto: "Fonte: " + dados.fonte + ". Atualizado em " + at[2] + "/" + at[1] + "/" + at[0] +
+             ", automaticamente, com dados do BCB (SGS) e do IBGE (SIDRA)." }));
+  }
+
   function iniciar() {
     var host = document.getElementById("graficos");
     Promise.all([fetch("dados/ipca.json").then(function (r) {
@@ -690,30 +1119,41 @@
     }), carregarLogo()]).then(function (r) {
       doc = r[0];
       host.innerHTML = "";
-      var chips = document.getElementById("chips");
       doc.secoes.forEach(function (sec, k) {
         var id = "secao-" + k;
-        host.appendChild(html("h2", { "class": "secao-titulo", id: id, texto: sec.titulo }));
+        var secao = html("details", { "class": "secao", id: id });
+        if (!estaFechado(id)) secao.setAttribute("open", "");
+        var rotulo = html("summary", { "class": "secao-rotulo" });
+        rotulo.appendChild(seta());
+        rotulo.appendChild(html("span", { texto: sec.titulo }));
+        secao.appendChild(rotulo);
+
         var lista = html("div", { "class": "secao-graficos" });
+        var daSecao = [];
         sec.graficos.forEach(function (g) {
           var c = criarCartao(g);
           cartoes.push(c);
+          daSecao.push(c);
           lista.appendChild(c.raiz);
         });
-        host.appendChild(lista);
-        chips.appendChild(html("a", { href: "#" + id, texto: sec.titulo }));
+        secao.appendChild(lista);
+        secao.addEventListener("toggle", function () {
+          guardarEstado(id, !secao.open);
+          if (secao.open) daSecao.forEach(function (c) { desenhar(c, true); });
+        });
+        host.appendChild(secao);
       });
+      montarNav(doc);
+      montarRodape(doc);
       cartoes.forEach(function (c) { desenhar(c, true); });
-      var at = doc.atualizado.split("-"), ref = idxMes(doc.referencia);
-      document.getElementById("rodape").textContent =
-        "Fonte: " + doc.fonte + ". IPCA até " + rotuloMesLongo(ref).toLowerCase() +
-        " · atualizado em " + at[2] + "/" + at[1] + "/" + at[0] + ", automaticamente, com dados do BCB (SGS) e do IBGE (SIDRA).";
+      if (location.hash.length > 1) irPara(location.hash.slice(1));
     }).catch(function (e) {
       host.innerHTML = "";
       host.appendChild(html("p", { "class": "estado erro", texto: "Não foi possível carregar os dados. " + e.message }));
     });
 
     document.getElementById("tema").addEventListener("click", alternarTema);
+    telaCheiaDaPagina();
     var espera;
     window.addEventListener("resize", function () {
       clearTimeout(espera);
