@@ -149,67 +149,214 @@ def ler_anp():
     return linhas
 
 
-# ---------------------------------------------------------------- Petrobras
-
-# UF a partir do nome do ponto de entrega: "Duque de Caxias (RJ)" → RJ
-import re  # noqa: E402
+# ------------------------------------------------------- Petrobras e Acelen
+#
+# As duas publicam a mesma coisa, por obrigacao da Resolucao ANP 795/2019:
+# o preco por ponto de entrega e modalidade de venda, em R$/m3, sem tributos.
+# A Petrobras publica num PDF; a Acelen, numa tabela consultavel por produto e
+# mes. O que sai daqui tem o mesmo formato nas duas:
+#
+#     (empresa, produto, vigencia, UF, modalidade, local, R$/litro, desconto)
+#
+# `desconto` e "" no preco cheio da empresa e traz o rotulo da medida
+# provisoria na variante subsidiada ("MP 1.358", "MP 1.363 e MP 1.391"...).
+import re                                              # noqa: E402
+import time                                            # noqa: E402
 
 UF = re.compile(r"\(([A-Z]{2})\)\s*$")
+DATA = re.compile(r"(\d{2})[./](\d{2})[./](\d{4})")
+
+ACELEN_URL = ("https://www.acelen.com.br/precos-as-distribuidoras/"
+              "?produto=%d&ano=%d&mes=%d")
+# o codigo de cada produto no formulario deles
+ACELEN_PRODUTOS = {"Gasolina A": 5, "Diesel S-10": 7, "Diesel S-500": 6}
+# a Acelen assumiu a refinaria de Mataripe em 1/12/2021, e a serie comeca ali
+ACELEN_INICIO = (2021, 11)
+CACHE = os.path.join(DADOS, ".cache-acelen")
+
+# Desempate quando um ponto de entrega tem mais de uma modalidade com o mesmo
+# numero de observacoes. A ordem vai do mais "cru" (no duto, dentro da
+# refinaria) ao mais entregue, que e a ordem em que o frete entra no preco.
+PRIORIDADE = ["EXA", "LPA", "LCT", "LPC", "ETT", "ETD", "LPD", "ETM", "LTM"]
 
 
-def ler_petrobras(caminho):
-    """[(data de vigência, UF, modalidade, local, R$/litro, com_desconto)].
+def numero(cru):
+    """'R$ 3.849,0000' ou '1.686,70' -> 3849.0 / 1686.7, em R$/m3."""
+    cru = cru.replace("R$", "").strip()
+    if not cru or cru in ("-", "--"):
+        return None
+    try:
+        return float(cru.replace(".", "").replace(",", "."))
+    except ValueError:
+        return None
 
-    O PDF tem uma tabela por página: as duas primeiras colunas são o ponto de
-    entrega e a modalidade, e as demais são datas de vigência. As páginas de
-    gasolina Premium e a da legenda das modalidades ficam de fora."""
+
+def rotulo_desconto(cabecalho):
+    """'Com descontosMP 1.363 e MP 1.391 24/09/2026' -> 'MP 1.363 e MP 1.391'."""
+    if "descont" not in cabecalho.lower():
+        return ""
+    sem_data = DATA.sub("", cabecalho).strip()
+    sem_data = re.sub(r"(?i)^com\s*descontos?", "", sem_data).strip(" .-")
+    return re.sub(r"\s+", " ", sem_data) or "com desconto"
+
+
+def colunas_de_data(cabecalho):
+    """[(índice, data, rótulo do desconto)] a partir da linha de cabeçalho."""
+    fora = []
+    for i, c in enumerate(cabecalho[2:], start=2):
+        c = (c or "").strip()
+        m = DATA.search(c)
+        if m:
+            d, mes, a = m.groups()
+            fora.append((i, datetime.date(int(a), int(mes), int(d)), rotulo_desconto(c)))
+    return fora
+
+
+# ------------------------------------------------------------- Petrobras (PDF)
+
+def ler_petrobras(caminho, produto="Gasolina A"):
+    """O PDF de tabelas da Petrobras. Uma tabela por página: as duas primeiras
+    colunas são ponto de entrega e modalidade, as demais são vigências. As
+    páginas de gasolina Premium e a da legenda ficam de fora."""
     import pdfplumber
     fora = []
     with pdfplumber.open(caminho) as pdf:
         for n, pagina in enumerate(pdf.pages, 1):
-            texto = (pagina.extract_text() or "")[:200]
-            if "Premium" in texto or "Modalidade de Venda" in texto:
+            topo = (pagina.extract_text() or "")[:200]
+            if "Premium" in topo or "Modalidade de Venda" in topo:
                 continue
             tabela = pagina.extract_table()
             if not tabela or len(tabela) < 3:
                 print("  página %d: sem tabela legível" % n, file=sys.stderr)
                 continue
-            cabecalho = [(c or "").strip() for c in tabela[0]]
-            colunas = []                      # (índice, data, tem_desconto)
-            for i, c in enumerate(cabecalho[2:], start=2):
-                achado = re.search(r"(\d{2})\.(\d{2})\.(\d{4})", c)
-                if not achado:
-                    continue
-                d, m, a = achado.groups()
-                colunas.append((i, datetime.date(int(a), int(m), int(d)),
-                                "desconto" in c.lower()))
+            colunas = colunas_de_data([(c or "").strip() for c in tabela[0]])
             for linha in tabela[1:]:
-                local = (linha[0] or "").strip()
+                local = (linha[0] or "").strip().replace("\n", " ")
                 mod = (linha[1] or "").strip()
                 uf = UF.search(local)
                 if not uf or not mod:
                     continue
-                for i, data, desconto in colunas:
-                    cru = (linha[i] or "").strip() if i < len(linha) else ""
-                    if not cru:
-                        continue
-                    try:                       # "1.686,70" → 1686.70 R$/m³
-                        v = float(cru.replace(".", "").replace(",", "."))
-                    except ValueError:
-                        continue
-                    fora.append((data, uf.group(1), mod, local,
-                                 round(v / 1000.0, 5), desconto))
+                for i, data, desc in colunas:
+                    v = numero((linha[i] or "")) if i < len(linha) else None
+                    if v:
+                        fora.append(("Petrobras", produto, data, uf.group(1),
+                                     mod, local, round(v / 1000.0, 5), desc))
     return fora
 
 
-def media_por_uf(bruto):
-    """{(data, UF): (R$/litro, nº de pontos)} na modalidade de referência."""
-    junta = {}
-    for data, uf, mod, _local, v, desconto in bruto:
-        if mod != MODALIDADE_BASE or desconto:
+# ---------------------------------------------------------------- Acelen (web)
+
+def baixar_acelen(codigo, ano, mes):
+    """O HTML de um mês, com cache em disco — a página é estável e a consulta
+    é uma por mês e produto."""
+    import urllib.request
+    os.makedirs(CACHE, exist_ok=True)
+    alvo = os.path.join(CACHE, "%d-%04d-%02d.html" % (codigo, ano, mes))
+    vencido = (ano, mes) >= (datetime.date.today().year, datetime.date.today().month)
+    if os.path.exists(alvo) and not vencido:
+        return open(alvo, encoding="utf-8", errors="replace").read()
+    req = urllib.request.Request(
+        ACELEN_URL % (codigo, ano, mes),
+        headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
+                               " (KHTML, like Gecko) Chrome/131.0 Safari/537.36"})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        html_ = r.read().decode("utf-8", "replace")
+    open(alvo, "w", encoding="utf-8").write(html_)
+    time.sleep(0.6)                                    # educação com o site deles
+    return html_
+
+
+def tabela_do_html(bruto):
+    """A primeira <table> da página, como lista de listas de texto."""
+    import html as _html
+    achado = re.search(r"<table.*?</table>", bruto, re.S | re.I)
+    if not achado:
+        return []
+    fora = []
+    for linha in re.findall(r"<tr.*?</tr>", achado.group(0), re.S | re.I):
+        celulas = [re.sub(r"\s+", " ",
+                          _html.unescape(re.sub(r"<[^>]+>", "", c))).strip()
+                   for c in re.findall(r"<t[hd].*?</t[hd]>", linha, re.S | re.I)]
+        if celulas:
+            fora.append(celulas)
+    return fora
+
+
+def ler_acelen(ate=None):
+    """Varre produto × mês desde dez/2021. Devolve o mesmo formato do PDF."""
+    hoje = ate or datetime.date.today()
+    fora = []
+    for nome, codigo in ACELEN_PRODUTOS.items():
+        ano, mes = ACELEN_INICIO
+        n0 = len(fora)
+        while (ano, mes) <= (hoje.year, hoje.month):
+            tabela = tabela_do_html(baixar_acelen(codigo, ano, mes))
+            if len(tabela) >= 2:
+                colunas = colunas_de_data(tabela[0])
+                for linha in tabela[1:]:
+                    if len(linha) < 3:
+                        continue
+                    local, mod = linha[0], linha[1]
+                    uf = UF.search(local)
+                    if not uf or not mod:
+                        continue
+                    for i, data, desc in colunas:
+                        v = numero(linha[i]) if i < len(linha) else None
+                        if v:
+                            fora.append(("Acelen", nome, data, uf.group(1),
+                                         mod, local, round(v / 1000.0, 5), desc))
+            mes += 1
+            if mes == 13:
+                ano, mes = ano + 1, 1
+        print("  %-14s %5d linhas" % (nome, len(fora) - n0))
+    return fora
+
+
+# --------------------------------------------- a média por estado, e a regra
+
+def modalidade_de_cada_ponto(linhas):
+    """{(empresa, produto, local): modalidade} — uma por ponto de entrega.
+
+    A regra: a modalidade com mais observações naquele ponto, desempatada pela
+    lista PRIORIDADE. Fixar uma por ponto é o que impede a média de pular
+    quando a composição muda sem o preço ter mudado — e não dá para fixar a
+    mesma para todo mundo, porque a Acelen praticamente só tem EXA em
+    Candeias: os outros pontos dela são entrega marítima (ETM, LTM)."""
+    contagem = {}
+    for empresa, produto, _d, _uf, mod, local, _v, desc in linhas:
+        if desc:
             continue
-        junta.setdefault((data, uf), []).append(v)
-    return {k: (round(sum(v) / len(v), 5), len(v)) for k, v in junta.items()}
+        contagem.setdefault((empresa, produto, local), {}).setdefault(mod, 0)
+        contagem[(empresa, produto, local)][mod] += 1
+    escolha = {}
+    for chave, mods in contagem.items():
+        escolha[chave] = max(mods, key=lambda m: (mods[m], -(PRIORIDADE.index(m)
+                             if m in PRIORIDADE else len(PRIORIDADE))))
+    return escolha
+
+
+def media_por_uf(linhas):
+    """{(empresa, produto, data, UF): (cheio, nº de pontos, com desconto, MP)}.
+
+    Sai o preço de tabela e, quando existe, o com a subvenção aplicada —
+    separados, porque são coisas diferentes: o primeiro é o preço da empresa,
+    o segundo é o que a distribuidora pagou. Em 2026 a diferença chega a
+    R$ 2,12/litro no diesel (MP 1.391), o que não é detalhe."""
+    escolha = modalidade_de_cada_ponto(linhas)
+    cheio, com_desc, mps = {}, {}, {}
+    for empresa, produto, data, uf, mod, local, v, desc in linhas:
+        if escolha.get((empresa, produto, local)) != mod:
+            continue
+        alvo = com_desc if desc else cheio
+        alvo.setdefault((empresa, produto, data, uf), []).append(v)
+        if desc:
+            mps[(empresa, produto, data, uf)] = desc
+    fora = {}
+    for k, v in cheio.items():
+        d = com_desc.get(k)
+        fora[k] = (round(sum(v) / len(v), 5), len(v),
+                   round(sum(d) / len(d), 5) if d else None, mps.get(k, ""))
+    return fora
 
 
 # ----------------------------------------------------------------- planilha
@@ -233,7 +380,7 @@ def aba(wb, titulo, cabecalho, linhas, larguras=None, formato=None):
     return ws
 
 
-def escrever(anp, petro, hoje):
+def escrever(anp, refinarias, hoje):
     from openpyxl import Workbook
     wb = Workbook()
     wb.remove(wb.active)
@@ -249,11 +396,18 @@ def escrever(anp, petro, hoje):
          "2002 em diante, semanal"],
         ["ANP Brasil (largo)", "A mesma série, um produto por coluna",
          "idem", "R$/litro, sem ICMS", "idem"],
-        ["Petrobras por UF", "Média dos pontos de entrega de cada estado, modalidade "
-         + MODALIDADE_BASE, "Petrobras, Tabelas de Preços (Resolução ANP 795/2019)",
-         "R$/litro, sem tributos", "ago/2019 em diante, por vigência"],
-        ["Petrobras detalhe", "O dado cru: ponto de entrega × modalidade × vigência",
+        ["Refinarias por UF", "Média dos pontos de entrega de cada estado",
+         "Petrobras e Acelen, tabelas da Resolução ANP 795/2019",
+         "R$/litro, sem tributos", "Petrobras ago/2019, Acelen dez/2021"],
+        ["Refinarias detalhe", "O dado cru: ponto de entrega × modalidade × vigência",
          "idem", "R$/litro, sem tributos", "idem"],
+        [],
+        ["ATENÇÃO — as duas séries NÃO estão na mesma base tributária:"],
+        ["ANP", "o próprio arquivo diz só '(Não inclui ICMS)': PIS/Cofins e CIDE "
+                "estão DENTRO do preço."],
+        ["Petrobras e Acelen", "as tabelas dizem 'sem tributos'."],
+        ["", "Não dá para pôr as três no mesmo eixo sem descontar PIS/Cofins+CIDE "
+             "da série da ANP primeiro."],
         [],
         ["Três coisas que o número não é:"],
         ["1", "A série da ANP não é o preço da Petrobras: é a média de todos os "
@@ -263,13 +417,22 @@ def escrever(anp, petro, hoje):
         ["3", "1994 a 2001 não entra: até janeiro de 2002 o preço era fixado pelo "
               "governo por portaria, não decidido pela empresa."],
         [],
-        ["Na parte da Petrobras, a média por estado usa só a modalidade "
-         + MODALIDADE_BASE + " (ex-ponto A)."],
+        ["A média por estado fixa UMA modalidade de venda por ponto de entrega: a "
+         "mais frequente naquele ponto."],
         ["Misturar modalidades faria a média pular quando a composição muda, sem o "
-         "preço ter mudado."],
-        ["Entre 29/5/2026 e 9/9/2026 houve subvenção de R$ 0,44/litro na gasolina A "
-         "(MP 1.358)."],
-        ["A série usa o preço SEM o desconto; a aba de detalhe marca as duas versões."],
+         "preço ter mudado. E não dá para usar a mesma"],
+        ["para todo mundo: a Acelen só tem EXA em Candeias; os outros pontos dela "
+         "são entrega marítima (ETM, LTM)."],
+        [],
+        ["Houve subvenção em 2026 — R$ 0,44/litro na gasolina A (MP 1.358) e outras "
+         "no diesel (MP 1.363, MP 1.391)."],
+        ["A série usa o preço SEM desconto, que é o preço da empresa; a aba de "
+         "detalhe traz as duas versões, com o rótulo da MP."],
+        [],
+        ["Petrobras e Acelen não são comparáveis ponto a ponto: a Acelen tem uma "
+         "refinaria só (Mataripe, BA) e vende"],
+        ["o resto por terminal marítimo, então o preço dela já carrega frete onde o "
+         "da Petrobras não carrega."],
     ]:
         leia.append(linha)
     from openpyxl.styles import Font
@@ -296,17 +459,24 @@ def escrever(anp, petro, hoje):
         formato={**{1: "DD/MM/YYYY"},
                  **{i: "0.00000" for i in range(2, 2 + len(produtos))}})
 
-    if petro:
-        medias = media_por_uf(petro)
-        aba(wb, "Petrobras por UF", ["vigência", "UF", "R$/litro", "pontos de entrega"],
-            [(d, uf, v, n) for (d, uf), (v, n) in sorted(medias.items())],
-            larguras=[12, 6, 11, 18], formato={1: "DD/MM/YYYY", 3: "0.00000"})
-        aba(wb, "Petrobras detalhe",
-            ["vigência", "UF", "modalidade", "ponto de entrega", "R$/litro", "com desconto"],
-            [(d, uf, mod, loc, v, "sim" if desc else "não")
-             for d, uf, mod, loc, v, desc in sorted(petro)],
-            larguras=[12, 6, 13, 30, 11, 14],
-            formato={1: "DD/MM/YYYY", 5: "0.00000"})
+    if refinarias:
+        medias = media_por_uf(refinarias)
+        aba(wb, "Refinarias por UF",
+            ["empresa", "produto", "vigência", "UF", "R$/litro (tabela)",
+             "R$/litro (com subvenção)", "medida provisória", "pontos de entrega"],
+            [(e, p, d, uf, v, vd, mp, n)
+             for (e, p, d, uf), (v, n, vd, mp) in sorted(medias.items())],
+            larguras=[11, 14, 12, 6, 17, 22, 20, 18],
+            formato={3: "DD/MM/YYYY", 5: "0.00000", 6: "0.00000"})
+        escolha = modalidade_de_cada_ponto(refinarias)
+        aba(wb, "Refinarias detalhe",
+            ["empresa", "produto", "vigência", "UF", "modalidade", "ponto de entrega",
+             "R$/litro", "desconto", "entra na média"],
+            [(e, p, d, uf, mod, loc, v, desc or "",
+              "sim" if (not desc and escolha.get((e, p, loc)) == mod) else "não")
+             for e, p, d, uf, mod, loc, v, desc in sorted(refinarias)],
+            larguras=[11, 14, 12, 6, 12, 28, 11, 22, 14],
+            formato={3: "DD/MM/YYYY", 7: "0.00000"})
 
     wb.save(SAIDA)
     return wb
@@ -317,33 +487,46 @@ def main():
     print("ANP, produtores e importadores…")
     anp = ler_anp()
 
-    petro = []
+    refinarias = []
+
+    print("Acelen, preços às distribuidoras…")
+    try:
+        refinarias += ler_acelen(hoje)
+    except Exception as e:                    # site fora do ar não derruba o resto
+        print("  Acelen falhou: %s" % e, file=sys.stderr)
+
     pdfs = sorted(glob.glob(os.path.join(DADOS, "*asolina*.pdf"))
                   + glob.glob(os.path.join(DADOS, "*abela*re*.pdf")),
                   key=os.path.getmtime)
     if pdfs:
         print("Petrobras, de %s…" % os.path.basename(pdfs[-1]))
-        petro = ler_petrobras(pdfs[-1])
-        if petro:
-            datas = sorted({d for d, *_ in petro})
-            ufs = sorted({uf for _, uf, *_ in petro})
-            print("  %d linhas, %d vigências de %s a %s, %d UF: %s"
-                  % (len(petro), len(datas), datas[0], datas[-1], len(ufs), " ".join(ufs)))
-            m = media_por_uf(petro)
-            print("  média por UF na modalidade %s: %d pares (data, UF)"
-                  % (MODALIDADE_BASE, len(m)))
-        else:
-            print("  nada extraído — rode com --inspecionar para ver o que o "
-                  "pdfplumber enxerga", file=sys.stderr)
+        lidas = ler_petrobras(pdfs[-1])
+        refinarias += lidas
+        print("  %d linhas" % len(lidas))
     else:
-        print("Petrobras: nenhum PDF em dados/ — a planilha sai só com a ANP.",
+        print("Petrobras: nenhum PDF em dados/ — só a Acelen entra por enquanto.",
               file=sys.stderr)
 
-    escrever(anp, petro, hoje)
+    if refinarias:
+        por_empresa = {}
+        for e, prod, d, uf, *_ in refinarias:
+            a = por_empresa.setdefault((e, prod), [d, d, set()])
+            a[0], a[1] = min(a[0], d), max(a[1], d)
+            a[2].add(uf)
+        for (e, prod), (d0, d1, ufs) in sorted(por_empresa.items()):
+            print("  %-10s %-14s %s a %s, %2d UF" % (e, prod, d0, d1, len(ufs)))
+        escolha = modalidade_de_cada_ponto(refinarias)
+        mods = {}
+        for (e, _p, _loc), m in escolha.items():
+            mods.setdefault(e, {}).setdefault(m, 0)
+            mods[e][m] += 1
+        for e, c in sorted(mods.items()):
+            print("  modalidade escolhida em %s: %s" % (e, dict(sorted(c.items()))))
+
+    escrever(anp, refinarias, hoje)
     print("gravado %s (%.0f KB)"
           % (os.path.relpath(SAIDA, RAIZ), os.path.getsize(SAIDA) / 1024))
 
-    # CSV ao lado, para quem não quiser abrir o Excel
     with open(os.path.join(DADOS, "anp-precos-produtor.csv"), "w",
               newline="", encoding="utf-8") as f:
         w = csv.writer(f)
