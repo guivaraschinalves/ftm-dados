@@ -486,10 +486,16 @@ A **ordem das categorias** na página e no menu é a ordem da lista `FONTES` no
 Pública, Tesouro Direto, Juros no Brasil e nos EUA, Ouro e reservas
 internacionais.
 
-As **notas abaixo dos gráficos** são só de metodologia: o que a série é, de que
-código ou aba ela vem, o que a conta faz e onde ela não dá para comparar. Nada
-de leitura do gráfico, de o que os números querem dizer nem de instrução de uso
-dos botões — isso a tela já mostra.
+**Nota abaixo do gráfico, só quando ele pedir.** Regra dele, de 8/10/2026: não
+acrescentar nota por iniciativa própria. Onde já existe uma, ela é só de
+metodologia — o que a série é, de que código ou aba ela vem, o que a conta faz
+e onde ela não dá para comparar. Nada de leitura do gráfico nem de instrução de
+uso dos botões.
+
+O **subtítulo** é o lugar de explicar o dado, e ele é direto: o que a série
+mede, em que unidade, e a ressalva que muda o número, depois de ponto e
+vírgula. O modelo é dele: *"Variação % acumulada em 12 meses; EX1 exclui
+combustíveis e alimentos com preços mais voláteis"*. Nada de didático.
 
 `legenda: false` quer dizer **pano de fundo**: a série é desenhada, mas fica
 fora da legenda e da caixa do mouse — é o que faz o feixe cinza de "todos os
@@ -609,9 +615,10 @@ Quatro cartões, em duas seções:
 - **Juro real ex-post da taxa básica** — a Selic deflacionada pelo IPCA contra
   o fed funds deflacionado pelo CPI, e o diferencial. Mensal, desde jan/2000.
 
-### As três fórmulas que o cartão explica
+### As três fórmulas
 
-Nenhuma é a que se faz de cabeça, e é por isso que o cartão as explica:
+Nenhuma é a que se faz de cabeça, e nenhuma está escrita na tela — os cartões
+não levam nota. Ficam aqui:
 
 1. **Juro real** é `(1 + nominal) / (1 + inflação) − 1`, não "nominal menos
    inflação". Com Selic de 14,63% e IPCA de 4,22% em 12 meses (ago/2026), o
@@ -633,9 +640,11 @@ subtração − certo = (i_br − i_us) · i_us / (1 + i_us)
 Com a taxa americana positiva a subtração exagera o diferencial; com ela
 negativa, encurta. E negativa não é exceção: foi o caso em 188 dos 319 meses do
 ex-post e em 407 dos 3.464 dias do juro longo. O maior erro de toda a série é
-justamente de encurtamento — 0,76 p.p. em set/2022. Os dois cartões de
-diferencial desenham a subtração numa linha pontilhada ao lado, só para mostrar
-o tamanho do erro, e o script recalcula a identidade acima a cada rodada.
+justamente de encurtamento — 0,76 p.p. em set/2022. Nenhum gráfico desenha a
+subtração: no juro longo as duas linhas ficavam a um décimo de ponto uma da
+outra, encostadas o gráfico inteiro, e no ex-post ele preferiu sem. O que resta
+dela é a conferência — o script recalcula a identidade acima a cada rodada e
+imprime os dois extremos no log.
 
 ### Detalhes que mudam o número
 
@@ -646,6 +655,10 @@ o tamanho do erro, e o script recalcula a identidade acima a cada rodada.
   meses publicada. O `CPIAUCSL`, ajustado, serve para variação mensal.
 - **Selic acumulada no mês** (SGS 4390), o juro que correu, não a meta do
   Copom. O mês em curso é descartado: o SGS já publica a parcial dele.
+- **Cada país anda sozinho no ex-post.** Out/2025 não tem CPI (a paralisação do
+  governo americano impediu a coleta e o BLS cancelou o índice do mês, que não
+  pode ser coletado depois), então o mês fica vazio do lado americano e
+  desenhado do brasileiro. O diferencial precisa dos dois e fica com o buraco.
 - **O ex-post começa em jan/2000**, primeira janela de 12 meses inteiramente
   posterior à flutuação do real (15/1/1999). A conta existe desde 1987, mas nas
   janelas de 1999 a Selic de 45% da crise divide a conta com uma inflação que

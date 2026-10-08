@@ -44,9 +44,10 @@ dos 3.464 dias do de juro real longo. O maior erro de toda a série é
 justamente de encurtamento — 0,76 p.p. em set/2022, quando a inflação
 americana de 8% deixou o juro real dos Estados Unidos em −6,8%.
 
-Os dois gráficos de diferencial trazem a subtração numa linha pontilhada ao
-lado, só para mostrar o tamanho do erro, e o script recalcula a identidade
-acima a cada rodada.
+Nenhum gráfico desenha a subtração — a decisão dele, e com razão: no juro
+longo as duas linhas ficavam a um décimo de ponto uma da outra, encostadas o
+gráfico inteiro. O que resta dela é a conferência: o script recalcula a
+identidade acima a cada rodada e imprime os dois extremos no log.
 
 O mesmo vale para o lado de dentro da conta ex-post. Juro real não é "juro
 menos inflação", é
@@ -71,7 +72,7 @@ números crus é erro de convenção, então o TIPS entra aqui convertido:
     efetiva = (1 + y/2)² − 1
 
 São poucos pontos-base (3,35% viram 3,38% em 6/10/2026), mas o diferencial é
-uma conta de pontos-base. A nota de cada gráfico diz qual número é qual.
+uma conta de pontos-base. O subtítulo do gráfico avisa da conversão.
 
 O PRAZO NÃO É O MESMO, e não há como fazer que seja. O DFII30 é de maturidade
 constante: 30 anos, todo dia. A NTN-B 2050 é um papel só, que tinha 38 anos de
@@ -114,8 +115,16 @@ ex-post do Brasil chega a mais de 25% — número verdadeiro, de um regime que
 não existe mais, e que no eixo achataria os 26 anos seguintes. O script imprime
 o pico que ficou de fora a cada rodada.
 
-O FIM DA SÉRIE EX-POST é o último mês com inflação nos dois países, não o
-último mês com juro: a Selic de setembro já existe e o IPCA de setembro, não.
+O FIM DA SÉRIE EX-POST é, para cada país, o último mês com inflação publicada
+lá — não o último mês com juro: a Selic de setembro já existe e o IPCA de
+setembro, não.
+
+E CADA PAÍS ANDA SOZINHO. Out/2025 não tem CPI: a paralisação do governo
+americano impediu a coleta de preços e o BLS cancelou o índice daquele mês em
+vez de atrasá-lo, de modo que ele não existe e não vai existir. O mês fica
+vazio do lado americano, mas o brasileiro continua desenhado — o buraco de lá
+não tem por que apagar o dado de cá. O diferencial, que precisa dos dois lados,
+fica com o buraco.
 
 A PORTA DO FRED. Duas, e uma delas não serve: a API JSON (api.stlouisfed.org)
 exige chave; o CSV do gráfico (fredgraph.csv?id=SERIE) não exige nada e é o
@@ -390,11 +399,12 @@ def mes_br(mes):
     return "%s/%s" % (nomes[int(mes[5:7]) - 1], mes[:4])
 
 
-def g_longo(ntnb, tips, ultimo):
+def g_longo(ntnb, tips):
     return dict(
         id="juros-longo",
         titulo="O juro real longo no Brasil e nos Estados Unidos",
-        subtitulo="NTN-B 2050 e TIPS de 30 anos, em taxa efetiva anual (% a.a.)",
+        subtitulo="Juro real negociado, % a.a.; o TIPS é convertido de capitalização "
+                  "semestral para taxa efetiva anual, a convenção da NTN-B",
         unidade="%",
         fonte=FONTE_LONGO,
         diario=True,
@@ -402,151 +412,44 @@ def g_longo(ntnb, tips, ultimo):
             serie("Brasil (NTN-B 2050)", VERMELHO, ntnb, rotulo=True),
             serie("Estados Unidos (TIPS 30 anos)", AZUL, tips, rotulo=True),
         ],
-        nota=(
-            "A taxa da NTN-B é a média entre a de compra e a de venda da manhã, "
-            "como nos outros cartões do Tesouro Direto, e é uma taxa efetiva anual: "
-            "o preço do papel é o fluxo descontado por (1 + taxa) elevado a dias "
-            "úteis sobre 252.\n\n"
-            "O TIPS é o DFII30 do FRED, a taxa real de maturidade constante de 30 "
-            "anos publicada pelo Tesouro americano. Ela vem cotada “on an "
-            "investment basis” — nominal anual com capitalização semestral, "
-            "como se cota título americano — e aqui entra convertida em taxa "
-            "efetiva anual por (1 + y/2)² − 1, senão as duas linhas não "
-            "seriam comparáveis. Em %s isso transforma os %s publicados em %s.\n\n"
-            "A linha brasileira começa em 1º/6/2012, quando a NTN-B 2050 foi ofertada "
-            "pela primeira vez. **O prazo não é o mesmo dos dois lados**: o DFII30 é "
-            "sempre de 30 anos, enquanto a NTN-B 2050 tinha 38 anos de prazo em 2012 "
-            "e tem %d hoje. A curva real é quase plana nesse trecho nos dois países, "
-            "mas a diferença fica dita."
-            % (dia_br(ultimo["dia"]), pct(ultimo["tips_cru"]), pct(ultimo["tips"]),
-               ultimo["prazo_ntnb"])
-        ),
     )
 
 
-def g_longo_dif(geom, ultimo, erro, dias_br, dias_us, comuns):
+def g_longo_dif(geom):
     return dict(
         id="juros-longo-dif",
         titulo="O diferencial de juro real longo",
-        subtitulo="Quanto a NTN-B 2050 rende acima do TIPS de 30 anos, em % a.a.",
+        subtitulo="(1 + NTN-B 2050) ÷ (1 + TIPS 30 anos) − 1, em % a.a.",
         unidade="%",
         fonte=FONTE_LONGO,
         diario=True,
-        # uma linha só. A subtração simples ficava a pouco mais de um décimo de
-        # distância aqui, encostada na linha certa o gráfico inteiro: não
-        # mostrava o erro, só engrossava a linha. Ela continua desenhada no
-        # cartão de ex-post, onde a distância se enxerga.
         series=[serie("Diferencial", LARANJA, geom, rotulo=True)],
-        nota=(
-            "O diferencial é (1 + juro brasileiro) ÷ (1 + juro americano) − 1, e não "
-            "a subtração de um pelo outro. **Juro acumula por produto, não por soma**: "
-            "quem aplica R$ 1 aqui termina com %s e nos Estados Unidos com %s, e o "
-            "ganho de um sobre o outro é o quociente dos dois montantes. Em %s a conta "
-            "certa dá %s, enquanto a subtração daria %s.\n\n"
-            "**O erro da subtração não tem sinal fixo**, e é aí que se tropeça: ele vale "
-            "(juro brasileiro − juro americano) × juro americano ÷ (1 + juro americano), "
-            "de modo que ela exagera o diferencial quando a taxa americana é positiva e "
-            "o encurta quando ela é negativa. Nesta série exagera em até %s (%s, com o "
-            "TIPS a %s) e encurta em até %s (%s, num dos %d dias em que o TIPS real "
-            "esteve abaixo de zero).\n\n"
-            "A linha só tem ponto no dia em que os dois mercados abriram. Feriado "
-            "brasileiro e feriado americano não coincidem, e por isso %s pregões do "
-            "Tesouro Direto e %s do Tesouro americano ficam de fora: sobram %s dias."
-            % (("%.4f" % (1 + ultimo["ntnb"] / 100)).replace(".", ","),
-               ("%.4f" % (1 + ultimo["tips"] / 100)).replace(".", ","),
-               dia_br(ultimo["dia"]), pct(ultimo["geom"]), pct(ultimo["arit"]),
-               pp(erro["exagera"]), erro["exagera_quando"], pct(erro["exagera_us"]),
-               pp(erro["encurta"]), erro["encurta_quando"], erro["negativos"],
-               mil(dias_br - comuns), mil(dias_us - comuns), mil(comuns))
-        ),
     )
 
 
-def g_expost(br, us, ultimo, pico):
-    # a última frase só vale enquanto a Selic estiver um mês à frente do IPCA;
-    # no mês em que o IPCA alcançar, ela deixaria de ser verdade
-    if ultimo["selic_ate"] > ultimo["mes"]:
-        cauda = ("A série termina no último mês com inflação publicada nos dois países, "
-                 "não no último com juro: a Selic de %s já existe, o IPCA do mesmo mês "
-                 "ainda não." % mes_br(ultimo["selic_ate"]))
-    else:
-        cauda = ("A série termina em %s, o último mês com inflação publicada nos dois "
-                 "países." % mes_br(ultimo["mes"]))
+def g_expost(br, us):
     return dict(
         id="juros-expost",
         titulo="O juro real ex-post da taxa básica",
-        subtitulo="Taxa básica acumulada em 12 meses, descontada a inflação dos mesmos "
-                  "12 meses (% a.a.)",
+        subtitulo="Taxa básica acumulada em 12 meses deflacionada pela inflação do "
+                  "período, % a.a.; Selic e IPCA no Brasil, fed funds e CPI nos EUA",
         unidade="%",
         fonte=FONTE_EXPOST,
         series=[
             serie("Brasil (Selic ÷ IPCA)", VERMELHO, br, rotulo=True),
             serie("Estados Unidos (fed funds ÷ CPI)", AZUL, us, rotulo=True),
         ],
-        nota=(
-            "**Ex-post é com a inflação que já aconteceu**, a dos 12 meses que acabaram "
-            "de passar, e não com a esperada: é o juro real que o aplicador olhando para "
-            "trás recebeu, não o que o mercado contrata para a frente (esse é o dos dois "
-            "cartões acima).\n\n"
-            "Cada lado é (1 + juro nominal de 12 meses) ÷ (1 + inflação de 12 meses) − 1. "
-            "No Brasil o nominal é a Selic acumulada no mês (SGS 4390) composta nos 12 "
-            "meses — o juro que correu, não a meta do Copom — e a inflação é o "
-            "IPCA. Nos Estados Unidos o nominal é a rolagem do fed funds efetivo dia a "
-            "dia (juro simples a/360 por dia corrido, composto, como o mercado faz) e a "
-            "inflação é o CPI-U sem ajuste sazonal. Em %s: Selic de %s contra IPCA de %s "
-            "dão %s de juro real, e não os %s da subtração; do lado americano, %s contra "
-            "%s dão %s.\n\n"
-            "O gráfico começa em %s, primeira janela de 12 meses inteiramente posterior "
-            "à flutuação do real (15/1/1999). Nas janelas de 1999 a Selic de 45%% da "
-            "crise divide a conta com uma inflação que só reagiu meses depois, e o juro "
-            "real do Brasil marca %s em %s — número verdadeiro, de um regime que não "
-            "existe mais, e que no eixo achataria os 26 anos seguintes.\n\n"
-            % (mes_br(ultimo["mes"]), pct(ultimo["n_br"]), pct(ultimo["p_br"]),
-               pct(ultimo["r_br"]), pct(ultimo["n_br"] - ultimo["p_br"]),
-               pct(ultimo["n_us"]), pct(ultimo["p_us"]), pct(ultimo["r_us"]),
-               mes_br(INICIO_EXPOST), pct(pico["valor"], 1), mes_br(pico["mes"]))
-            + cauda
-        ),
     )
 
 
-def g_expost_dif(geom, arit, ultimo, erro):
+def g_expost_dif(geom):
     return dict(
         id="juros-expost-dif",
         titulo="O diferencial do juro real ex-post",
-        subtitulo="Quanto a taxa básica brasileira rendeu acima da americana, já "
-                  "descontadas as duas inflações, em % a.a.",
+        subtitulo="(1 + juro real do Brasil) ÷ (1 + juro real dos EUA) − 1, em % a.a.",
         unidade="%",
         fonte=FONTE_EXPOST,
-        series=[
-            serie("Diferencial", LARANJA, geom, rotulo=True),
-            # sem rótulo: o do último ponto cairia em cima do da linha certa,
-            # que está a dois décimos de distância
-            serie("Subtração simples (errada)", CINZA, arit,
-                  traco="pontilhado", largura=4),
-        ],
-        nota=(
-            "A mesma fórmula do diferencial longo: (1 + juro real do Brasil) ÷ (1 + juro "
-            "real dos Estados Unidos) − 1. **Dá no mesmo** deflacionar cada país e dividir "
-            "depois, ou dividir os nominais e descontar deles a razão entre as duas "
-            "inflações — as duas contas são a mesma identidade, e o script confere "
-            "isso a cada rodada.\n\n"
-            "A pontilhada é a subtração, e aqui ela erra bem mais do que no diferencial "
-            "longo: o erro cresce com a distância entre as duas taxas, e o juro real "
-            "brasileiro está na casa dos 10%%. **O sinal do erro muda** com o sinal da "
-            "taxa americana: a subtração exagera o diferencial em até %s (%s, com juro "
-            "real americano de %s) e o encurta em até %s (%s, quando a inflação americana "
-            "de dois dígitos deixou o juro real dos Estados Unidos em %s). O juro real "
-            "americano foi negativo em %s dos %s meses do gráfico — não é a exceção "
-            "que se imagina.\n\n"
-            "Em %s o diferencial é de %s: %s de juro real no Brasil contra %s nos Estados "
-            "Unidos; a subtração daria %s."
-            % (pp(erro["exagera"]), erro["exagera_quando"], pct(erro["exagera_us"]),
-               pp(erro["encurta"]), erro["encurta_quando"], pct(erro["encurta_us"]),
-               mil(erro["negativos"]), mil(erro["total"]),
-               mes_br(ultimo["mes"]), pct(ultimo["geom"]), pct(ultimo["r_br"]),
-               pct(ultimo["r_us"]), pct(ultimo["arit"]))
-        ),
+        series=[serie("Diferencial", LARANJA, geom, rotulo=True)],
     )
 
 
@@ -595,60 +498,65 @@ def main():
     arit_l = {d: ntnb[d] - tips[d] for d in comuns}
     erro_l = erro_da_formula(geom_l, arit_l, tips, dia_br)
     d_fim = comuns[-1]
-    venc = datetime.date(2050, 8, 15)
-    ultimo_l = dict(dia=d_fim, ntnb=ntnb[d_fim], tips=tips[d_fim], tips_cru=tips_cru[d_fim],
-                    geom=geom_l[d_fim], arit=arit_l[d_fim],
-                    prazo_ntnb=round((venc - datetime.date.fromisoformat(d_fim)).days / 365.25))
     print("  longo: %d dias em comum, de %s a %s" % (len(comuns), comuns[0], d_fim))
     print("    em %s: NTN-B %.2f%%, TIPS %.2f%% (cru %.2f%%) → %.2f%% (subtração: %.2f%%)"
           % (d_fim, ntnb[d_fim], tips[d_fim], tips_cru[d_fim], geom_l[d_fim], arit_l[d_fim]))
     print("    %s" % erro_l["resumo"])
 
     # ---------------- juro real ex-post
-    r_br, r_us, geom_e, arit_e, bruto = {}, {}, {}, {}, {}
-    for m in sorted(selic):
-        n_br, p_br = acumulado(selic, m), acumulado(ipca, m)
-        n_us, p_us = acumulado_overnight(dff, m), variacao_12m(cpi, m)
-        if None in (n_br, p_br, n_us, p_us):
-            continue
-        b, u = real(n_br, p_br), real(n_us, p_us)
-        bruto[m] = dict(n_br=n_br, p_br=p_br, n_us=n_us, p_us=p_us, r_br=b, r_us=u)
-        if m < INICIO_EXPOST:
-            continue
-        r_br[m], r_us[m] = b, u
-        geom_e[m], arit_e[m] = diferencial(b, u), b - u
-    if not geom_e:
+    # Cada país por sua conta. Out/2025 não tem CPI — a paralisação do governo
+    # americano impediu a coleta de preços e o BLS cancelou o índice daquele mês
+    # em vez de atrasá-lo —, e não há razão para o buraco americano apagar
+    # também o mês brasileiro. O diferencial, esse, precisa dos dois lados, e
+    # fica com o buraco.
+    br, us = {}, {}
+    for m in sorted(set(selic) | set(cpi)):
+        n, pr = acumulado(selic, m), acumulado(ipca, m)
+        if None not in (n, pr):
+            br[m] = dict(n=n, p=pr, r=real(n, pr))
+        n, pr = acumulado_overnight(dff, m), variacao_12m(cpi, m)
+        if None not in (n, pr):
+            us[m] = dict(n=n, p=pr, r=real(n, pr))
+    if not br or not us:
         raise SystemExit("nenhum mês de ex-post — as séries não se encontram")
+    r_br = {m: v["r"] for m, v in br.items() if m >= INICIO_EXPOST}
+    r_us = {m: v["r"] for m, v in us.items() if m >= INICIO_EXPOST}
+    bruto = {m: dict(n_br=br[m]["n"], p_br=br[m]["p"], r_br=br[m]["r"],
+                     n_us=us[m]["n"], p_us=us[m]["p"], r_us=us[m]["r"])
+             for m in sorted(set(br) & set(us))}
+    geom_e = {m: diferencial(v["r_br"], v["r_us"]) for m, v in bruto.items()
+              if m >= INICIO_EXPOST}
+    arit_e = {m: v["r_br"] - v["r_us"] for m, v in bruto.items() if m >= INICIO_EXPOST}
     erro_e = erro_da_formula(geom_e, arit_e, {m: v["r_us"] for m, v in bruto.items()}, mes_br)
-    m_fim = max(geom_e)
-    ultimo_e = dict(bruto[m_fim], mes=m_fim, geom=geom_e[m_fim], arit=arit_e[m_fim],
-                    selic_ate=max(selic))
-    # o pico que a nota cita é o de 1999, o ano da flutuação — e não o da
-    # hiperinflação, que a conta também alcança (51% de juro real em ago/1992)
-    antes = {m: v["r_br"] for m, v in bruto.items() if m[:4] == ANO_DA_FLUTUACAO}
-    m_pico = max(antes, key=antes.get)
-    pico = dict(mes=m_pico, valor=antes[m_pico])
-    print("  ex-post: %d meses, de %s a %s (a conta existe desde %s)"
-          % (len(geom_e), min(geom_e), m_fim, min(bruto)))
+    print("  ex-post: Brasil %d meses até %s, EUA %d meses até %s, diferencial %d meses "
+          "até %s (a conta existe desde %s)"
+          % (len(r_br), max(r_br), len(r_us), max(r_us), len(geom_e), max(geom_e), min(br)))
+    so_br = [m for m in sorted(r_br) if m not in r_us]
+    print("    mês do Brasil sem contraparte americana: %s"
+          % (", ".join(so_br) if so_br else "nenhum"))
+    u = bruto[max(geom_e)]
     print("    em %s: Brasil %.2f%% (Selic %.2f%% ÷ IPCA %.2f%%), EUA %.2f%% "
           "(fed funds %.2f%% ÷ CPI %.2f%%) → %.2f%% (subtração: %.2f%%)"
-          % (m_fim, ultimo_e["r_br"], ultimo_e["n_br"], ultimo_e["p_br"],
-             ultimo_e["r_us"], ultimo_e["n_us"], ultimo_e["p_us"],
-             ultimo_e["geom"], ultimo_e["arit"]))
+          % (max(geom_e), u["r_br"], u["n_br"], u["p_br"], u["r_us"], u["n_us"], u["p_us"],
+             geom_e[max(geom_e)], arit_e[max(geom_e)]))
     print("    %s" % erro_e["resumo"])
-    print("    fora do gráfico: pico de %.2f%% em %s" % (pico["valor"], pico["mes"]))
+    # o que ficou de fora pelo corte de 2000: o pico de 1999, o ano da
+    # flutuação — e, mais atrás, a hiperinflação (51% de juro real em ago/1992)
+    antes = {m: v["r"] for m, v in br.items() if m[:4] == ANO_DA_FLUTUACAO}
+    m_pico = max(antes, key=antes.get)
+    print("    fora do gráfico: pico de %.2f%% em %s" % (antes[m_pico], m_pico))
 
     # ---------------- conferências
-    # 1. a nossa conta de IPCA de 12 meses contra a série que o BC publica
-    # a comparação é entre os dois fatores acumulados, não entre as duas taxas:
+    # 1. a nossa conta de IPCA de 12 meses contra a série que o BC publica.
+    # A comparação é entre os dois fatores acumulados, não entre as duas taxas:
     # em jun/1994 o IPCA de 12 meses passava de 4.000%, e ali as duas casas
     # decimais de cada variação mensal viram 0,14 p.p. de diferença no acumulado
     # sem que nada esteja errado. Em termos proporcionais a diferença é a mesma
     # de hoje: um décimo de milésimo.
     pior, onde = 0.0, None
-    for m in sorted(bruto):
+    for m in sorted(br):
         if m in ipca12_bc:
-            d = abs((1 + bruto[m]["p_br"] / 100) / (1 + ipca12_bc[m] / 100) - 1)
+            d = abs((1 + br[m]["p"] / 100) / (1 + ipca12_bc[m] / 100) - 1)
             if d > pior:
                 pior, onde = d, m
     if pior > 3e-4:
@@ -656,7 +564,7 @@ def main():
                          "em %s" % (pior, onde))
     print("  conferido: IPCA de 12 meses bate com a série 13522 do BC em %d meses "
           "(pior caso %.5f em termos relativos, em %s)"
-          % (sum(1 for m in bruto if m in ipca12_bc), pior, onde))
+          % (sum(1 for m in br if m in ipca12_bc), pior, onde))
 
     # 2. a identidade: deflacionar e dividir = dividir e deflacionar
     pior = 0.0
@@ -671,12 +579,12 @@ def main():
     # ---------------- documento
     secoes = [
         dict(titulo="Juro real longo", graficos=[
-            g_longo(ntnb, tips, ultimo_l),
-            g_longo_dif(geom_l, ultimo_l, erro_l, len(ntnb), len(tips), len(comuns)),
+            g_longo(ntnb, tips),
+            g_longo_dif(geom_l),
         ]),
         dict(titulo="Juro real ex-post da taxa básica", graficos=[
-            g_expost(r_br, r_us, ultimo_e, pico),
-            g_expost_dif(geom_e, arit_e, ultimo_e, erro_e),
+            g_expost(r_br, r_us),
+            g_expost_dif(geom_e),
         ]),
     ]
     doc = dict(
