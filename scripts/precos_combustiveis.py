@@ -244,6 +244,51 @@ def ler_petrobras(caminho, produto="Gasolina A"):
     return fora
 
 
+# A biblioteca de documentos do site de preços é um Liferay, e responde à API
+# pública dele. É de lá que vem o PDF quando não há nenhum em dados/:
+#
+#   .../api/jsonws/dlapp/get-file-entries/repository-id/1295200/folder-id/0
+#
+# ATENÇÃO: a biblioteca pública fica ATRÁS da tabela que a Petrobras manda por
+# outros canais. Em 8/10/2026 ela tinha a gasolina até 1/9/2026 e, de diesel,
+# só as tabelas de "Outros Diesel" de agosto de 2022. Para o diesel corrente, e
+# para a gasolina do mês, o arquivo precisa chegar à mão em dados/.
+PETRO_BIBLIOTECA = ("https://precos.petrobras.com.br/api/jsonws/dlapp/"
+                    "get-file-entries/repository-id/1295200/folder-id/%d")
+PETRO_PASTAS = (0, 1296634)
+PETRO_ARQUIVO = ("https://precos.petrobras.com.br/c/document_library/get_file"
+                 "?uuid=%s&groupId=1295200")
+NAVEGADOR = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
+                           " (KHTML, like Gecko) Chrome/131.0 Safari/537.36"}
+
+
+def baixar_petrobras(padrao="Gasolina"):
+    """Pega da biblioteca pública o PDF mais recente cujo nome case com
+    `padrao`, grava em dados/ e devolve o caminho. None se não houver."""
+    import urllib.request
+    melhor = None
+    for pasta in PETRO_PASTAS:
+        req = urllib.request.Request(PETRO_BIBLIOTECA % pasta, headers=NAVEGADOR)
+        with urllib.request.urlopen(req, timeout=60) as r:
+            lista = json.loads(r.read())
+        for f in lista if isinstance(lista, list) else []:
+            nome = f.get("fileName", "")
+            if (f.get("extension", "").lower() == "pdf"
+                    and re.search(padrao, nome, re.I)
+                    and "Tabelas de Pre" in nome and " EN" not in nome):
+                if melhor is None or f["modifiedDate"] > melhor["modifiedDate"]:
+                    melhor = f
+    if not melhor:
+        return None
+    destino = os.path.join(DADOS, melhor["fileName"].replace("ç", "c").replace("ã", "a"))
+    if not os.path.exists(destino):
+        print("  baixando %s…" % melhor["fileName"])
+        req = urllib.request.Request(PETRO_ARQUIVO % melhor["uuid"], headers=NAVEGADOR)
+        with urllib.request.urlopen(req, timeout=180) as r, open(destino, "wb") as f:
+            f.write(r.read())
+    return destino
+
+
 # ---------------------------------------------------------------- Acelen (web)
 
 def baixar_acelen(codigo, ano, mes):
@@ -352,9 +397,12 @@ def media_por_uf(linhas):
         if desc:
             mps[(empresa, produto, data, uf)] = desc
     fora = {}
-    for k, v in cheio.items():
-        d = com_desc.get(k)
-        fora[k] = (round(sum(v) / len(v), 5), len(v),
+    for k in set(cheio) | set(com_desc):
+        # durante a subvenção a Petrobras chegou a publicar SÓ a coluna com
+        # desconto (é o caso de 1/8 e 1/9/2026 na tabela de setembro). A linha
+        # sai mesmo assim, com o preço de tabela em branco — sumir seria pior.
+        v, d = cheio.get(k), com_desc.get(k)
+        fora[k] = (round(sum(v) / len(v), 5) if v else None, len(v or d),
                    round(sum(d) / len(d), 5) if d else None, mps.get(k, ""))
     return fora
 
@@ -429,10 +477,18 @@ def escrever(anp, refinarias, hoje):
         ["A série usa o preço SEM desconto, que é o preço da empresa; a aba de "
          "detalhe traz as duas versões, com o rótulo da MP."],
         [],
-        ["Petrobras e Acelen não são comparáveis ponto a ponto: a Acelen tem uma "
-         "refinaria só (Mataripe, BA) e vende"],
-        ["o resto por terminal marítimo, então o preço dela já carrega frete onde o "
-         "da Petrobras não carrega."],
+        ["Petrobras e Acelen quase não se sobrepõem. A Acelen É a antiga RLAM: a "
+         "Petrobras publicou Candeias (BA)"],
+        ["até 1/9/2021 e parou — a Acelen começa em 1/12/2021, quando assumiu "
+         "Mataripe. Não há mês com as duas na"],
+        ["mesma cidade. E a Acelen tem uma refinaria só: o resto ela entrega por "
+         "terminal marítimo (ETM, LTM), então"],
+        ["o preço dela já carrega frete onde o da Petrobras, ex-ponto A, não carrega."],
+        [],
+        ["CÉLULA VAZIA NÃO É PREÇO REPETIDO. Um ponto de entrega some da tabela "
+         "quando deixa de ser vendido ali."],
+        ["Ao arrastar o último preço para a frente (step), ponha um limite — senão "
+         "você compara um preço de 2021 com um de hoje."],
     ]:
         leia.append(linha)
     from openpyxl.styles import Font
@@ -504,8 +560,18 @@ def main():
         refinarias += lidas
         print("  %d linhas" % len(lidas))
     else:
-        print("Petrobras: nenhum PDF em dados/ — só a Acelen entra por enquanto.",
-              file=sys.stderr)
+        print("Petrobras: nenhum PDF em dados/ — tentando a biblioteca pública…")
+        try:
+            baixado = baixar_petrobras("Gasolina")
+        except Exception as e:
+            baixado = None
+            print("  biblioteca falhou: %s" % e, file=sys.stderr)
+        if baixado:
+            lidas = ler_petrobras(baixado)
+            refinarias += lidas
+            print("  %s: %d linhas" % (os.path.basename(baixado), len(lidas)))
+        else:
+            print("  nada encontrado — só a Acelen entra.", file=sys.stderr)
 
     if refinarias:
         por_empresa = {}

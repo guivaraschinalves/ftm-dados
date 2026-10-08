@@ -10,3 +10,5 @@ __pycache__/
 dados/precos-ponderados-semanais-*.xls
 dados/precos-medios-ponderados-semanais-*.xls
 dados/anp-precos-produtor.csv
+# As tabelas da Petrobras em PDF o script baixa da biblioteca pública deles.
+dados/Tabelas de Preco*.pdf
