@@ -68,9 +68,9 @@
   var cartoes = [];
   // Um arquivo por categoria (IPCA, Dívida Pública…). Cada um traz categoria,
   // fonte, mês de referência e as suas seções; um que faltar é só ignorado.
-  var FONTES = ["dados/ipca.json", "dados/fiscal.json", "dados/divida.json",
-                "dados/tesouro-direto.json", "dados/reservas.json", "dados/moedas.json",
-                "dados/juros.json"];
+  var FONTES = ["dados/moedas.json", "dados/ipca.json", "dados/fiscal.json",
+                "dados/divida.json", "dados/tesouro-direto.json", "dados/juros.json",
+                "dados/reservas.json"];
   // ---------- gate de assinante ----------
   // O site roda em dois lugares: ftm.app.br/interno/dados, onde é para
   // assinante, e guivaraschinalves.github.io/ftm-dados, que segue aberto

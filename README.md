@@ -482,7 +482,9 @@ direita saem na cor dela. `eixo: {alvo: n}` pede n marcas no eixo da esquerda
 grade).
 
 A **ordem das categorias** na página e no menu é a ordem da lista `FONTES` no
-`app.js`, não a ordem alfabética.
+`app.js`, não a ordem alfabética. Hoje: Moedas e câmbio, IPCA, Fiscal, Dívida
+Pública, Tesouro Direto, Juros no Brasil e nos EUA, Ouro e reservas
+internacionais.
 
 As **notas abaixo dos gráficos** são só de metodologia: o que a série é, de que
 código ou aba ela vem, o que a conta faz e onde ela não dá para comparar. Nada

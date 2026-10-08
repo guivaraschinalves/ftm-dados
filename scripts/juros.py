@@ -424,7 +424,7 @@ def g_longo(ntnb, tips, ultimo):
     )
 
 
-def g_longo_dif(geom, arit, ultimo, erro, dias_br, dias_us, comuns):
+def g_longo_dif(geom, ultimo, erro, dias_br, dias_us, comuns):
     return dict(
         id="juros-longo-dif",
         titulo="O diferencial de juro real longo",
@@ -432,37 +432,31 @@ def g_longo_dif(geom, arit, ultimo, erro, dias_br, dias_us, comuns):
         unidade="%",
         fonte=FONTE_LONGO,
         diario=True,
-        series=[
-            serie("Diferencial", LARANJA, geom, rotulo=True),
-            # sem rótulo: o do último ponto cairia em cima do da linha certa,
-            # que está a dois décimos de distância
-            serie("Subtração simples (errada)", CINZA, arit,
-                  traco="pontilhado", largura=4),
-        ],
+        # uma linha só. A subtração simples ficava a pouco mais de um décimo de
+        # distância aqui, encostada na linha certa o gráfico inteiro: não
+        # mostrava o erro, só engrossava a linha. Ela continua desenhada no
+        # cartão de ex-post, onde a distância se enxerga.
+        series=[serie("Diferencial", LARANJA, geom, rotulo=True)],
         nota=(
             "O diferencial é (1 + juro brasileiro) ÷ (1 + juro americano) − 1, e não "
             "a subtração de um pelo outro. **Juro acumula por produto, não por soma**: "
             "quem aplica R$ 1 aqui termina com %s e nos Estados Unidos com %s, e o "
             "ganho de um sobre o outro é o quociente dos dois montantes. Em %s a conta "
-            "certa dá %s.\n\n"
-            "A pontilhada é a subtração, desenhada só para mostrar o tamanho do erro. "
-            "**Ele não tem sinal fixo**, e é aí que se tropeça: a distância entre as duas "
-            "linhas é (juro brasileiro − juro americano) × juro americano ÷ (1 + juro "
-            "americano), de modo que a subtração exagera o diferencial quando a taxa "
-            "americana é positiva e o encurta quando ela é negativa. Nesta série ela "
-            "exagera em até %s (%s, com o TIPS a %s) e encurta em até %s (%s, num dos %d "
-            "dias em que o TIPS real esteve abaixo de zero). No dia mais recente, ela "
-            "exagera em %s\n\n"
-            "As duas linhas só têm ponto no dia em que os dois mercados abriram. "
-            "Feriado brasileiro e feriado americano não coincidem, e por isso %s "
-            "pregões do Tesouro Direto e %s do Tesouro americano ficam de fora: "
-            "sobram %s dias."
+            "certa dá %s, enquanto a subtração daria %s.\n\n"
+            "**O erro da subtração não tem sinal fixo**, e é aí que se tropeça: ele vale "
+            "(juro brasileiro − juro americano) × juro americano ÷ (1 + juro americano), "
+            "de modo que ela exagera o diferencial quando a taxa americana é positiva e "
+            "o encurta quando ela é negativa. Nesta série exagera em até %s (%s, com o "
+            "TIPS a %s) e encurta em até %s (%s, num dos %d dias em que o TIPS real "
+            "esteve abaixo de zero).\n\n"
+            "A linha só tem ponto no dia em que os dois mercados abriram. Feriado "
+            "brasileiro e feriado americano não coincidem, e por isso %s pregões do "
+            "Tesouro Direto e %s do Tesouro americano ficam de fora: sobram %s dias."
             % (("%.4f" % (1 + ultimo["ntnb"] / 100)).replace(".", ","),
                ("%.4f" % (1 + ultimo["tips"] / 100)).replace(".", ","),
-               dia_br(ultimo["dia"]), pct(ultimo["geom"]),
+               dia_br(ultimo["dia"]), pct(ultimo["geom"]), pct(ultimo["arit"]),
                pp(erro["exagera"]), erro["exagera_quando"], pct(erro["exagera_us"]),
                pp(erro["encurta"]), erro["encurta_quando"], erro["negativos"],
-               pp(ultimo["arit"] - ultimo["geom"]),
                mil(dias_br - comuns), mil(dias_us - comuns), mil(comuns))
         ),
     )
@@ -678,7 +672,7 @@ def main():
     secoes = [
         dict(titulo="Juro real longo", graficos=[
             g_longo(ntnb, tips, ultimo_l),
-            g_longo_dif(geom_l, arit_l, ultimo_l, erro_l, len(ntnb), len(tips), len(comuns)),
+            g_longo_dif(geom_l, ultimo_l, erro_l, len(ntnb), len(tips), len(comuns)),
         ]),
         dict(titulo="Juro real ex-post da taxa básica", graficos=[
             g_expost(r_br, r_us, ultimo_e, pico),
