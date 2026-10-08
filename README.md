@@ -714,7 +714,7 @@ durar a transição:
 
 | Endereço | Quem entra | Como é publicado |
 |---|---|---|
-| `ftm.app.br/interno/dados` | **assinante do Follow the Money** | `publicar.yml` manda por rsync para o VPS, e o Caddy serve |
+| `ftm.app.br/interno/dados` | **assinante do Follow the Money** | pelo lps-ftm, depois da migração (ver Publicação, abaixo) |
 | `guivaraschinalves.github.io/ftm-dados` | qualquer um | GitHub Pages, como sempre |
 
 ### Como o portão funciona
@@ -750,18 +750,16 @@ são dois passos, nesta ordem, e **nenhum deles mexe no código**:
    `atualizar.yml` continua rodando (repositório privado consome minutos da
    cota, e ~60 rodadas de 2 min por mês cabem folgado no plano gratuito).
 
-### Publicação no VPS
+### Publicação
 
-`publicar.yml` manda o site por rsync para `/srv/apps/ftm-dados/current`. Vai
-só o que o navegador precisa: `scripts/` e os `.xlsx` ficam de fora — são a
-cozinha, não o prato, e a planilha sozinha tem 2 MB.
+**Este repositório é de testes e não publica no ftm.app.br.** Só o lps-ftm
+publica no domínio (decisão do Keller, 07/10/2026). Para pôr a página no ar,
+ela é levada para o lps-ftm seguindo o guia `docs/MIGRAR_FTM_DADOS.md` de lá:
+página em `public/interno/dados`, scripts em `scripts/ftm-dados`, dados de API
+gerados no deploy agendado e os JSON sempre atrás do portão.
 
-O gatilho tem uma sutileza: além do `push`, ele ouve o **`workflow_run`** do
-"Atualiza os dados". É que aquele workflow commita com o `GITHUB_TOKEN` padrão,
-e o GitHub não deixa push feito com esse token disparar outro workflow — para
-não criar laço infinito. Sem o `workflow_run`, o site no VPS congelaria no
-último commit humano enquanto o repositório continuasse atualizando, que é o
-tipo de falha que parece problema de cache e não é.
+Até essa migração, `ftm.app.br/interno/dados` mostra uma cópia congelada desta
+página, posta à mão, sem atualização de dados.
 
-Precisa dos segredos `DEPLOY_SSH_KEY` e `DEPLOY_KNOWN_HOSTS` (os mesmos do
-lps-ftm) e de `/srv/apps/ftm-dados/current` já criado no servidor.
+O `publicar.yml` saiu deste repositório: ele nunca publicou (não tinha a chave)
+e falhava a cada push.

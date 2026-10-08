@@ -3,9 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Follow the Money — Dados</title>
+  <title>Dados do Follow the Money</title>
   <meta name="description" content="Gráficos do IPCA atualizados automaticamente com dados do BCB e do IBGE.">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <!-- a cor da barra do navegador acompanha o fundo; o script abaixo e o
+       alternarTema() do app.js trocam o valor junto com o tema -->
+  <meta name="theme-color" content="#0b0b0b">
   <script>
     // Tema antes da pintura (sem piscar). Padrão: escuro, como os gráficos do FtM.
     (function () {
@@ -15,6 +18,8 @@
         if (s === "light" || s === "dark") t = s;
       } catch (e) {}
       document.documentElement.setAttribute("data-theme", t);
+      var cor = document.querySelector('meta[name="theme-color"]');
+      if (cor) cor.setAttribute("content", t === "light" ? "#f3f4f5" : "#0b0b0b");
     })();
   </script>
   <script>
@@ -29,7 +34,13 @@
       if (!t) document.documentElement.setAttribute("data-portao", "1");
     })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=30">
+  <!-- As fontes dos sites do Follow the Money (ftm.app.br): Inter no texto e
+       na interface, Newsreader só nos títulos editoriais. Os gráficos seguem
+       com a fonte dos slides, definida no app.js. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,700&display=swap">
+  <link rel="stylesheet" href="styles.css?v=31">
 </head>
 <body>
   <!-- Gate de assinante. Fica escondido e so aparece em ftm.app.br, onde o
@@ -49,14 +60,16 @@
       <p class="gate-texto">Informe o e-mail da sua assinatura Follow the Money para liberar. Seu acesso fica salvo neste aparelho por 30 dias.</p>
       <form class="gate-form" id="gate-form">
         <input class="gate-email" id="gate-email" type="email" placeholder="seu@email.com"
-               required autocomplete="email" inputmode="email" aria-label="E-mail da assinatura">
-        <div class="gate-erro" id="gate-erro" hidden></div>
+               required name="email" autocomplete="email" inputmode="email" spellcheck="false"
+               autocapitalize="off" aria-label="E-mail da assinatura">
+        <div class="gate-erro" id="gate-erro" role="alert" hidden></div>
         <button class="gate-botao" id="gate-botao" type="submit">Liberar acesso</button>
       </form>
     </div>
   </div>
 
   <div class="app" id="app">
+    <a class="pular" href="#topo">Pular para os gráficos</a>
     <aside class="lateral">
       <div class="marca">
         <a class="marca-logo" href="#topo" aria-label="Follow the Money">
@@ -70,22 +83,33 @@
           <svg class="ico-entrar" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9V3h6M21 9V3h-6M3 15v6h6M21 15v6h-6"/></svg>
           <svg class="ico-sair" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6"/></svg>
         </button>
+        <!-- só aparece no celular, onde a lista de temas vira gaveta -->
+        <button type="button" class="icon-btn menu-temas" id="menu-temas" aria-expanded="false" aria-controls="lateral-corpo" aria-label="Abrir a lista de temas">
+          <svg class="ico-abrir" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+          <svg class="ico-fechar" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
       </div>
 
-      <nav class="nav" id="nav" aria-label="Gráficos"></nav>
-
-      <div class="lateral-rodape" id="rodape"></div>
+      <div class="lateral-corpo" id="lateral-corpo">
+        <p class="lateral-rotulo" id="rotulo-temas">Temas</p>
+        <nav class="nav" id="nav" aria-labelledby="rotulo-temas"></nav>
+        <div class="lateral-rodape" id="rodape"></div>
+      </div>
     </aside>
 
     <main class="conteudo" id="topo">
-      <p class="sobrancelha">Follow the Money</p>
-      <h1 class="titulo-pagina">Dados</h1>
-      <p class="lede">Os gráficos do chart book desenhados no navegador, com os números buscados todo dia no Banco Central e no IBGE.</p>
+      <header class="abertura">
+        <p class="sobrancelha">Dados</p>
+        <h1 class="titulo-pagina">A economia em <em>gráficos</em></h1>
+        <p class="lede">Os gráficos do chart book desenhados no navegador, com os números buscados todo dia no Banco Central e no IBGE.</p>
+        <!-- preenchido pelo app.js com o que veio nos arquivos de dados -->
+        <ul class="resumo" id="resumo" hidden></ul>
+      </header>
       <div id="graficos" class="graficos" aria-live="polite">
         <p class="estado">Carregando gráficos…</p>
       </div>
     </main>
   </div>
-  <script src="app.js?v=30"></script>
+  <script src="app.js?v=31"></script>
 </body>
 </html>
