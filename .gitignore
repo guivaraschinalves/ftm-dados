@@ -4,3 +4,9 @@ __pycache__/
 
 # o Relatório Mensal da Dívida é a fonte dos gráficos da dívida: fica no repo
 !dados/*.xlsx
+
+# Preços de combustíveis: os dois .xls da ANP o script baixa sozinho (3 MB),
+# e o CSV é o mesmo dado que já está no .xlsx. Só a planilha fica versionada.
+dados/precos-ponderados-semanais-*.xls
+dados/precos-medios-ponderados-semanais-*.xls
+dados/anp-precos-produtor.csv
