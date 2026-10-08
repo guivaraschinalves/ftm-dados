@@ -603,17 +603,44 @@ compra do real escapa, porque depende do IPCA e não do CPI.
 ## Os juros do Brasil e dos EUA (e o diferencial)
 
 `scripts/juros.py` grava `dados/juros.json` e roda na Action **depois** do
-`tesouro_direto.py` — a NTN-B 2050 sai de `dados/tesouro-direto.json`, e não de
-um segundo download do CSV de 14 MB do Tesouro Transparente. Além de poupar a
-rede, é o que garante que o mesmo papel não apareça com duas taxas em dois
-cartões do site.
+`tesouro_direto.py` — as taxas brasileiras saem de `dados/tesouro-direto.json`,
+e não de um segundo download do CSV de 14 MB do Tesouro Transparente. Além de
+poupar a rede, é o que garante que o mesmo papel não apareça com duas taxas em
+dois cartões do site.
 
 Quatro cartões, em duas seções:
 
-- **Juro real longo** — a NTN-B 2050 contra o TIPS de 30 anos (`DFII30` do
-  FRED), e o diferencial entre os dois. Diário, desde 1/6/2012.
+- **Juro real de mercado** — a NTN-B 2050 contra o TIPS de 30 anos (`DFII30` do
+  FRED), e o **diferencial por prazo**, em 5, 10 e 30 anos, com botão para
+  ligar e desligar cada linha. Diário.
 - **Juro real ex-post da taxa básica** — a Selic deflacionada pelo IPCA contra
   o fed funds deflacionado pelo CPI, e o diferencial. Mensal, desde jan/2000.
+
+### Os três prazos, e por que o de 30 é diferente
+
+| Prazo | Brasil | EUA | Desde |
+|---|---|---|---|
+| 5 anos | Tesouro IPCA+ interpolado | `DFII5` | 15/5/2009 |
+| 10 anos | Tesouro IPCA+ interpolado | `DFII10` | 18/7/2005 |
+| 30 anos | **NTN-B 2050** (papel único) | `DFII30` | 1/6/2012 |
+
+Em 5 e 10 anos as duas pontas são de **prazo constante**: do lado americano o
+TIPS de maturidade constante, do brasileiro a taxa interpolada entre os dois
+vencimentos vizinhos ofertados no dia — a mesma conta do cartão "Tesouro
+IPCA+". É a comparação mais limpa, e a de mais história.
+
+Em 30 anos não há interpolada: o arquivo do Tesouro Direto traz taxa por prazo
+até 20 anos, e acima disso a oferta é rala demais para interpolar sem inventar.
+Ali vale a NTN-B 2050, que é um papel só — tinha 38 anos de prazo em 2012 e tem
+24 hoje, enquanto o `DFII30` é 30 todo dia. Está dito no subtítulo do cartão.
+
+A linha de 5 anos tem um buraco de 94 dias entre 14/5 e 16/8/2018: o Tesouro
+Direto não ofertou papel perto desse prazo ali, e o mesmo buraco já aparece no
+cartão "Tesouro IPCA+". A linha corta em vez de emendar.
+
+**Faltar 20 anos é escolha, não limitação**: o `DFII20` existe e a interpolada
+brasileira de 20 anos também. Ele entra acrescentando uma linha à lista
+`PRAZOS` do script.
 
 ### As três fórmulas
 
@@ -664,9 +691,6 @@ imprime os dois extremos no log.
   janelas de 1999 a Selic de 45% da crise divide a conta com uma inflação que
   só reagiu depois (27,2% de juro real em mai/1999), e antes disso vem a
   hiperinflação (51% em ago/1992).
-- **O prazo não é o mesmo dos dois lados**: o `DFII30` é de maturidade
-  constante e a NTN-B 2050 é um papel só, que tinha 38 anos de prazo em 2012 e
-  tem 24 hoje.
 
 A cada rodada o script confere, e aborta se não fechar: o IPCA de 12 meses
 contra a série 13522 do próprio BC (em termos relativos, senão a

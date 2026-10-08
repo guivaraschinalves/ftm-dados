@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
 Monta dados/juros.json — a categoria "Juros no Brasil e nos EUA": o juro real
-longo que o mercado contrata nos dois países e o juro real ex-post da taxa
-básica de cada um, com o diferencial entre eles.
+que o mercado contrata nos dois países e o juro real ex-post da taxa básica de
+cada um, com o diferencial entre eles.
 
 Uso:
     python3 scripts/juros.py
 
 Só usa a biblioteca padrão. Entra na Action, **depois** do tesouro_direto.py:
-a NTN-B 2050 não é baixada de novo aqui, é lida de dados/tesouro-direto.json
-(ver "DE ONDE VEM A NTN-B", abaixo).
+as taxas brasileiras não são baixadas de novo aqui, são lidas de
+dados/tesouro-direto.json (ver "DE ONDE VEM A TAXA BRASILEIRA", abaixo).
 
 AS QUATRO CONTAS
 
@@ -17,7 +17,8 @@ AS QUATRO CONTAS
      FRED). As duas são taxas reais de mercado — o papel paga a inflação do
      país mais essa taxa —, mas não são cotadas na mesma convenção, e por isso
      não podem ser comparadas como vêm da fonte. Ver "AS DUAS CONVENÇÕES".
-  2. **Diferencial do juro real longo**, pela fórmula de Fisher.
+  2. **Diferencial por prazo**, pela fórmula de Fisher, em 5, 10 e 30 anos,
+     com botão para ligar e desligar cada um. Ver "OS TRÊS PRAZOS".
   3. **Juro real ex-post da taxa básica**: a taxa básica efetivamente paga em
      12 meses, descontada a inflação dos mesmos 12 meses. Ex-post é a inflação
      que já aconteceu — não a esperada.
@@ -74,28 +75,46 @@ números crus é erro de convenção, então o TIPS entra aqui convertido:
 São poucos pontos-base (3,35% viram 3,38% em 6/10/2026), mas o diferencial é
 uma conta de pontos-base. O subtítulo do gráfico avisa da conversão.
 
-O PRAZO NÃO É O MESMO, e não há como fazer que seja. O DFII30 é de maturidade
-constante: 30 anos, todo dia. A NTN-B 2050 é um papel só, que tinha 38 anos de
-prazo quando estreou em 2012 e tem 24 agora. Nas duas pontas da amostra a
-comparação é entre prazos diferentes — o que não invalida nada, porque a curva
-real é quase plana nesse trecho em ambos os países, mas fica dito.
+OS TRÊS PRAZOS do diferencial, e por que o de 30 é diferente dos outros dois.
 
-DE ONDE VEM A NTN-B. Do dados/tesouro-direto.json que o scripts/
+Em **5 e 10 anos** as duas pontas são de prazo constante: do lado americano o
+TIPS de maturidade constante que o Tesouro publica, do brasileiro a taxa
+interpolada entre os dois vencimentos vizinhos ofertados no dia (a mesma conta
+do cartão "Tesouro IPCA+" do site). É a comparação mais limpa que existe aqui,
+e a de mais história: a de 10 anos começa em 2005, contra 2012 da NTN-B 2050.
+
+Em **30 anos** não há interpolada do lado brasileiro: o arquivo do Tesouro
+Direto traz taxa por prazo até 20 anos, e acima disso a oferta é rala demais
+para interpolar sem inventar. Ali vale a NTN-B 2050, que é um papel só — tinha
+38 anos de prazo quando estreou em 2012 e tem 24 agora, enquanto o DFII30 é 30
+todo dia. A comparação é entre prazos que não coincidem; não invalida nada,
+porque a curva real é quase plana nesse trecho nos dois países, mas fica dito,
+e está dito também no subtítulo do cartão.
+
+Faltar 20 anos é escolha, não limitação: o DFII20 existe e a interpolada
+brasileira de 20 anos também. Ele entra acrescentando uma linha a PRAZOS.
+
+DE ONDE VEM A TAXA BRASILEIRA. Do dados/tesouro-direto.json que o scripts/
 tesouro_direto.py acabou de gravar, e não do CSV de 14 MB do Tesouro
 Transparente outra vez. Dois motivos: o arquivo é grande e a Action já o baixou
-no passo anterior; e, principalmente, **a mesma NTN-B 2050 aparece em dois
-cartões do site** (aqui e em "NTN-B por vencimento"), e ler da mesma fonte é o
-que garante que os dois não se contradigam. O preço disso é meio ponto-base: o
-JSON guarda a taxa com duas casas. Se o arquivo estiver velho, o script avisa.
+no passo anterior; e, principalmente, **as mesmas séries aparecem em dois
+cartões do site** (aqui e em "Tesouro IPCA+" / "NTN-B por vencimento"), e ler
+da mesma fonte é o que garante que os dois não se contradigam. O preço disso é
+meio ponto-base: o JSON guarda a taxa com duas casas. Se o arquivo estiver
+velho, o script avisa.
 
 AS SÉRIES
 
   - **NTN-B 2050** — Tesouro IPCA+ com Juros Semestrais, vencimento 15/08/2050,
     média entre a taxa de compra e a de venda da manhã, de 1/6/2012 (estreia)
     em diante. Diária.
-  - **DFII30** — FRED, "Market Yield on U.S. Treasury Securities at 30-Year
-    Constant Maturity, Quoted on an Investment Basis, Inflation-Indexed",
-    diária desde 22/2/2010.
+  - **Tesouro IPCA+ de 5 e 10 anos** — a mesma média de compra e venda,
+    interpolada para o prazo cheio entre os dois vencimentos vizinhos do dia.
+    Desde 15/5/2009 e 18/7/2005.
+  - **DFII5, DFII10 e DFII30** — FRED, "Market Yield on U.S. Treasury
+    Securities at N-Year Constant Maturity, Quoted on an Investment Basis,
+    Inflation-Indexed". As de 5 e 10 anos começam em 2/1/2003; a de 30, em
+    22/2/2010.
   - **Selic acumulada no mês** — SGS 4390, em % no mês. É o juro que de fato
     correu, não a meta do Copom: no ex-post o que importa é o que foi pago.
   - **IPCA** — SGS 433, variação mensal em %.
@@ -151,23 +170,41 @@ FRED_CSV = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=%s"
 SGS = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.%d/dados?formato=json"
 HEADERS_SGS = {"User-Agent": "Mozilla/5.0 (ftm-dados)", "Accept": "application/json"}
 
-TIPS30 = "DFII30"
 FED_FUNDS = "DFF"
 CPI = "CPIAUCNS"
 SELIC_MES = 4390
 IPCA_MES = 433
 IPCA_12M = 13522          # só para conferir a nossa conta de 12 meses
 
-# o cartão e a série de onde sai a NTN-B 2050, em dados/tesouro-direto.json
-CARTAO_NTNB, SERIE_NTNB = "td-ntnb-vencimentos", "2050"
+AZUL, VERMELHO, LARANJA, CINZA, CIANO, ROXO = (
+    "#4F81BD", "#C0504D", "#F79646", "#95A5A6", "#4BACC6", "#8064A2")
+
+# Os prazos do diferencial: rótulo, série do FRED, (cartão, série) de onde sai
+# a taxa brasileira em dados/tesouro-direto.json, e a cor.
+#
+# Em 5 e 10 anos as duas pontas são de **prazo constante**: do lado americano
+# o TIPS de maturidade constante, do brasileiro a taxa interpolada entre os
+# dois vencimentos vizinhos do Tesouro Direto. É a comparação mais limpa que
+# existe, e é a que tem mais história — a de 10 anos começa em 2005, contra
+# 2012 da NTN-B 2050.
+#
+# Em 30 anos não há interpolada: o arquivo do Tesouro Direto traz taxa por
+# prazo até 20 anos, e acima disso a oferta é rala demais para interpolar sem
+# inventar. Ali vale a NTN-B 2050, o mesmo papel do cartão de cima — e por
+# isso o prazo dela anda (38 anos em 2012, 24 hoje) enquanto o do TIPS não.
+PRAZOS = [
+    ("5 anos", "DFII5", ("td-ipca", "5 anos"), CIANO),
+    ("10 anos", "DFII10", ("td-ipca", "10 anos"), ROXO),
+    ("30 anos", "DFII30", ("td-ntnb-vencimentos", "2050"), LARANJA),
+]
+# o prazo que o cartão de nível desenha, e o que dá a data de referência
+PRAZO_LONGO = "30 anos"
 # acima disto o arquivo do Tesouro está velho demais para entrar sem aviso
 DIAS_DE_ATRASO = 7
 
 # primeira janela de 12 meses inteiramente posterior à flutuação do real
 INICIO_EXPOST = "2000-01"
 ANO_DA_FLUTUACAO = "1999"
-
-AZUL, VERMELHO, LARANJA, CINZA = "#4F81BD", "#C0504D", "#F79646", "#95A5A6"
 
 FONTE_LONGO = "Tesouro Nacional, FRED (U.S. Treasury) e FtM"
 FONTE_EXPOST = "Banco Central, IBGE, FRED (Fed e BLS) e FtM"
@@ -238,22 +275,25 @@ def sgs(codigo):
     raise SystemExit("SGS %d não respondeu uma lista: %s" % (codigo, ultimo))
 
 
-def ntnb_2050():
-    """A NTN-B 2050 como o site já a desenha, de dados/tesouro-direto.json."""
+def tesouro_direto():
     if not os.path.exists(TESOURO):
         raise SystemExit("falta %s — rode scripts/tesouro_direto.py antes."
                          % os.path.relpath(TESOURO, RAIZ))
     with open(TESOURO, encoding="utf-8") as f:
-        doc = json.load(f)
+        return json.load(f)
+
+
+def serie_do_tesouro(doc, cartao, nome):
+    """Uma série de dados/tesouro-direto.json, como o site já a desenha."""
     for sec in doc["secoes"]:
         for g in sec["graficos"]:
-            if g["id"] != CARTAO_NTNB:
+            if g["id"] != cartao:
                 continue
             for s in g["series"]:
-                if s["nome"] == SERIE_NTNB:
+                if s["nome"] == nome:
                     return {dia: v for dia, v in s["dados"]}
     raise SystemExit("não achei a série %r do cartão %r em %s — o cartão mudou de nome?"
-                     % (SERIE_NTNB, CARTAO_NTNB, os.path.relpath(TESOURO, RAIZ)))
+                     % (nome, cartao, os.path.relpath(TESOURO, RAIZ)))
 
 
 # ----------------------------------------------------------------- as fórmulas
@@ -418,12 +458,16 @@ def g_longo(ntnb, tips):
 def g_longo_dif(geom):
     return dict(
         id="juros-longo-dif",
-        titulo="O diferencial de juro real longo",
-        subtitulo="(1 + NTN-B 2050) ÷ (1 + TIPS 30 anos) − 1, em % a.a.",
+        titulo="O diferencial de juro real por prazo",
+        subtitulo="(1 + juro real do Brasil) ÷ (1 + juro real dos EUA) − 1, em % a.a.; "
+                  "em 5 e 10 anos as duas pontas são de prazo constante, em 30 anos é a "
+                  "NTN-B 2050 contra o TIPS",
         unidade="%",
         fonte=FONTE_LONGO,
         diario=True,
-        series=[serie("Diferencial", LARANJA, geom, rotulo=True)],
+        selecao=True,
+        series=[serie(nome, cor, geom[nome], rotulo=True)
+                for nome, _, _, cor in PRAZOS if geom.get(nome)],
     )
 
 
@@ -465,20 +509,25 @@ def sem_mes_corrente(serie):
 def main():
     t0 = time.time()
 
-    print("NTN-B 2050, de dados/tesouro-direto.json…")
-    ntnb = ntnb_2050()
-    fim_ntnb = max(ntnb)
-    atraso = (datetime.date.today() - datetime.date.fromisoformat(fim_ntnb)).days
-    print("  %d pregões, de %s a %s" % (len(ntnb), min(ntnb), fim_ntnb))
+    print("Taxas brasileiras, de dados/tesouro-direto.json…")
+    td = tesouro_direto()
+    taxas_br = {}
+    for prazo, _, (cartao, nome), _ in PRAZOS:
+        taxas_br[prazo] = serie_do_tesouro(td, cartao, nome)
+        print("  %-8s %5d pregões, de %s a %s  (%s / %s)"
+              % (prazo, len(taxas_br[prazo]), min(taxas_br[prazo]), max(taxas_br[prazo]), cartao, nome))
+    atraso = (datetime.date.today()
+              - datetime.date.fromisoformat(max(max(s) for s in taxas_br.values()))).days
     if atraso > DIAS_DE_ATRASO:
         print("  AVISO: o arquivo do Tesouro está %d dias atrasado — rode "
               "scripts/tesouro_direto.py antes deste." % atraso, file=sys.stderr)
 
     print("FRED…")
-    tips_cru = fred(TIPS30)
+    tips_cru = {prazo: fred(sid) for prazo, sid, _, _ in PRAZOS}
     dff = fred(FED_FUNDS)
     cpi_diario = fred(CPI)
-    for nome, s in ((TIPS30, tips_cru), (FED_FUNDS, dff), (CPI, cpi_diario)):
+    for nome, s in ([(sid, tips_cru[p]) for p, sid, _, _ in PRAZOS]
+                    + [(FED_FUNDS, dff), (CPI, cpi_diario)]):
         print("  %-10s %6d pontos, até %s" % (nome, len(s), max(s)))
     cpi = sem_mes_corrente({d[:7]: v for d, v in cpi_diario.items()})
 
@@ -489,19 +538,23 @@ def main():
     for nome, s in (("4390 selic", selic), ("433 ipca", ipca), ("13522 ipca12", ipca12_bc)):
         print("  %-14s %4d meses, até %s" % (nome, len(s), max(s)))
 
-    # ---------------- juro real longo
-    tips = {d: efetiva_de_semestral(v) for d, v in tips_cru.items()}
-    comuns = sorted(set(ntnb) & set(tips))
-    if not comuns:
-        raise SystemExit("NTN-B e TIPS não têm um dia em comum — as datas mudaram de formato?")
-    geom_l = {d: diferencial(ntnb[d], tips[d]) for d in comuns}
-    arit_l = {d: ntnb[d] - tips[d] for d in comuns}
-    erro_l = erro_da_formula(geom_l, arit_l, tips, dia_br)
-    d_fim = comuns[-1]
-    print("  longo: %d dias em comum, de %s a %s" % (len(comuns), comuns[0], d_fim))
-    print("    em %s: NTN-B %.2f%%, TIPS %.2f%% (cru %.2f%%) → %.2f%% (subtração: %.2f%%)"
-          % (d_fim, ntnb[d_fim], tips[d_fim], tips_cru[d_fim], geom_l[d_fim], arit_l[d_fim]))
-    print("    %s" % erro_l["resumo"])
+    # ---------------- juro real de mercado, um diferencial por prazo
+    tips = {p: {d: efetiva_de_semestral(v) for d, v in tips_cru[p].items()}
+            for p, _, _, _ in PRAZOS}
+    geom_l = {}
+    for prazo, sid, _, _ in PRAZOS:
+        comuns = sorted(set(taxas_br[prazo]) & set(tips[prazo]))
+        if not comuns:
+            raise SystemExit("%s: Tesouro e %s não têm um dia em comum" % (prazo, sid))
+        geom_l[prazo] = {d: diferencial(taxas_br[prazo][d], tips[prazo][d]) for d in comuns}
+        arit = {d: taxas_br[prazo][d] - tips[prazo][d] for d in comuns}
+        erro = erro_da_formula(geom_l[prazo], arit, tips[prazo], dia_br)
+        f = comuns[-1]
+        print("  %-8s %5d dias em comum, de %s a %s" % (prazo, len(comuns), comuns[0], f))
+        print("    em %s: Brasil %.2f%%, EUA %.2f%% (cru %.2f%%) → %.2f%% (subtração: %.2f%%)"
+              % (f, taxas_br[prazo][f], tips[prazo][f], tips_cru[prazo][f], geom_l[prazo][f], arit[f]))
+        print("    %s" % erro["resumo"])
+    d_fim = max(geom_l[PRAZO_LONGO])
 
     # ---------------- juro real ex-post
     # Cada país por sua conta. Out/2025 não tem CPI — a paralisação do governo
@@ -578,8 +631,8 @@ def main():
 
     # ---------------- documento
     secoes = [
-        dict(titulo="Juro real longo", graficos=[
-            g_longo(ntnb, tips),
+        dict(titulo="Juro real de mercado", graficos=[
+            g_longo(taxas_br[PRAZO_LONGO], tips[PRAZO_LONGO]),
             g_longo_dif(geom_l),
         ]),
         dict(titulo="Juro real ex-post da taxa básica", graficos=[
