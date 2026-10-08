@@ -48,18 +48,27 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (ftm-dados)", "Accept": "application/json"
 def http_json(url, tentativas=6):
     """GET com espera crescente (1,5s, 3s, 6s… até ~24s), como a macro. Não insiste
     em 404. O SGS às vezes responde 200 com corpo vazio quando está sobrecarregado;
-    isso conta como falha e é repetido."""
+    isso conta como falha e é repetido.
+
+    E às vezes ele responde 200 com um **objeto** de erro no lugar da lista de
+    dados. Os dois chamadores daqui esperam lista, e sem este teste o `for` sobre
+    o dict percorreria as chaves e estouraria com "string indices must be
+    integers" — que foi o que derrubou metade das rodadas da Action em outubro de
+    2026. Corpo que não é lista conta como falha e é repetido."""
     ultimo = None
     for i in range(tentativas):
         try:
             req = urllib.request.Request(url, headers=HEADERS)
             with urllib.request.urlopen(req, timeout=90) as r:
-                return json.load(r)
+                corpo = json.load(r)
+            if not isinstance(corpo, list):
+                raise ValueError(f"resposta não é uma lista: {str(corpo)[:120]}")
+            return corpo
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 raise
             ultimo = e
-        except Exception as e:  # rede, timeout, JSON truncado
+        except Exception as e:  # rede, timeout, JSON truncado, corpo de erro
             ultimo = e
         time.sleep(1.5 * 2 ** i)
     raise RuntimeError(f"{url} falhou {tentativas} vezes: {ultimo}")

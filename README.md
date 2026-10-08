@@ -449,10 +449,12 @@ python3 -m http.server 8000   # http://localhost:8000
 index.html  styles.css  app.js
 assets/     fundo.jpg (fundo dos slides do FtM), logo-ftm.svg, favicon.svg
 dados/      ipca.json, fiscal.json, divida.json, reservas.json,
-            tesouro-direto.json (gerados) + o .xlsx do Tesouro e o das reservas
-scripts/    atualizar.py (IPCA), fiscal.py (resultado primário) e
-            tesouro_direto.py (taxas), automáticos; divida.py (dívida) e
-            reservas.py (reservas), dos .xlsx, na mão
+            tesouro-direto.json, moedas.json, juros.json (gerados)
+            + o .xlsx do Tesouro, o das reservas e o das moedas
+scripts/    atualizar.py (IPCA), fiscal.py (resultado primário),
+            tesouro_direto.py (taxas) e juros.py (Brasil × EUA),
+            automáticos; divida.py (dívida), reservas.py (reservas) e
+            moedas.py (câmbio), dos .xlsx, na mão
 .github/workflows/atualizar.yml
 ```
 
@@ -463,7 +465,8 @@ casas fixas também no eixo), eixo X mensal, diário (`diario`),
 trimestral (`trimestral`, chave `"2000-Q1"`) ou por categoria (`categorias`,
 que é como entram as séries anuais — um rótulo por ano), e
 cartões com `variantes`. Por série ainda dá para pedir `largura`, `opacidade`,
-`traco`, `rotulo` (o valor na ponta da linha) e `legenda: false`. Com
+`traco`, `rotulo` (o valor na ponta da linha) e `legenda: false`. A `nota`
+do gráfico aceita vários parágrafos (linha em branco entre eles) e `**negrito**`. Com
 `selecao: true` no gráfico, cada série ganha um botão para ligar e desligar.
 `passoX: n` força o eixo X a um rótulo a cada n meses (o dólar desde 1912 usa
 `120`: o passo que o eixo escolhe sozinho cabe, mas vira um paredão de texto).
@@ -588,6 +591,82 @@ sem diferencial não há câmbio pela PPC, e sem ele não há sobre/(sub)valoriz
 O buraco fica **à vista** nos gráficos — a linha corta e a área se divide em
 dois polígonos. Emendar por cima dele seria inventar o mês. Só o poder de
 compra do real escapa, porque depende do IPCA e não do CPI.
+
+## Os juros do Brasil e dos EUA (e o diferencial)
+
+`scripts/juros.py` grava `dados/juros.json` e roda na Action **depois** do
+`tesouro_direto.py` — a NTN-B 2050 sai de `dados/tesouro-direto.json`, e não de
+um segundo download do CSV de 14 MB do Tesouro Transparente. Além de poupar a
+rede, é o que garante que o mesmo papel não apareça com duas taxas em dois
+cartões do site.
+
+Quatro cartões, em duas seções:
+
+- **Juro real longo** — a NTN-B 2050 contra o TIPS de 30 anos (`DFII30` do
+  FRED), e o diferencial entre os dois. Diário, desde 1/6/2012.
+- **Juro real ex-post da taxa básica** — a Selic deflacionada pelo IPCA contra
+  o fed funds deflacionado pelo CPI, e o diferencial. Mensal, desde jan/2000.
+
+### As três fórmulas que o cartão explica
+
+Nenhuma é a que se faz de cabeça, e é por isso que o cartão as explica:
+
+1. **Juro real** é `(1 + nominal) / (1 + inflação) − 1`, não "nominal menos
+   inflação". Com Selic de 14,63% e IPCA de 4,22% em 12 meses (ago/2026), o
+   real é 9,98% — a subtração daria 10,40%.
+2. **Diferencial** é `(1 + i_br) / (1 + i_us) − 1`, não `i_br − i_us`. O
+   diferencial responde "quanto rende a mais", e render a mais é razão entre
+   montantes, não diferença entre taxas.
+3. **A taxa americana precisa mudar de convenção antes da comparação.** A taxa
+   da NTN-B é efetiva anual; o `DFII30` vem "on an investment basis", nominal
+   anual com capitalização semestral. O script converte por `(1 + y/2)² − 1` —
+   3,35% viram 3,38% em 6/10/2026.
+
+O erro da subtração **não tem sinal fixo**, e é aí que é fácil tropeçar:
+
+```
+subtração − certo = (i_br − i_us) · i_us / (1 + i_us)
+```
+
+Com a taxa americana positiva a subtração exagera o diferencial; com ela
+negativa, encurta. E negativa não é exceção: foi o caso em 188 dos 319 meses do
+ex-post e em 407 dos 3.464 dias do juro longo. O maior erro de toda a série é
+justamente de encurtamento — 0,76 p.p. em set/2022. Os dois cartões de
+diferencial desenham a subtração numa linha pontilhada ao lado, só para mostrar
+o tamanho do erro, e o script recalcula a identidade acima a cada rodada.
+
+### Detalhes que mudam o número
+
+- **Fed funds pela rolagem diária** (`DFF`), com juro simples a/360 por dia
+  corrido, composto — e não a média mensal do `FEDFUNDS` elevada a 1/12, que
+  erra até 0,32 p.p. na taxa de 12 meses.
+- **CPI sem ajuste sazonal** (`CPIAUCNS`): é o índice que dá a inflação de 12
+  meses publicada. O `CPIAUCSL`, ajustado, serve para variação mensal.
+- **Selic acumulada no mês** (SGS 4390), o juro que correu, não a meta do
+  Copom. O mês em curso é descartado: o SGS já publica a parcial dele.
+- **O ex-post começa em jan/2000**, primeira janela de 12 meses inteiramente
+  posterior à flutuação do real (15/1/1999). A conta existe desde 1987, mas nas
+  janelas de 1999 a Selic de 45% da crise divide a conta com uma inflação que
+  só reagiu depois (27,2% de juro real em mai/1999), e antes disso vem a
+  hiperinflação (51% em ago/1992).
+- **O prazo não é o mesmo dos dois lados**: o `DFII30` é de maturidade
+  constante e a NTN-B 2050 é um papel só, que tinha 38 anos de prazo em 2012 e
+  tem 24 hoje.
+
+A cada rodada o script confere, e aborta se não fechar: o IPCA de 12 meses
+contra a série 13522 do próprio BC (em termos relativos, senão a
+hiperinflação estoura qualquer tolerância absoluta), a identidade do erro da
+subtração, e a identidade de que deflacionar cada país e dividir depois dá o
+mesmo que dividir os nominais e descontar a razão das inflações.
+
+### A porta do FRED
+
+O CSV do gráfico (`fredgraph.csv?id=SERIE`) não exige chave e é o mesmo dado da
+API JSON, que exige. **Não mande `User-Agent` de navegador**: o FRED trava
+(timeout, não 403) quando a requisição se identifica como um. O conector MCP
+que o FRED lançou em outubro de 2026 (`mcp.stlouisfed.org`) é para um
+assistente conversar com o acervo; numa Action, sem assistente nenhum, o
+caminho continua sendo o CSV.
 
 ## Onde o site mora, e o portão de assinante
 

@@ -37,6 +37,11 @@ jobs:
       - name: Tesouro Direto — taxas por prazo
         run: python scripts/tesouro_direto.py
 
+      # Depende do passo de cima: a NTN-B 2050 sai de dados/tesouro-direto.json,
+      # para que o mesmo papel não apareça com duas taxas em dois cartões.
+      - name: Juros — Brasil e EUA (Tesouro, SGS e FRED)
+        run: python scripts/juros.py
+
       - name: Commita, se algum número mudou
         run: |
           if git diff --quiet -- dados; then

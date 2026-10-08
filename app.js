@@ -69,7 +69,8 @@
   // Um arquivo por categoria (IPCA, Dívida Pública…). Cada um traz categoria,
   // fonte, mês de referência e as suas seções; um que faltar é só ignorado.
   var FONTES = ["dados/ipca.json", "dados/fiscal.json", "dados/divida.json",
-                "dados/tesouro-direto.json", "dados/reservas.json", "dados/moedas.json"];
+                "dados/tesouro-direto.json", "dados/reservas.json", "dados/moedas.json",
+                "dados/juros.json"];
   // ---------- gate de assinante ----------
   // O site roda em dois lugares: ftm.app.br/interno/dados, onde é para
   // assinante, e guivaraschinalves.github.io/ftm-dados, que segue aberto
@@ -1327,7 +1328,18 @@
 
     cartao.frame = html("div", { "class": "frame" });
     raiz.appendChild(cartao.frame);
-    if (g.nota) raiz.appendChild(html("p", { "class": "nota", texto: g.nota }));
+    // a nota aceita parágrafos (linha em branco entre eles) e **negrito**. Notas
+    // de um parágrafo só, sem asterisco, caem no mesmo lugar de sempre.
+    if (g.nota) {
+      g.nota.split(/\n\s*\n/).forEach(function (paragrafo) {
+        var p = html("p", { "class": "nota" });
+        paragrafo.split(/\*\*/).forEach(function (pedaco, i) {
+          if (!pedaco) return;
+          p.appendChild(i % 2 ? html("b", { texto: pedaco }) : document.createTextNode(pedaco));
+        });
+        raiz.appendChild(p);
+      });
+    }
 
     // fechado não tem largura: o desenho espera o cartão abrir
     raiz.addEventListener("toggle", function () {

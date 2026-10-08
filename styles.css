@@ -191,6 +191,8 @@ details[open] > summary > .seta, details[open] > .nav-rotulo > .seta, details[op
 .frame svg { display: block; width: 100%; height: auto; touch-action: pan-y; }
 .nota { margin: 0; padding: 10px 14px; color: var(--ink-2); font-size: 14px; border-top: 1px solid var(--border); }
 .card > .nota:last-child { border-radius: 0 0 13px 13px; }
+/* nota de vários parágrafos: a linha divisória é só a do primeiro */
+.nota + .nota { border-top: 0; padding-top: 0; }
 
 .sr-only {
   position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
