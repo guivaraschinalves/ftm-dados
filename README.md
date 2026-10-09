@@ -600,6 +600,51 @@ O buraco fica **à vista** nos gráficos — a linha corta e a área se divide e
 dois polígonos. Emendar por cima dele seria inventar o mês. Só o poder de
 compra do real escapa, porque depende do IPCA e não do CPI.
 
+### Os leilões, no fim da categoria
+
+`scripts/leiloes.py` é um **módulo**, não um script solto: quem grava o
+`dados/divida.json` continua sendo o `divida.py`, que chama `secoes()` dele e
+põe o resultado por último. Por isso o `divida.py` entrou na Action — os
+leilões andam todo pregão, enquanto o resto da categoria vem do relatório
+mensal.
+
+A fonte é o "Resultado dos leilões da DPMFi" do Tesouro Transparente: **19.891
+leilões, de 4/1/2000 ao último pregão**, uma aba por ano. Existe em `.xls` e
+em `.xlsx` no mesmo caminho, e aqui vale o `.xlsx`, que a classe `Planilha` do
+`divida.py` lê sem dependência nenhuma.
+
+Cinco cartões: colocação (vendido ÷ ofertado), taxa contratada, prazo do que
+foi vendido, perfil por indexador e a venda ao Banco Central.
+
+**O que não dá para fazer, e por quê:**
+
+- **Bid-to-cover não existe.** O arquivo traz o ofertado e o vendido, nunca o
+  total proposto pelo mercado. O termômetro possível é a colocação.
+- **Cauda de leilão também não.** A diferença entre taxa de corte e taxa média
+  tem mediana de 0,0 ponto-base e máximo de 0,4 em 19 mil leilões — as taxas
+  vêm arredondadas a quatro casas da fração e a dispersão se perde. Seria uma
+  linha reta em zero.
+- **A LFT fica fora do gráfico de taxa**: a "taxa" dela é ágio sobre a Selic
+  (0,1065% em jan/2026), não juro. No mesmo eixo das outras três, some.
+
+**Três armadilhas dos dados**, todas tratadas no script:
+
+1. **A venda ao Banco Central não é fatia da venda pública, é colocação a
+   mais.** Em 791 das 1.033 linhas em que aparece, a quantidade do Bacen é
+   maior que a vendida ao mercado — às vezes maior que a própria oferta. O PU
+   é o mesmo, então sai pelo preço que o leilão formou, mas fora do volume
+   ofertado. A fatia é calculada sobre o total colocado, e o script confere os
+   dois PU a cada rodada.
+2. **159 segundas voltas entre 2003 e 2007 registram venda com a oferta em
+   branco.** Somar essa venda a um denominador que não a inclui inflaria a
+   colocação, então a linha sai inteira da conta.
+3. **O eixo de categorias quer o índice, não o rótulo.** A chave de cada ponto
+   é a posição do ano na lista; com o ano como chave o `app.js` procura
+   `categorias[2000]` e o eixo sai sem rótulo nenhum.
+
+O gráfico do Banco Central é **anual**, não mensal: mês a mês a fatia pula de
+0% a 77%, porque a venda ao Bacen é episódica.
+
 ## Os juros do Brasil e dos EUA (e o diferencial)
 
 `scripts/juros.py` grava `dados/juros.json` e roda na Action **depois** do

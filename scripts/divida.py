@@ -506,6 +506,7 @@ def achar_planilha():
 
 
 def main():
+    import leiloes                      # aqui dentro: leiloes.py importa daqui
     caminho = sys.argv[1] if len(sys.argv) > 1 else achar_planilha()
     print("Lendo", os.path.relpath(caminho, RAIZ))
     p = Planilha(caminho)
@@ -526,7 +527,10 @@ def main():
         dict(titulo="Custo", graficos=custo(p)),
     ]
 
-    # mês de referência: o último mês de dados que não é vencimento futuro
+    # mês de referência: o último mês de dados que não é vencimento futuro.
+    # Conta só o que vem do Relatório da Dívida — os leilões, que entram
+    # depois, andam todo dia e fariam a categoria dizer "out/2026" enquanto os
+    # outros quinze gráficos param no fechamento do relatório.
     ref = ""
     for sec in secoes:
         for gr in sec["graficos"]:
@@ -536,6 +540,11 @@ def main():
                 for s in v["series"]:
                     if s["dados"] and s["dados"][-1][0][0].isdigit():
                         ref = max(ref, s["dados"][-1][0])
+
+    # Os leilões vêm de outra fonte (o arquivo do Tesouro Transparente, não o
+    # Relatório da Dívida) e por isso ficam por último, numa seção própria.
+    print("Leilões do Tesouro…")
+    secoes += leiloes.secoes()
 
     doc = dict(
         atualizado=datetime.date.today().isoformat(),

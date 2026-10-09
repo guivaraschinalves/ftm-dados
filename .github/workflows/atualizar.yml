@@ -42,6 +42,12 @@ jobs:
       - name: Juros — Brasil e EUA (Tesouro, SGS e FRED)
         run: python scripts/juros.py
 
+      # Entrou na Action por causa dos leilões, que andam todo pregão. O resto
+      # da categoria vem do Relatório Mensal da Dívida, que é mensal e chega à
+      # mão — rodar todo dia só reescreve os mesmos números.
+      - name: Dívida Pública — leilões do Tesouro (e o resto do relatório)
+        run: python scripts/divida.py
+
       - name: Commita, se algum número mudou
         run: |
           if git diff --quiet -- dados; then
