@@ -1226,7 +1226,10 @@
       grupoSel.innerHTML = "";
       grupoSel.hidden = !efetivo.selecao;
       if (grupoSel.hidden) return;
-      efetivo.series.forEach(function (s) {
+      // só as séries da legenda ganham botão: a que serve de pano de fundo
+      // leva o nome da sua principal e acende e apaga com ela, então um botão
+      // a mais seria o mesmo botão duas vezes.
+      itensLegenda(efetivo).forEach(function (s) {
         var ligada = !(cartao.desligadas || {})[s.nome];
         var b = html("button", { type: "button", "aria-pressed": String(ligada), title: s.nome });
         b.appendChild(html("span", { "class": "tinta", style: "background:" + s.cor }));
@@ -1234,7 +1237,7 @@
         b.addEventListener("click", function () {
           cartao.desligadas = cartao.desligadas || {};
           var vaiDesligar = !cartao.desligadas[s.nome];
-          var ligadas = comVariante(cartao).series.filter(function (x) { return !cartao.desligadas[x.nome]; });
+          var ligadas = itensLegenda(comVariante(cartao)).filter(function (x) { return !cartao.desligadas[x.nome]; });
           if (vaiDesligar && ligadas.length < 2) return;   // a última não desliga
           if (vaiDesligar) cartao.desligadas[s.nome] = true;
           else delete cartao.desligadas[s.nome];

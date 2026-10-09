@@ -250,15 +250,57 @@ def serie(nome, cor, dados, casas=2, **extra):
                        for v in [dados[m]]], **extra)
 
 
+# Quantos meses entram na média móvel, e quantos deles têm de existir para o
+# ponto sair. A janela é de CALENDÁRIO, não de observações: mês em que o
+# Tesouro não ofertou aquele papel é buraco de verdade, e tratá-lo como se
+# fosse o mês seguinte esticaria a janela sem avisar. Seis meses tiram o ruído
+# do mês a mês — na colocação a variação mensal mediana é de 5 a 9 p.p., e no
+# prazo da NTN-B chega a 2,1 anos — sem apagar a virada. Com menos de quatro
+# meses dentro da janela o ponto não sai.
+JANELA = 6
+MINIMO_NA_JANELA = 4
+
+
+def num_mes(m):
+    """"AAAA-MM" → número do mês, para andar na janela sem lidar com virada
+    de ano."""
+    return int(m[:4]) * 12 + int(m[5:7])
+
+
+def media_movel(dados, janela=JANELA, minimo=MINIMO_NA_JANELA):
+    """{mês: média dos últimos `janela` meses de calendário}."""
+    por_num = {num_mes(m): v for m, v in dados.items()}
+    fora = {}
+    for m in dados:
+        n = num_mes(m)
+        dentro = [por_num[k] for k in range(n - janela + 1, n + 1) if k in por_num]
+        if len(dentro) >= minimo:
+            fora[m] = sum(dentro) / len(dentro)
+    return fora
+
+
+def com_media_movel(por, papeis):
+    """O mês cheio ao fundo, fino e apagado, e a média móvel por cima. As duas
+    levam o mesmo nome: é por nome que o botão de ligar e desligar série
+    funciona, então o par acende e apaga junto, e só a média vai para a
+    legenda."""
+    fundo = [serie(p, cor, por[p], largura=2, opacidade=0.28, legenda=False)
+             for p, cor in papeis if por.get(p)]
+    linha = [serie(p, cor, media_movel(por[p]), rotulo=True)
+             for p, cor in papeis if por.get(p)]
+    return fundo + linha
+
+
 def g_colocacao(vendas):
     por = razao_mensal(vendas, "venda", "oferta", [p for p, _ in PAPEIS])
     return dict(
         id="divida-leilao-colocacao",
         titulo="Quanto do ofertado o Tesouro consegue colocar",
-        subtitulo="Quantidade vendida ÷ ofertada nos leilões de venda, por mês e por "
-                  "papel, em %; inclui 1.ª e 2.ª voltas",
+        subtitulo="Quantidade vendida ÷ ofertada nos leilões de venda, por papel, em "
+                  "%; média móvel de 6 meses, com o mês cheio ao fundo; inclui 1.ª e "
+                  "2.ª voltas",
         unidade="%", selecao=True,
-        series=[serie(p, cor, por[p], rotulo=True) for p, cor in PAPEIS if por.get(p)],
+        series=com_media_movel(por, PAPEIS),
     )
 
 
@@ -290,13 +332,18 @@ def g_prazo(vendas):
         a[0] += pz * l["financeiro"]
         a[1] += l["financeiro"]
     geral = {m: s / w for m, (s, w) in acc.items() if w}
-    series = [serie("Todos os papéis", CINZA, geral, rotulo=True, largura=5)]
-    series += [serie(p, cor, por[p], rotulo=True) for p, cor in PAPEIS if por.get(p)]
+    series = [serie("Todos os papéis", CINZA, geral, largura=2, opacidade=0.28,
+                    legenda=False)]
+    series += [serie(p, cor, por[p], largura=2, opacidade=0.28, legenda=False)
+               for p, cor in PAPEIS if por.get(p)]
+    series += [serie("Todos os papéis", CINZA, media_movel(geral), rotulo=True, largura=5)]
+    series += [serie(p, cor, media_movel(por[p]), rotulo=True)
+               for p, cor in PAPEIS if por.get(p)]
     return dict(
         id="divida-leilao-prazo",
         titulo="O prazo do que foi vendido em leilão",
         subtitulo="Anos entre a liquidação e o vencimento, ponderado pelo financeiro de "
-                  "cada leilão, por mês",
+                  "cada leilão; média móvel de 6 meses, com o mês cheio ao fundo",
         unidade="anos", selecao=True, series=series,
     )
 
