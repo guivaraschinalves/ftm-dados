@@ -19,3 +19,5 @@ dados/Tabelas de Preco*.pdf
 # O histórico de leilões (1,4 MB, muda a cada pregão) o leiloes.py baixa do
 # Tesouro Transparente a cada rodada.
 dados/leiloes-tesouro.xlsx
+# O PPI da ANP (740 KB) o scripts/defasagem.py baixa sozinho.
+dados/ppi-anp.xlsx
