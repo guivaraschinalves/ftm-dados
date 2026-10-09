@@ -65,7 +65,9 @@ import time
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from divida import Planilha, AZUL, VERMELHO, VERDE, ROXO, CIANO, LARANJA, CINZA  # noqa: E402
+from divida import (Planilha, AZUL, VERMELHO, VERDE, ROXO, CIANO, LARANJA,  # noqa: E402
+                    CINZA, AZUL_ESCURO, VINHO, OLIVA, AREIA, PETROLEO, AMARELO,
+                    MESES)
 
 RAIZ = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 ARQUIVO = os.path.join(RAIZ, "dados", "leiloes-tesouro.xlsx")
@@ -89,6 +91,14 @@ FAMILIA = {"LFT": "Pós-fixado (Selic)", "LTN": "Prefixado", "NTN-F": "Prefixado
 CORES_FAMILIA = {"Pós-fixado (Selic)": LARANJA, "Prefixado": AZUL,
                  "Índice de preços": VERDE, "Câmbio": CINZA}
 ANO = 365.25
+
+# Os papéis que ganham cartão de taxa por vencimento, e o ano a partir do qual
+# um vencimento conta como "em oferta".
+POR_VENCIMENTO = ["LTN", "NTN-F", "NTN-B"]
+DESDE = 2024
+# até treze linhas num cartão só: a curva inteira em oferta, uma cor por prazo
+PALETA = [VERMELHO, LARANJA, AMARELO, OLIVA, VERDE, PETROLEO, CIANO,
+          AZUL, AZUL_ESCURO, ROXO, VINHO, AREIA, CINZA]
 
 
 def baixar():
@@ -351,6 +361,118 @@ def g_bacen(vendas):
     )
 
 
+def g_taxa_por_vencimento(vendas, hoje):
+    """A taxa de corte de cada vencimento em oferta, leilão a leilão.
+
+    É a taxa de CORTE, não a média: é a que o mercado acompanha, porque é o
+    pior preço que o Tesouro aceitou — e é a que as tabelas de leilão que
+    circulam publicam. A diferença para a média é de meio ponto-base.
+
+    Entram os vencimentos leiloados desde %d que ainda não venceram; os já
+    vencidos encurtariam o cartão sem acrescentar nada. Só 1.ª volta: a 2.ª
+    sai pela mesma taxa e duplicaria o ponto.""" % DESDE
+    variantes = []
+    for papel in POR_VENCIMENTO:
+        linhas = [l for l in vendas
+                  if l["titulo"] == papel and l["corte"] > 0 and "1.ª" in l["volta"]
+                  and l["data"].year >= DESDE and l["vencimento"] > hoje]
+        vencs = sorted({l["vencimento"] for l in linhas})
+        if not vencs:
+            continue
+        series = []
+        for i, v in enumerate(vencs):
+            pontos = {l["data"].isoformat(): l["corte"] for l in linhas if l["vencimento"] == v}
+            # o rótulo é o vencimento em português: "jan/31", não "Jan/31"
+            series.append(dict(nome="%s/%s" % (MESES[v.month - 1], str(v.year)[-2:]),
+                               cor=PALETA[i % len(PALETA)],
+                               dados=[[d, round(x, 4)] for d, x in sorted(pontos.items())]))
+        variantes.append(dict(rot=papel, series=series, unidade="%", selecao=True))
+    return dict(
+        id="divida-leilao-taxa-vencimento",
+        titulo="A taxa de corte, vencimento a vencimento",
+        subtitulo="Taxa de corte de cada leilão de 1.ª volta, por vencimento em oferta, "
+                  "% a.a.; na NTN-B é taxa real",
+        unidade="%", diario=True, eixo=dict(zero=False),
+        # o padrão do eixo diário corta a linha em buraco de mais de 6 dias, o
+        # que faz sentido para cotação de todo pregão e nenhum para leilão: o
+        # mesmo vencimento volta a leilão a cada 7 ou 14 dias (1.045 dos 1.201
+        # intervalos desde 2024), e com 6 a linha virava poeira — 98% dos
+        # trechos cortados. Com 28 a cadência fica ligada e as 25 ausências de
+        # verdade, em que o papel saiu de oferta, continuam aparecendo.
+        buracoMax=28,
+        variantes=variantes,
+    )
+
+
+# ------------------------------------------------- o acervo da Anbima
+
+# A taxa indicativa do mercado secundário, que é a régua certa para dizer se o
+# Tesouro pagou caro num leilão. O arquivo diário é público e não pede
+# cadastro — mas o nome é aammdd, não ddmmaa, e **a Anbima só guarda cerca de
+# um mês**: 15/09/2026 responde, 01/09/2026 já é 404. Por isso existe este
+# acervo: cada rodada baixa os dias que faltam da janela e acumula num JSON
+# versionado. Dia não arquivado é dia perdido para sempre.
+#
+# O acervo ainda não vira gráfico: com um mês de história não dá. Ele existe
+# para que daqui a alguns meses dê.
+ANBIMA_URL = "https://www.anbima.com.br/informacoes/merc-sec/arqs/ms%s.txt"
+ANBIMA_ACERVO = os.path.join(RAIZ, "dados", "anbima-indicativas.json")
+ANBIMA_JANELA = 40                      # dias corridos para trás que valem tentar
+ANBIMA_PAPEIS = ("LTN", "NTN-F", "NTN-B")
+NAVEGADOR_ANBIMA = {"User-Agent": "Mozilla/5.0 (ftm-dados)"}
+
+
+def arquivar_anbima(hoje):
+    """Baixa os dias que faltam da janela e devolve o acervo inteiro."""
+    import urllib.error
+    import urllib.request
+    try:
+        with open(ANBIMA_ACERVO, encoding="utf-8") as f:
+            acervo = json.load(f)
+    except (IOError, ValueError):
+        acervo = {}
+    novos = faltaram = 0
+    for n in range(ANBIMA_JANELA):
+        d = hoje - datetime.timedelta(days=n)
+        if d.weekday() >= 5 or d.isoformat() in acervo:
+            continue
+        req = urllib.request.Request(ANBIMA_URL % d.strftime("%y%m%d"),
+                                     headers=NAVEGADOR_ANBIMA)
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                bruto = r.read().decode("latin-1")
+        except urllib.error.HTTPError as e:
+            if e.code == 404:           # feriado, ou dia fora da janela deles
+                faltaram += 1
+                continue
+            raise
+        except Exception as e:
+            print("  Anbima %s: %s" % (d, e), file=sys.stderr)
+            continue
+        dia = {}
+        for linha in bruto.splitlines():
+            c = linha.split("@")
+            if len(c) > 7 and c[0] in ANBIMA_PAPEIS:
+                try:
+                    venc = datetime.datetime.strptime(c[4], "%Y%m%d").date()
+                    dia["%s|%s" % (c[0], venc.isoformat())] = float(c[7].replace(",", "."))
+                except ValueError:
+                    continue
+        if dia:
+            acervo[d.isoformat()] = dia
+            novos += 1
+        time.sleep(0.4)
+    if novos:
+        with open(ANBIMA_ACERVO, "w", encoding="utf-8") as f:
+            json.dump(acervo, f, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+            f.write("\n")
+    dias = sorted(acervo)
+    print("  Anbima: %d dias no acervo (%s a %s), %d novos, %d sem arquivo"
+          % (len(dias), dias[0] if dias else "—", dias[-1] if dias else "—",
+             novos, faltaram))
+    return acervo
+
+
 def secoes():
     """A seção de leilões, para o divida.py pôr no fim de dados/divida.json."""
     leiloes = ler()
@@ -359,11 +481,15 @@ def secoes():
     dias = sorted({l["data"] for l in leiloes})
     print("  leilões: %d (%d de venda), de %s a %s" %
           (len(leiloes), len(vendas), dias[0], dias[-1]))
+    try:
+        arquivar_anbima(datetime.date.today())
+    except Exception as e:                 # acervo é acúmulo, não bloqueia nada
+        print("  Anbima falhou: %s" % e, file=sys.stderr)
     print("  conferido: o Bacen paga o preço do leilão em %d de %d linhas"
           % (conferidas - fora, conferidas))
     return [dict(titulo="Leilões", graficos=[
-        g_colocacao(vendas), g_taxa(vendas), g_prazo(vendas),
-        g_perfil(vendas), g_bacen(vendas),
+        g_colocacao(vendas), g_taxa(vendas), g_taxa_por_vencimento(vendas, dias[-1]),
+        g_prazo(vendas), g_perfil(vendas), g_bacen(vendas),
     ])]
 
 

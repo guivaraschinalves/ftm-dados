@@ -645,6 +645,38 @@ foi vendido, perfil por indexador e a venda ao Banco Central.
 O gráfico do Banco Central é **anual**, não mensal: mês a mês a fatia pula de
 0% a 77%, porque a venda ao Bacen é episódica.
 
+#### A taxa de corte, vencimento a vencimento
+
+O sexto cartão é o que circula nas tabelas de leilão: a **taxa de corte** (não
+a média — a diferença é de meio ponto-base, mas é a de corte que se publica)
+de cada vencimento em oferta, leilão a leilão, com variante por papel (LTN,
+NTN-F, NTN-B) e botão por vencimento. Entram os vencimentos leiloados desde
+2024 que ainda não venceram, e só a 1.ª volta.
+
+**`buracoMax=28` não é enfeite.** O padrão do eixo diário corta a linha em
+buraco de mais de 6 dias, o que serve para cotação de todo pregão e destrói um
+gráfico de leilão: o mesmo vencimento volta a leilão a cada 7 ou 14 dias
+(1.045 dos 1.201 intervalos desde 2024), e com 6 o cartão virava poeira — 98%
+dos trechos cortados. Com 28, a cadência fica ligada e as 25 ausências de
+verdade continuam aparecendo.
+
+#### O acervo da Anbima
+
+`dados/anbima-indicativas.json` é um acervo que **só cresce**: a cada rodada o
+script baixa os dias que faltam e acumula. Ele existe porque a Anbima publica
+a taxa indicativa do secundário num arquivo diário público — sem cadastro —
+mas **só guarda cerca de um mês**. Dia não arquivado é dia perdido.
+
+Duas armadilhas: o nome do arquivo é `ms{aammdd}.txt`, **não** ddmmaa (é o que
+fazia todas as minhas tentativas darem 404), e o campo que interessa é a
+*Tx. Indicativas*, a oitava coluna, separada por `@`.
+
+Ainda não vira gráfico — com um mês de história não dá. Existe para que daqui
+a alguns meses dê. **E já mudou um número:** medido contra o Tesouro Direto, o
+leilão parecia sair 5,1 p.b. acima do mercado; medido contra a Anbima, sai
++0,5. Os 4,5 p.b. de diferença eram o spread do varejo do TD, não concessão do
+Tesouro.
+
 ## Os juros do Brasil e dos EUA (e o diferencial)
 
 `scripts/juros.py` grava `dados/juros.json` e roda na Action **depois** do
