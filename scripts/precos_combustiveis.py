@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Monta dados/precos-combustiveis.xlsx — a planilha de trabalho com o preço dos
-combustíveis cobrado das distribuidoras. Duas séries, de origens diferentes:
+combustíveis cobrado das distribuidoras, e com a composição do preço na bomba.
+Séries de origens diferentes:
 
   1. **ANP, produtores e importadores** — média ponderada semanal por região,
      de 2002 em diante, sem ICMS. É a série longa, e cobre o mercado inteiro
@@ -9,6 +10,10 @@ combustíveis cobrado das distribuidoras. Duas séries, de origens diferentes:
   2. **Petrobras, por UF** — o preço que a própria Petrobras publica, por
      ponto de entrega, de agosto de 2019 em diante. É a série curta, e é a
      única que desce ao estado.
+  3. **Composição do preço ao consumidor** — refinaria, biocombustível,
+     tributos e margens, da ANP com dados do MME. Semanal para o Brasil e
+     mensal por região; quem faz a leitura é scripts/composicao_anp.py, que
+     explica no cabeçalho por que são dois recortes e não um.
 
 Uso:
     python3 scripts/precos_combustiveis.py
@@ -69,6 +74,8 @@ import glob
 import json
 import os
 import sys
+
+import composicao_anp
 
 RAIZ = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 DADOS = os.path.join(RAIZ, "dados")
@@ -428,7 +435,7 @@ def aba(wb, titulo, cabecalho, linhas, larguras=None, formato=None):
     return ws
 
 
-def escrever(anp, refinarias, hoje):
+def escrever(anp, refinarias, composicao, hoje):
     from openpyxl import Workbook
     wb = Workbook()
     wb.remove(wb.active)
@@ -449,6 +456,15 @@ def escrever(anp, refinarias, hoje):
          "R$/litro, sem tributos", "Petrobras ago/2019, Acelen dez/2021"],
         ["Refinarias detalhe", "O dado cru: ponto de entrega × modalidade × vigência",
          "idem", "R$/litro, sem tributos", "idem"],
+        ["Composição semanal", "Quanto do preço na bomba é refinaria, biocombustível, "
+                               "imposto e margem — só Brasil",
+         "ANP, Síntese Semanal (dados do MME)", "R$/litro (GLP: R$/13kg)",
+         "2023 em diante, semanal"],
+        ["Composição regiões", "A mesma conta com corte regional, uma semana por mês",
+         "ANP, Composição e estruturas de formação dos preços (dados do MME)",
+         "R$/litro (GLP: R$/13kg)", "2018 em diante, mensal"],
+        ["Composição (largo)", "As duas acima, um item por coluna",
+         "idem", "idem", "idem"],
         [],
         ["ATENÇÃO — as duas séries NÃO estão na mesma base tributária:"],
         ["ANP", "o próprio arquivo diz só '(Não inclui ICMS)': PIS/Cofins e CIDE "
@@ -489,6 +505,28 @@ def escrever(anp, refinarias, hoje):
          "quando deixa de ser vendido ali."],
         ["Ao arrastar o último preço para a frente (step), ponha um limite — senão "
          "você compara um preço de 2021 com um de hoje."],
+        [],
+        ["SOBRE A COMPOSIÇÃO DO PREÇO"],
+        ["Semanal só tem Brasil; por região só tem uma semana por mês. Não é "
+         "metodologia diferente — a fonte é a mesma (o"],
+        ["Relatório do Mercado de Derivados de Petróleo, do MME) —, é o que a ANP "
+         "escolheu publicar em cada lugar."],
+        ["O componente de refinaria é LIVRE DE TRIBUTOS: os federais e os estaduais "
+         "são linhas à parte. A série de produtores"],
+        ["das abas 'ANP semanal' e 'ANP Brasil (largo)' INCLUI PIS/Cofins e CIDE, "
+         "então as duas não são comparáveis direto."],
+        ["Na gasolina o componente não é um litro de gasolina A: é a parcela de "
+         "gasolina A (70%) num litro de gasolina C —"],
+        ["e o mesmo vale para o etanol anidro (30%) e para a mistura de biodiesel no "
+         "diesel, cuja proporção mudou várias vezes."],
+        ["A margem é BRUTA e sai por resíduo: é o que sobra do preço ao consumidor "
+         "depois dos outros itens, então carrega"],
+        ["frete, custo operacional e lucro, de distribuidora e de posto juntos. Em "
+         "alguns meses a ANP a divide em duas"],
+        ["(distribuição + transporte, e revenda); em outros publica uma só."],
+        ["GLP está em R$ por botijão de 13 kg, não por litro."],
+        ["O arquivo de setembro de 2020 saiu com a semana de referência de agosto, "
+         "repetida; sem data confiável, ficou fora."],
     ]:
         leia.append(linha)
     from openpyxl.styles import Font
@@ -534,8 +572,61 @@ def escrever(anp, refinarias, hoje):
             larguras=[11, 14, 12, 6, 12, 28, 11, 22, 14],
             formato={3: "DD/MM/YYYY", 7: "0.00000"})
 
+    if composicao:
+        sem, reg = composicao
+        aba(wb, "Composição semanal",
+            ["produto", "semana", "item", "R$", "% do preço", "preço ao consumidor"],
+            [(p, dia_iso(f), i, v, v / t if t else None, t)
+             for p, f, i, v, t, _e in sorted(sem, key=lambda l: (l[0], l[1],
+                                                                 ordem_item(l[2])))],
+            larguras=[14, 12, 34, 11, 12, 20],
+            formato={2: "DD/MM/YYYY", 4: "0.0000", 5: "0.0%", 6: "0.0000"})
+        aba(wb, "Composição regiões",
+            ["produto", "semana", "região", "item", "R$", "% do preço", "unidade",
+             "mês da publicação"],
+            [(p, dia_iso(f), r, i, v, pc, un, m)
+             for p, m, _ini, f, r, i, v, pc, un, _a in
+             sorted(reg, key=lambda l: (l[0], l[3],
+                                        composicao_anp.REGIOES.index(l[4]),
+                                        ordem_item(l[5])))],
+            larguras=[14, 12, 14, 34, 11, 12, 11, 18],
+            formato={2: "DD/MM/YYYY", 5: "0.0000", 6: "0.0%"})
+        aba(wb, "Composição (largo)",
+            ["recorte", "produto", "semana", "região"] + composicao_anp.ITENS
+            + [composicao_anp.TOTAL],
+            composicao_larga(sem, reg),
+            larguras=[18, 14, 12, 14] + [20] * (len(composicao_anp.ITENS) + 1),
+            formato={3: "DD/MM/YYYY",
+                     **{i: "0.0000" for i in range(5, 6 + len(composicao_anp.ITENS))}})
+
     wb.save(SAIDA)
     return wb
+
+
+def dia_iso(s):
+    return datetime.date(*(int(x) for x in s.split("-")))
+
+
+def ordem_item(item):
+    """Os itens saem na ordem em que entram no preço, não em ordem alfabética."""
+    todos = composicao_anp.ITENS + [composicao_anp.TOTAL]
+    return (todos.index(item) if item in todos else len(todos), item)
+
+
+def composicao_larga(sem, reg):
+    """Uma linha por (recorte, produto, semana, região), um item por coluna."""
+    linhas = {}
+    for p, f, i, v, t, _e in sem:
+        d = linhas.setdefault(("semanal (Brasil)", p, f, "Brasil"), {})
+        d[i], d[composicao_anp.TOTAL] = v, t
+    for p, _m, _ini, f, r, i, v, _pc, _un, _a in reg:
+        linhas.setdefault(("mensal (regiões)", p, f, r), {})[i] = v
+    colunas = composicao_anp.ITENS + [composicao_anp.TOTAL]
+    ordem = composicao_anp.REGIOES
+    return [[recorte, prod, dia_iso(fim), regiao] + [d.get(c) for c in colunas]
+            for (recorte, prod, fim, regiao), d in
+            sorted(linhas.items(), key=lambda kv: (kv[0][0], kv[0][1], kv[0][2],
+                                                   ordem.index(kv[0][3])))]
 
 
 def main():
@@ -589,7 +680,22 @@ def main():
         for e, c in sorted(mods.items()):
             print("  modalidade escolhida em %s: %s" % (e, dict(sorted(c.items()))))
 
-    escrever(anp, refinarias, hoje)
+    print("Composição do preço, semanal (Síntese da ANP)…")
+    sem = composicao_anp.semanal()
+    print("Composição do preço, por região (planilhas da ANP)…")
+    reg = composicao_anp.por_regiao()
+    for nome, linhas, i_sem in (("semanal", sem, 1), ("regiões", reg, 3)):
+        por_prod = {}
+        for l in linhas:
+            a = por_prod.setdefault(l[0], [l[i_sem], l[i_sem], 0])
+            a[0], a[1] = min(a[0], l[i_sem]), max(a[1], l[i_sem])
+            a[2] += 1
+        for p, (d0, d1, n) in sorted(por_prod.items()):
+            print("  %-9s %-14s %5d linhas, de %s a %s" % (nome, p, n, d0, d1))
+    for p in composicao_anp.conferir(sem, reg):
+        print(p, file=sys.stderr)
+
+    escrever(anp, refinarias, (sem, reg), hoje)
     print("gravado %s (%.0f KB)"
           % (os.path.relpath(SAIDA, RAIZ), os.path.getsize(SAIDA) / 1024))
 

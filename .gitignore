@@ -12,6 +12,9 @@ dados/precos-medios-ponderados-semanais-*.xls
 dados/anp-precos-produtor.csv
 # As tabelas da Petrobras em PDF o script baixa da biblioteca pública deles.
 dados/Tabelas de Preco*.pdf
+# Já os dois acervos de composição (anp-composicao-*.csv) FICAM versionados:
+# refazê-los do zero custa 260 MB de PDF da Síntese Semanal. Veja o cabeçalho
+# de scripts/composicao_anp.py.
 
 # O histórico de leilões (1,4 MB, muda a cada pregão) o leiloes.py baixa do
 # Tesouro Transparente a cada rodada.
