@@ -21,3 +21,6 @@ dados/Tabelas de Preco*.pdf
 dados/leiloes-tesouro.xlsx
 # O PPI da ANP (740 KB) o scripts/defasagem.py baixa sozinho.
 dados/ppi-anp.xlsx
+# Os CSV de vendas, produção e comércio exterior da ANP (13 MB) o
+# scripts/oferta_diesel.py baixa sozinho.
+dados/.cache-anp-oferta/
