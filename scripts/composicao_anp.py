@@ -7,7 +7,7 @@ quanto fica com a distribuidora e o posto.
 Módulo de precos_combustiveis.py — não roda sozinho. Para conferir o leitor
 sem gerar a planilha:
 
-    .venv/bin/python scripts/composicao_anp.py --testar
+    ~/.venvs/dados-economicos/bin/python scripts/composicao_anp.py --testar
 
 DUAS SÉRIES, porque a ANP publica a mesma conta em dois lugares, com recortes
 que não se encontram:

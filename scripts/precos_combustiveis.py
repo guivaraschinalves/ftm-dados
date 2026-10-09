@@ -22,8 +22,11 @@ ESTE SCRIPT NÃO ENTRA NA ACTION e, diferente dos outros, **não é só
 biblioteca padrão**: ele precisa de `openpyxl` (escrever .xlsx) e, para a
 parte da Petrobras, de `pdfplumber` (ler o PDF). Num venv:
 
-    python3 -m venv .venv && .venv/bin/pip install openpyxl pdfplumber
-    .venv/bin/python scripts/precos_combustiveis.py
+    python3 -m venv ~/.venvs/dados-economicos
+    ~/.venvs/dados-economicos/bin/pip install openpyxl xlrd pdfplumber
+    ~/.venvs/dados-economicos/bin/python scripts/precos_combustiveis.py
+
+(esse venv já existe nesta máquina, com os três instalados.)
 
 A saída é uma planilha de trabalho, não fonte de dado do site. Se um dia
 virar gráfico, a conta vira um script de JSON como os outros.
