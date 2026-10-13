@@ -102,12 +102,6 @@ ARQUIVOS = {
 NAVEGADOR = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
                            " (KHTML, like Gecko) Chrome/131.0 Safari/537.36"}
 
-DESEMB = ("https://www.gov.br/anp/pt-br/assuntos/importacoes-e-exportacoes/"
-          "arquivos-desembaracos/desembaraco-%d.xlsx")
-DESEMB_INICIO = 2020
-NCM_GASOLINA = "27101259"      # "outras gasolinas", que é a gasolina A
-DENSIDADE_GASOLINA = 0.74      # t/m³, o fator que a ANP usa para o volumétrico
-
 GASOLINA_A = "GASOLINA A"
 GASOLINA_C = "GASOLINA C"
 MESES = {m: i for i, m in enumerate(
@@ -295,96 +289,25 @@ def por_refinaria():
             k = mes_de(r["ANO"], r["MÊS"])
             acc.setdefault(k, {}).setdefault(nome, 0.0)
             acc[k][nome] += num(r["PRODUÇÃO"])
-    ordem = sorted(plantas, key=lambda t: -sum(d.get(t, 0) for d in acc.values()))
+    ordem = sorted(plantas, key=lambda t: (-sum(d.get(t, 0) for d in acc.values()), t))
     return ordem, [[m] + [acc[m].get(t) for t in ordem] + [sum(acc[m].values())]
                    for m in sorted(acc)]
 
 
-def baixar_desembaraco(ano):
-    os.makedirs(CACHE, exist_ok=True)
-    alvo = os.path.join(CACHE, "desembaraco-%d.xlsx" % ano)
-    if not os.path.exists(alvo) or os.path.getsize(alvo) < 10000:
-        print("  baixando desembaraco-%d.xlsx…" % ano)
-        try:
-            req = urllib.request.Request(DESEMB % ano, headers=NAVEGADOR)
-            with urllib.request.urlopen(req, timeout=300) as r:
-                conteudo = r.read()
-        except Exception as e:
-            print("    sem arquivo para %d (%s)" % (ano, e))
-            return None
-        with open(alvo, "wb") as f:
-            f.write(conteudo)
-    return alvo
+# Tudo o que lê o Relatório de Desembaraços e classifica o importador vive em
+# anp_desembaracos.py, compartilhado com oferta_diesel.py: o download, o
+# layout que muda de ano para ano, a classificação por tipo de agente, o mapa
+# CNPJ→UF e o perfil do fornecimento no formato da FGV.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import anp_desembaracos as ad
 
-
-# Mesma classificação de oferta_diesel.py. A ANP só dá a razão social, então o
-# grupo vem do nome mais o que se sabe da estrutura societária. O braço trading
-# de um grupo vai com o grupo, não com as tradings independentes; a aba por
-# empresa traz o dado cru.
-GRUPOS = (
-    ("Petrobras", ("PETROLEO BRASILEIRO",)),
-    ("refinaria privada", ("REFINARIA DE MANAUS", "REFINARIA DE PETROLEOS DE MANGUINHOS",
-                           "REFINARIA DE MATARIPE", "REFINARIA DE PETROLEO RIOGRANDENSE",
-                           "3R POTIGUAR", "DAX OIL REFINO")),
-    ("central petroquímica", ("BRASKEM",)),
-    ("outros/uso próprio", ("AGGREKO", "ECORI ENERGIA SOLAR", "BSBIOS", "INPASA",
-                            "TEMAPE", "ICE QUIMICA", "HSDC COMERCIO")),
-    ("grupo distribuidor", ("VIBRA ", "IPIRANGA PRODUTOS", "ATEM'S DISTRIBUIDORA",
-                            "ROYAL FIC", "CIAPETRO", "ALESAT", "DISLUB",
-                            "SETTA COMBUSTIVEIS", "FEDERAL ENERGIA", "TDC DISTRIBUIDORA",
-                            "OLIVEIRA ENERGIA", "NFX COMBUSTIVEIS", "POTENCIAL PETROLEO",
-                            "DISTRIBUIDORA", "PETROTORQUE", "REJAILE", "RUMOS", "ON PETRO")),
-)
-# A ordem de GRUPOS é prioridade de busca; CLASSES é a ordem das colunas.
-CLASSES = ["Petrobras", "grupo distribuidor", "trading/importador independente",
-           "refinaria privada", "central petroquímica", "outros/uso próprio"]
-assert set(CLASSES) == {n for n, _ in GRUPOS} | {"trading/importador independente"}
-
-
-def classe_do_importador(nome):
-    for classe, marcas in GRUPOS:
-        if any(m in nome for m in marcas):
-            return classe
-    return "trading/importador independente"
+CLASSES = ad.CLASSES
+nome_legivel = ad.nome_legivel
 
 
 def desembaracos():
-    """{"AAAA-MM": {importador: m³}} de gasolina A, pelo Relatório de
-    Desembaraços."""
-    from openpyxl import load_workbook
-    fora = {}
-    ano = DESEMB_INICIO
-    while ano <= datetime.date.today().year:
-        arq = baixar_desembaraco(ano)
-        if not arq:
-            break
-        wb = load_workbook(arq, read_only=True, data_only=True)
-        ws = wb.worksheets[0]
-        col = None
-        for linha in ws.iter_rows(values_only=True):
-            if col is None:
-                # o layout muda de ano para ano (2025 ganhou "UF DO CNPJ"),
-                # por isso a coluna vem pelo nome e não pela posição
-                if linha and linha[0] == "Mês de desembaraço":
-                    nomes = [str(c).strip() if c else "" for c in linha]
-                    col = (nomes.index("Importador"), nomes.index("NCM"),
-                           next(i for i, n in enumerate(nomes)
-                                if n.startswith("Quantidade")))
-                continue
-            if not isinstance(linha[0], int):
-                continue
-            if str(linha[col[1]]).strip() != NCM_GASOLINA:
-                continue
-            quem, kg = linha[col[0]], linha[col[2]]
-            if not quem or not isinstance(kg, (int, float)):
-                continue
-            k = "%d-%02d" % (ano, linha[0])
-            quem = str(quem).strip().upper()
-            fora.setdefault(k, {}).setdefault(quem, 0.0)
-            fora[k][quem] += kg / 1000.0 / DENSIDADE_GASOLINA
-        wb.close()
-        ano += 1
-    return fora
+    """{"AAAA-MM": {importador: m³}} de gasolina A."""
+    return ad.por_importador(ad.NCM_GASOLINA, CACHE)
 
 
 def por_agente(desemb, imp):
@@ -392,7 +315,7 @@ def por_agente(desemb, imp):
     for m in sorted(desemb):
         soma = {c: 0.0 for c in CLASSES}
         for quem, v in desemb[m].items():
-            soma[classe_do_importador(quem)] += v
+            soma[ad.classe(quem)] += v
         total = sum(soma.values())
         volumetrico = imp.get(m)
         linhas_.append([m] + [soma[c] for c in CLASSES] + [total,
@@ -411,7 +334,7 @@ def por_empresa(desemb, teto=20):
     for d in desemb.values():
         for quem, v in d.items():
             acc[quem] = acc.get(quem, 0.0) + v
-    ordem = sorted(acc, key=lambda q: -acc[q])[:teto]
+    ordem = sorted(acc, key=lambda q: (-acc[q], q))[:teto]
     resto = set(acc) - set(ordem)
     linhas_ = []
     for m in sorted(desemb):
@@ -422,7 +345,43 @@ def por_empresa(desemb, teto=20):
     return ordem, linhas_
 
 
-def escrever(mes, ano, plantas, plantas_linhas, agente_linhas, emp, emp_linhas, hoje):
+def producao_por_grupo():
+    """{(mês, "petrobras"|"outras", região): m³} de gasolina A.
+
+    Por ora a região é sempre "Brasil". O recorte por região esbarra numa
+    questão de método ainda em aberto: a tabela T.1 da FGV aloca o
+    fornecimento ao MERCADO ATENDIDO, não à localização da planta — no
+    Centro-Oeste não há refinaria nenhuma e ainda assim a Petrobras aparece
+    com 95%. Alocar por UF da planta responde outra pergunta, e por isso não
+    está aqui. Quando aparecer a fonte de vendas por produtor e destino, basta
+    trocar "Brasil" pela região."""
+    fora = {}
+    for arq, col, grupo in (("refinarias", "REFINARIA", None),
+                            ("petroquimicas", "CENTRAL PETROQUÍMICA", "outras"),
+                            ("outros", "PRODUTOR", "outras")):
+        for r in linhas(arq):
+            if r["PRODUTO"].strip().upper() != GASOLINA_A:
+                continue
+            m = mes_de(r["ANO"], r["MÊS"])
+            g = grupo or ad.dono(r[col], int(r["ANO"]),
+                                 MESES[r["MÊS"].strip().upper()[:3]])
+            k = (m, g, "Brasil")
+            fora[k] = fora.get(k, 0.0) + num(r["PRODUÇÃO"])
+    return fora
+
+
+def importacao_por_classe(desemb):
+    """{(mês, classe do importador, região): m³}."""
+    fora = {}
+    for m, d in desemb.items():
+        for quem, v in d.items():
+            k = (m, ad.classe(quem), "Brasil")
+            fora[k] = fora.get(k, 0.0) + v
+    return fora
+
+
+def escrever(mes, ano, plantas, plantas_linhas, agente_linhas, emp, emp_linhas,
+             perfil12, perfil1, hoje):
     from openpyxl import Workbook
     from openpyxl.styles import Font
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -443,6 +402,9 @@ def escrever(mes, ano, plantas, plantas_linhas, agente_linhas, emp, emp_linhas, 
         ["Importação por agente", "Quem traz a gasolina de fora, por tipo de agente, "
                                   "desde 2020"],
         ["Importação por empresa", "As 20 maiores importadoras em coluna, desde 2020"],
+        ["Perfil do fornecimento", "Quanto do fornecimento veio de cada agente, em "
+                                   "janela de 12 meses"],
+        ["Perfil mensal", "O mesmo mês a mês, mais ruidoso e sem janela"],
         [],
         ["GASOLINA A, ETANOL ANIDRO E GASOLINA C SÃO COISAS DIFERENTES, e esta planilha "
          "nunca soma uma na outra."],
@@ -559,6 +521,17 @@ def escrever(mes, ano, plantas, plantas_linhas, agente_linhas, emp, emp_linhas, 
            larguras=[9] + [26] * (len(emp) + 2),
            formato={i: m3 for i in range(2, len(emp) + 4)})
 
+    cab_perfil = ["mês", "âmbito", "Refinarias e Centrais Petroquímicas",
+                  "Petrobras", "Outras", "Importações", "Tradings",
+                  "Distribuidores", "volume no período (m³)"]
+    larg_perfil = [9, 9, 32, 12, 12, 13, 12, 15, 21]
+    fmt_perfil = {i: "0.0" for i in range(3, 9)}
+    fmt_perfil[9] = m3
+    pc.aba(wb, "Perfil do fornecimento", cab_perfil, perfil12,
+           larguras=larg_perfil, formato=fmt_perfil)
+    pc.aba(wb, "Perfil mensal", cab_perfil, perfil1,
+           larguras=larg_perfil, formato=fmt_perfil)
+
     wb.save(SAIDA)
 
 
@@ -588,7 +561,18 @@ def main():
               % (a, n, p / 1e3, i / 1e3, e / 1e3, o / 1e3, 100 * (pc_ or 0),
                  100 * (t or 0), "%.0f" % (v / 1e3) if v else "-"))
 
-    escrever(mes, ano, plantas, plantas_linhas, agente_linhas, emp, emp_linhas, hoje)
+    print("Perfil do fornecimento…")
+    prod_g = producao_por_grupo()
+    imp_c = importacao_por_classe(desemb)
+    meses_perfil = sorted({m for m, _, _ in prod_g} | {m for m, _, _ in imp_c})
+    meses_perfil = [m for m in meses_perfil if m >= min(desemb)]
+    perfil12 = ad.perfil(prod_g, imp_c, meses_perfil, janela=12)
+    perfil1 = ad.perfil(prod_g, imp_c, meses_perfil, janela=1)
+    print("  %d pontos em janela de 12 meses, de %s a %s"
+          % (len(perfil12), perfil12[0][0], perfil12[-1][0]))
+
+    escrever(mes, ano, plantas, plantas_linhas, agente_linhas, emp, emp_linhas,
+             perfil12, perfil1, hoje)
     print("\ngravado %s (%.0f KB)"
           % (os.path.relpath(SAIDA, RAIZ), os.path.getsize(SAIDA) / 1024))
 
