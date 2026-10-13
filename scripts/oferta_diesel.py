@@ -47,6 +47,24 @@ O QUE O NÚMERO NÃO É
   - O biodiesel misturado só existe na série da ANP a partir de 2017. Antes
     disso a coluna fica vazia, e "diesel A nas vendas" também — a mistura
     existia (B5 desde 2010), mas o volume não está publicado nesse arquivo.
+
+QUEM IMPORTA
+
+A série volumétrica de comércio exterior não diz quem trouxe a carga. Quem diz
+é o Relatório de Desembaraços, que a ANP monta do Siscomex e publica por
+empresa, e que começa em janeiro de 2020 — antes disso não há dado por agente.
+Ele vem em quilos; a conversão para m³ usa 0,84 t/m³, que é o mesmo fator que a
+própria ANP aplica (a densidade implícita entre os dois arquivos dá 0,840 em
+quase todos os meses, o que mostra que a série volumétrica é este arquivo
+dividido por 0,84).
+
+Duas ressalvas, ambas na coluna de cobertura e no LEIA-ME:
+
+  - O relatório nomeia o IMPORTADOR DE REGISTRO, não o dono final da carga.
+    Trading que importa por conta de distribuidora aparece como trading.
+  - Alguns meses saem incompletos e são completados depois. A coluna
+    "cobertura" é o desembaraçado dividido pelo volumétrico do mesmo mês: onde
+    ela foge de 100%, a abertura por agente daquele mês não fecha com o total.
 """
 import csv
 import datetime
@@ -70,6 +88,13 @@ ARQUIVOS = {
 }
 NAVEGADOR = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
                            " (KHTML, like Gecko) Chrome/131.0 Safari/537.36"}
+
+# Quem importou cada carga. Um .xlsx por ano, o primeiro de 2020.
+DESEMB = ("https://www.gov.br/anp/pt-br/assuntos/importacoes-e-exportacoes/"
+          "arquivos-desembaracos/desembaraco-%d.xlsx")
+DESEMB_INICIO = 2020
+NCM_DIESEL = "27101921"      # gasóleo (óleo diesel); é o único NCM de diesel
+DENSIDADE_DIESEL = 0.84      # t/m³, o fator que a ANP usa para montar o volumétrico
 
 DIESEL = "ÓLEO DIESEL"
 MESES = {m: i for i, m in enumerate(
@@ -244,7 +269,138 @@ def por_refinaria():
                    for m in sorted(acc)]
 
 
-def escrever(mes, ano, tipos, tipos_linhas, refs, refs_linhas, hoje):
+def baixar_desembaraco(ano):
+    """O .xlsx de um ano do Relatório de Desembaraços, ou None se não existe."""
+    os.makedirs(CACHE, exist_ok=True)
+    alvo = os.path.join(CACHE, "desembaraco-%d.xlsx" % ano)
+    if not os.path.exists(alvo) or os.path.getsize(alvo) < 10000:
+        print("  baixando desembaraco-%d.xlsx…" % ano)
+        try:
+            req = urllib.request.Request(DESEMB % ano, headers=NAVEGADOR)
+            with urllib.request.urlopen(req, timeout=300) as r:
+                conteudo = r.read()
+        except Exception as e:
+            print("    sem arquivo para %d (%s)" % (ano, e))
+            return None
+        with open(alvo, "wb") as f:
+            f.write(conteudo)
+    return alvo
+
+
+# Como cada importador é classificado. A ANP só dá a razão social, então o
+# grupo vem do nome mais o que se sabe da estrutura societária. Vários grupos
+# atravessam categorias — a Vibra tem distribuidora e trading, a Atem tem
+# refinaria e distribuidora, Royal FIC e Ciapetro têm os dois braços — e aqui o
+# braço trading vai junto com o grupo dele, não com as tradings independentes.
+# É escolha discutível: a aba "Importação por empresa" mostra o dado cru.
+GRUPOS = (
+    ("Petrobras", ("PETROLEO BRASILEIRO",)),
+    ("refinaria privada", ("REFINARIA DE MANAUS", "REFINARIA DE PETROLEOS DE MANGUINHOS",
+                           "REFINARIA DE MATARIPE", "REFINARIA DE PETROLEO RIOGRANDENSE",
+                           "3R POTIGUAR", "DAX OIL REFINO")),
+    ("central petroquímica", ("BRASKEM",)),
+    ("outros/uso próprio", ("AGGREKO", "ECORI ENERGIA SOLAR", "BSBIOS", "INPASA",
+                            "TEMAPE", "ICE QUIMICA", "HSDC COMERCIO")),
+    ("grupo distribuidor", ("VIBRA ", "IPIRANGA PRODUTOS", "ATEM'S DISTRIBUIDORA",
+                            "ROYAL FIC", "CIAPETRO", "ALESAT", "DISLUB",
+                            "SETTA COMBUSTIVEIS", "FEDERAL ENERGIA", "TDC DISTRIBUIDORA",
+                            "OLIVEIRA ENERGIA", "NFX COMBUSTIVEIS", "POTENCIAL PETROLEO",
+                            "DISTRIBUIDORA", "PETROTORQUE", "REJAILE", "RUMOS", "ON PETRO")),
+)
+# A ordem de GRUPOS é prioridade de busca; CLASSES é a ordem das colunas.
+CLASSES = ["Petrobras", "grupo distribuidor", "trading/importador independente",
+           "refinaria privada", "central petroquímica", "outros/uso próprio"]
+assert set(CLASSES) == {n for n, _ in GRUPOS} | {"trading/importador independente"}
+
+
+def classe_do_importador(nome):
+    for classe, marcas in GRUPOS:
+        if any(m in nome for m in marcas):
+            return classe
+    return "trading/importador independente"
+
+
+def desembaracos():
+    """{"AAAA-MM": {importador: m³}} de diesel, do Relatório de Desembaraços."""
+    from openpyxl import load_workbook
+    fora = {}
+    ano = DESEMB_INICIO
+    while ano <= datetime.date.today().year:
+        arq = baixar_desembaraco(ano)
+        if not arq:
+            break
+        wb = load_workbook(arq, read_only=True, data_only=True)
+        ws = wb.worksheets[0]
+        col = None
+        for linha in ws.iter_rows(values_only=True):
+            if col is None:
+                # o layout muda de ano para ano (2025 ganhou "UF DO CNPJ"),
+                # por isso a coluna vem pelo nome e não pela posição
+                if linha and linha[0] == "Mês de desembaraço":
+                    nomes = [str(c).strip() if c else "" for c in linha]
+                    col = (nomes.index("Importador"), nomes.index("NCM"),
+                           next(i for i, n in enumerate(nomes)
+                                if n.startswith("Quantidade")))
+                continue
+            if not isinstance(linha[0], int):
+                continue
+            if str(linha[col[1]]).strip() != NCM_DIESEL:
+                continue
+            quem, kg = linha[col[0]], linha[col[2]]
+            if not quem or not isinstance(kg, (int, float)):
+                continue
+            k = "%d-%02d" % (ano, linha[0])
+            quem = str(quem).strip().upper()
+            fora.setdefault(k, {}).setdefault(quem, 0.0)
+            fora[k][quem] += kg / 1000.0 / DENSIDADE_DIESEL
+        wb.close()
+        ano += 1
+    return fora
+
+
+def por_agente(desemb, imp):
+    """Importação de diesel por tipo de agente, mensal, com a cobertura do mês."""
+    linhas_ = []
+    for m in sorted(desemb):
+        d = desemb[m]
+        soma = {c: 0.0 for c in CLASSES}
+        for quem, v in d.items():
+            soma[classe_do_importador(quem)] += v
+        total = sum(soma.values())
+        volumetrico = imp.get(m)
+        linhas_.append([m] + [soma[c] for c in CLASSES] + [total,
+                       (total / volumetrico) if volumetrico else None])
+    return linhas_
+
+
+def nome_legivel(razao):
+    """ATEM'S DISTRIBUIDORA → Atem's Distribuidora. O .title() sozinho erra o
+    que vem depois de apóstrofo e de ponto."""
+    bonito = razao.title()
+    for errado, certo in (("'S", "'s"), ("S.A", "S.A"), ("Ltda", "Ltda")):
+        bonito = bonito.replace(errado, certo)
+    return bonito
+
+
+def por_empresa(desemb, teto=20):
+    """As maiores importadoras de diesel em coluna; o resto some em 'outras'."""
+    acc = {}
+    for d in desemb.values():
+        for quem, v in d.items():
+            acc[quem] = acc.get(quem, 0.0) + v
+    ordem = sorted(acc, key=lambda q: -acc[q])[:teto]
+    resto = set(acc) - set(ordem)
+    linhas_ = []
+    for m in sorted(desemb):
+        d = desemb[m]
+        linhas_.append([m] + [d.get(q) for q in ordem]
+                       + [sum(d.get(q, 0.0) for q in resto) or None,
+                          sum(d.values())])
+    return ordem, linhas_
+
+
+def escrever(mes, ano, tipos, tipos_linhas, refs, refs_linhas,
+             agente_linhas, emp, emp_linhas, hoje):
     from openpyxl import Workbook
     from openpyxl.styles import Font
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -263,6 +419,9 @@ def escrever(mes, ano, tipos, tipos_linhas, refs, refs_linhas, hoje):
         ["Balanço mensal", "O mesmo mês a mês, com soma móvel de 12 meses ao lado"],
         ["Vendas por tipo", "Diesel B por teor de enxofre (S-10, S-500…), desde 2013"],
         ["Produção por refinaria", "Quem produz o diesel, mês a mês"],
+        ["Importação por agente", "Quem traz o diesel de fora, por tipo de agente, "
+                                  "desde 2020"],
+        ["Importação por empresa", "As 20 maiores importadoras em coluna, desde 2020"],
         [],
         ["ÓLEO DIESEL E BIODIESEL SÃO PRODUTOS DIFERENTES, e esta planilha nunca soma "
          "um no outro."],
@@ -301,6 +460,29 @@ def escrever(mes, ano, tipos, tipos_linhas, refs, refs_linhas, hoje):
         ["vendas' também — a mistura existia (B5 desde 2010), mas o volume não está "
          "publicado nesse arquivo."],
         [],
+        ["QUEM IMPORTA"],
+        ["A série volumétrica de comércio exterior não diz quem trouxe a carga. Quem "
+         "diz é o Relatório de Desembaraços, que a"],
+        ["ANP monta do Siscomex e publica por empresa. Ele começa em JANEIRO DE 2020 — "
+         "antes disso não existe dado por agente."],
+        ["Vem em quilos; a conversão para m³ usa 0,84 t/m³, o mesmo fator que a própria "
+         "ANP aplica para montar o volumétrico."],
+        [],
+        ["importador de registro", "O relatório nomeia quem registrou a importação, não "
+                                   "o dono final da carga. Trading que"],
+        ["", "importa por conta de distribuidora aparece como trading."],
+        ["cobertura", "= desembaraçado ÷ importação volumétrica do mesmo mês. Alguns "
+                      "meses saem incompletos e"],
+        ["", "são completados depois; onde a cobertura foge de 100%, a abertura por "
+             "agente daquele mês não"],
+        ["", "fecha com o total e não deve ser lida como participação."],
+        ["classificação", "O tipo de agente é nosso, feito da razão social mais a "
+                          "estrutura societária conhecida. O"],
+        ["", "braço trading de um grupo (Vibra Trading, Royal FIC Comercial) vai com o "
+             "grupo, não com as"],
+        ["", "tradings independentes. A aba por empresa traz o dado cru, sem "
+             "classificação."],
+        [],
         ["A soma móvel de 12 meses existe porque o diesel tem sazonalidade forte "
          "(safra, chuva, feriado). Mês contra mês do"],
         ["ano anterior também serve; mês contra mês anterior, não."],
@@ -310,7 +492,8 @@ def escrever(mes, ano, tipos, tipos_linhas, refs, refs_linhas, hoje):
     leia["A5"].font = leia["B5"].font = Font(bold=True)
     for lin in leia.iter_rows(min_col=1, max_col=1):
         t = lin[0].value or ""
-        if t.startswith(("ÓLEO DIESEL E BIODIESEL", "ATENÇÃO", "As contas:")):
+        if t.startswith(("ÓLEO DIESEL E BIODIESEL", "ATENÇÃO", "As contas:",
+                         "QUEM IMPORTA")):
             lin[0].font = Font(bold=True)
     for col, larg in zip("AB", (24, 106)):
         leia.column_dimensions[col].width = larg
@@ -341,6 +524,18 @@ def escrever(mes, ano, tipos, tipos_linhas, refs, refs_linhas, hoje):
            larguras=[9] + [15] * (len(refs) + 1),
            formato={i: m3 for i in range(2, len(refs) + 3)})
 
+    pc.aba(wb, "Importação por agente",
+           ["mês"] + CLASSES + ["total desembaraçado", "cobertura"], agente_linhas,
+           larguras=[9] + [21] * len(CLASSES) + [20, 11],
+           formato={**{i: m3 for i in range(2, len(CLASSES) + 3)},
+                    len(CLASSES) + 3: "0.0%"})
+
+    pc.aba(wb, "Importação por empresa",
+           ["mês"] + [nome_legivel(e) for e in emp] + ["outras", "total"],
+           emp_linhas,
+           larguras=[9] + [26] * (len(emp) + 2),
+           formato={i: m3 for i in range(2, len(emp) + 4)})
+
     wb.save(SAIDA)
 
 
@@ -355,6 +550,14 @@ def main():
     print("Produção por refinaria…")
     refs, refs_linhas = por_refinaria()
     print("  %d refinarias, %d meses" % (len(refs), len(refs_linhas)))
+    print("Importação por agente…")
+    desemb = desembaracos()
+    agente_linhas = por_agente(desemb, dados[3])
+    emp, emp_linhas = por_empresa(desemb)
+    print("  %d meses, de %s a %s" % (len(desemb), min(desemb), max(desemb)))
+    ruins = [l[0] for l in agente_linhas if l[-1] and abs(l[-1] - 1) > 0.05]
+    if ruins:
+        print("  cobertura fora de ±5%% em: %s" % ", ".join(ruins))
 
     print("\nbalanço do diesel A, por ano (mil m³):")
     print("  %4s %4s %10s %10s %9s %10s %7s %10s" %
@@ -364,7 +567,8 @@ def main():
               % (a, n, p / 1e3, i / 1e3, e / 1e3, o / 1e3, 100 * (pc_ or 0),
                  "%.0f" % (v / 1e3) if v else "-"))
 
-    escrever(mes, ano, tipos, tipos_linhas, refs, refs_linhas, hoje)
+    escrever(mes, ano, tipos, tipos_linhas, refs, refs_linhas,
+             agente_linhas, emp, emp_linhas, hoje)
     print("\ngravado %s (%.0f KB)"
           % (os.path.relpath(SAIDA, RAIZ), os.path.getsize(SAIDA) / 1024))
 
