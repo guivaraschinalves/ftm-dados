@@ -5,22 +5,6 @@ __pycache__/
 # o Relatório Mensal da Dívida é a fonte dos gráficos da dívida: fica no repo
 !dados/*.xlsx
 
-# Preços de combustíveis: os dois .xls da ANP o script baixa sozinho (3 MB),
-# e o CSV é o mesmo dado que já está no .xlsx. Só a planilha fica versionada.
-dados/precos-ponderados-semanais-*.xls
-dados/precos-medios-ponderados-semanais-*.xls
-dados/anp-precos-produtor.csv
-# As tabelas da Petrobras em PDF o script baixa da biblioteca pública deles.
-dados/Tabelas de Preco*.pdf
-# Já os dois acervos de composição (anp-composicao-*.csv) FICAM versionados:
-# refazê-los do zero custa 260 MB de PDF da Síntese Semanal. Veja o cabeçalho
-# de scripts/composicao_anp.py.
-
 # O histórico de leilões (1,4 MB, muda a cada pregão) o leiloes.py baixa do
 # Tesouro Transparente a cada rodada.
 dados/leiloes-tesouro.xlsx
-# O PPI da ANP (740 KB) o scripts/defasagem.py baixa sozinho.
-dados/ppi-anp.xlsx
-# Os CSV de vendas, produção e comércio exterior da ANP (13 MB) o
-# scripts/oferta_diesel.py baixa sozinho.
-dados/.cache-anp-oferta/
