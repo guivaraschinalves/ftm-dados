@@ -33,6 +33,11 @@ jobs:
       - name: Fiscal — resultado primário (SGS)
         run: python scripts/fiscal.py
 
+      # Balanço de pagamentos: a tabela especial BalPagM.xlsx do BC, mais
+      # câmbio e PIB em dólar do SGS. Sai uma vez por mês, perto do dia 25.
+      - name: Balanço de Pagamentos — tabela do BC e SGS
+        run: python scripts/bp.py
+
       # O CSV do Tesouro Transparente muda em dia útil, de manhã.
       - name: Tesouro Direto — taxas por prazo
         run: python scripts/tesouro_direto.py

@@ -68,7 +68,7 @@
   var cartoes = [];
   // Um arquivo por categoria (IPCA, Dívida Pública…). Cada um traz categoria,
   // fonte, mês de referência e as suas seções; um que faltar é só ignorado.
-  var FONTES = ["dados/moedas.json", "dados/ipca.json", "dados/fiscal.json",
+  var FONTES = ["dados/moedas.json", "dados/bp.json", "dados/ipca.json", "dados/fiscal.json",
                 "dados/divida.json", "dados/tesouro-direto.json", "dados/juros.json",
                 "dados/reservas.json"];
   // ---------- gate de assinante ----------
@@ -152,8 +152,13 @@
   // casas do eixo conforme o passo da grade: numa janela curta (7,0% a 9,5%) o
   // eixo sem decimal repetiria "7%, 8%, 8%, 9%"
   function casasDoPasso(p) {
+    // as casas que o passo pede: 20 → 0, 1,6 → 1, 0,25 → 2. Antes um passo de
+    // 1,6 saía sem casa e o eixo mostrava 2%, 3%, 5%, 6%
     p = Math.abs(p || 1);
-    return p >= 1 ? 0 : p >= 0.1 ? 1 : 2;
+    for (var c = 0; c < 2; c++) {
+      if (Math.abs(p * Math.pow(10, c) - Math.round(p * Math.pow(10, c))) < 1e-6) return c;
+    }
+    return 2;
   }
   var UNIDADES = {
     "%": { eixo: function (v, passo) { return nf(casasDoPasso(passo)).format(v) + "%"; },
@@ -170,6 +175,9 @@
                 valor: function (v) { return "US$ " + nf(0).format(v) + "/oz"; } },
     "usd-bi": { eixo: function (v, passo) { return nf(casasDoPasso(passo)).format(v); },
                 valor: function (v) { return "US$ " + nf(1).format(v) + " bi"; } },
+    // o mesmo, com duas casas: o fluxo mensal de criptos anda na casa dos centavos de bilhão
+    "usd-bi2": { eixo: function (v, passo) { return nf(casasDoPasso(passo)).format(v); },
+                 valor: function (v) { return "US$ " + nf(2).format(v) + " bi"; } },
     // tonelada: a casa decimal só importa onde o número é pequeno (os −5,4 t
     // dos Estados Unidos); num estoque de 222 mil t ela é ruído
     t: { eixo: function (v, passo) { return nf(casasDoPasso(passo)).format(v); },
@@ -386,7 +394,9 @@
       });
     });
     Object.keys(pilhaPos).forEach(function (i) { mx = Math.max(mx, pilhaPos[i]); mn = Math.min(mn, 0); });
-    Object.keys(pilhaNeg).forEach(function (i) { mn = Math.min(mn, pilhaNeg[i]); });
+    // barra sai do zero, então o zero entra na escala também quando todas são
+    // negativas (sem isto o máximo ficava em −Infinity: criptos em 12 meses)
+    Object.keys(pilhaNeg).forEach(function (i) { mn = Math.min(mn, pilhaNeg[i]); mx = Math.max(mx, 0); });
     if (mn === Infinity) { mn = 0; mx = 1; }
     var esc = escalaY(mn, mx, g.eixo);
     var escDir = mnD === Infinity ? null : escalaCasada(mnD, mxD, g.eixo2, esc.ticks.length - 1);
@@ -569,8 +579,15 @@
         var b = p.v >= 0 ? baseP : baseN, antes = b[p.i] || 0, depois = antes + p.v;
         b[p.i] = depois;
         var ya = yDe(s)(antes), yb = yDe(s)(depois);
-        area.appendChild(el("rect", {
-          x: X(p.i + 0.5) - bw / 2, y: Math.min(ya, yb), width: bw, height: Math.max(0.6, Math.abs(yb - ya)), fill: cor
+        // "contorno": só a borda, vazada (as reservas no balanço de
+        // pagamentos, como no slide). O traço entra meio traço para dentro,
+        // para não invadir a coluna vizinha.
+        var h = Math.max(0.6, Math.abs(yb - ya));
+        area.appendChild(el("rect", s.contorno ? {
+          x: X(p.i + 0.5) - bw / 2 + 0.6, y: Math.min(ya, yb) + 0.6, width: Math.max(0.6, bw - 1.2),
+          height: Math.max(0.6, h - 1.2), fill: "none", stroke: cor, "stroke-width": 1.2
+        } : {
+          x: X(p.i + 0.5) - bw / 2, y: Math.min(ya, yb), width: bw, height: h, fill: cor
         }));
       });
     });
@@ -646,7 +663,9 @@
     legenda.pos.forEach(function (it) {
       var y = topoLegenda + it.linha * L.legenda.passo, s = it.s, cor = corNoTema(s.cor, pal);
       if (s.tipo === "barra") {
-        svg.appendChild(el("rect", { x: it.x + 6, y: y - 10, width: 22, height: 20, fill: cor }));
+        svg.appendChild(el("rect", s.contorno
+          ? { x: it.x + 7, y: y - 9, width: 20, height: 18, fill: "none", stroke: cor, "stroke-width": 2 }
+          : { x: it.x + 6, y: y - 10, width: 22, height: 20, fill: cor }));
       } else {
         var w = Math.min(s.largura || L.linha, 8);
         svg.appendChild(el("line", {
