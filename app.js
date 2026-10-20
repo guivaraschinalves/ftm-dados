@@ -2428,14 +2428,45 @@
   // Quem usa é o scripts/cartoes.py, que lê a página com um navegador sem
   // tela e grava c/ID.jpg. Nada aqui roda na navegação normal.
   var MODO_IMAGEM = (location.search.match(/[?&]imagem=([^&]+)/) || [])[1] || null;
+  // A prévia grande do X é 1,91:1 (1200×628), mais larga que o 16:9: um 16:9
+  // ali perde o alto e o pé. Aqui o gráfico 16:9 entra inteiro, a 88% da
+  // altura, encostado no alto e centrado, com o fundo do tema preenchendo as
+  // laterais e a faixa de baixo — que é onde o X escreve o título do link por
+  // cima da imagem.
+  var PREVIA = { W: 1200, H: 628, altura: 0.88 };
+  function canvasDaPrevia(cartao) {
+    var nomeTema = tema(), L = LAYOUTS.wide, d = construir(cartao, L, nomeTema);
+    var h = Math.round(PREVIA.H * PREVIA.altura), w = Math.round(h * L.W / L.H);
+    var x0 = Math.round((PREVIA.W - w) / 2), y0 = 4;
+    d.svg.setAttribute("width", w); d.svg.setAttribute("height", h);
+    return Promise.all([
+      carregarImagem("data:image/svg+xml;charset=utf-8," + encodeURIComponent(serializar(d.svg))),
+      d.pal.fundo ? carregarImagem(d.pal.fundo) : Promise.resolve(null)
+    ]).then(function (r) {
+      var c = document.createElement("canvas");
+      c.width = PREVIA.W; c.height = PREVIA.H;
+      var x = c.getContext("2d");
+      x.imageSmoothingEnabled = true; x.imageSmoothingQuality = "high";
+      x.fillStyle = d.pal.bg; x.fillRect(0, 0, PREVIA.W, PREVIA.H);
+      if (r[1]) {
+        var f = r[1], k = Math.max(PREVIA.W / f.naturalWidth, PREVIA.H / f.naturalHeight);
+        x.drawImage(f, (PREVIA.W - f.naturalWidth * k) / 2, (PREVIA.H - f.naturalHeight * k) / 2,
+                    f.naturalWidth * k, f.naturalHeight * k);
+      }
+      x.drawImage(r[0], x0, y0, w, h);
+      return c;
+    });
+  }
+
   function gerarImagemDaPrevia(id) {
     var cartao = cartoes.filter(function (c) { return c.grafico.id === decodeURIComponent(id); })[0];
     var saida = html("pre", { id: "imagem-pronta" });
     if (!cartao) { saida.textContent = "ERRO: gráfico não encontrado"; document.body.appendChild(saida); return; }
     // "&tam=ig-4x5" (um dos TAMANHOS) desenha no formato em pé: serve para conferir
     var tam = (location.search.match(/[?&]tam=([^&]+)/) || [])[1];
-    var t = tam ? tamanhoPorId(tam) : { id: "previa", layout: LAYOUTS.wide, escala: 1200 / LAYOUTS.wide.W };
-    carregarImagens(docs).then(function () { return gerarCanvas(cartao, t); }).then(function (c) {
+    var gerar = tam ? function () { return gerarCanvas(cartao, tamanhoPorId(tam)); }
+                    : function () { return canvasDaPrevia(cartao); };
+    carregarImagens(docs).then(gerar).then(function (c) {
       saida.textContent = c.toDataURL("image/jpeg", 0.88);
       document.body.appendChild(saida);
     }).catch(function (e) { saida.textContent = "ERRO: " + e.message; document.body.appendChild(saida); });

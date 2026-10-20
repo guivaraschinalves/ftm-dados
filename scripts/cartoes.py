@@ -17,7 +17,7 @@ O X e o LinkedIn não deixam um site anexar imagem num post: o que eles fazem
 prévia com a imagem que ela indicar. A página do site é uma só, com uma
 imagem genérica. Então cada gráfico ganha:
 
-  - c/ID.jpg  — o gráfico em 1200×675, desenhado pelo próprio app.js no modo
+  - c/ID.jpg  — o gráfico em 1200×628 (o formato da prévia grande do X), desenhado pelo próprio app.js no modo
     "?imagem=ID" (o mesmo desenho do Baixar) e lido daqui com um Chrome sem
     tela (--dump-dom), que devolve o JPEG como data URL;
   - c/ID.html — uma página mínima com as etiquetas apontando para c/ID.jpg,
@@ -80,8 +80,15 @@ def graficos():
     return fora
 
 
+# Sobe quando muda o desenho da prévia (não os dados): entra no resumo, então
+# refaz todas as imagens e muda o endereço delas, que é o que faz o X largar a
+# prévia antiga que ele guardou. 2 = 1200×628 (1,91:1), sem corte no X.
+VERSAO_IMAGEM = 2
+
+
 def resumo(g, doc):
-    base = json.dumps([g, doc.get("fonte"), doc.get("referencia")], sort_keys=True, ensure_ascii=False)
+    base = json.dumps([g, doc.get("fonte"), doc.get("referencia"), VERSAO_IMAGEM], sort_keys=True,
+                      ensure_ascii=False)
     return hashlib.sha1(base.encode("utf-8")).hexdigest()[:10]
 
 
@@ -145,7 +152,7 @@ def pagina(id_, g, versao):
 <meta property="og:description" content="{s}">
 <meta property="og:image" content="{img}">
 <meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="675">
+<meta property="og:image:height" content="628">
 <meta property="og:url" content="{url}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{t}">
