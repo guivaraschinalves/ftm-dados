@@ -1344,9 +1344,9 @@
     btnFs.addEventListener("click", function () { abrirVisor(cartao, true); });
     cartao.botaoTelaCheia = btnFs;
     acoes.appendChild(btnFs);
+    acoes.appendChild(menuCompartilhar(cartao));
     acoes.appendChild(menuBaixar(cartao));
     ferramentas.appendChild(acoes);
-    ferramentas.appendChild(barraCompartilhar(cartao));
     raiz.appendChild(ferramentas);
 
     cartao.frame = html("div", { "class": "frame" });
@@ -1483,27 +1483,35 @@
   }
 
   // ---------- compartilhar ----------
-  // Como na Oaktree: um rótulo e quatro ícones redondos, cada um indo direto
-  // para a rede. Nenhuma rede deixa um site anexar imagem num post, então:
-  //  - X e LinkedIn abrem a janela de post da rede com o link (o X também com
-  //    o texto) — é o que a Oaktree faz;
-  //  - e-mail abre o programa de e-mail com assunto e corpo prontos;
-  //  - Instagram não tem link de post: no celular abre o menu do aparelho com
-  //    a imagem 4:5 pronta (e lá a pessoa escolhe o Instagram); no
-  //    computador baixa a imagem 4:5 para publicar pelo app.
-  // O link é o do site do assinante; quem não assina cai no portão.
-  var LINK_SITE = "https://ftm.app.br/interno/dados/";
+  // Botão "Compartilhar" que abre quatro opções: X, Instagram, LinkedIn e
+  // e-mail. Nenhuma rede deixa um site anexar imagem num post, então:
+  //  - no celular, X e Instagram vão pelo menu do aparelho com a própria
+  //    imagem (16:9 para o X, 4:5 para o Instagram);
+  //  - no computador, X, LinkedIn e e-mail levam o link da PÁGINA DE PRÉVIA do
+  //    gráfico (c/ID.html, feita pelo scripts/cartoes.py), cujas etiquetas
+  //    apontam para a imagem dele: o post mostra o gráfico grande, e quem
+  //    clica vai para o gráfico no site do assinante;
+  //  - Instagram no computador: baixa a imagem 4:5 (não há post pelo navegador).
+  var LINK_PREVIA = "https://guivaraschinalves.github.io/ftm-dados/c/";
   var REDES = [
-    { id: "x", nome: "X", dica: "Compartilhar no X",
+    { id: "x", nome: "X",
       svg: '<path fill="currentColor" stroke="none" d="M18.24 2.25h3.31l-7.23 8.26 8.5 11.24h-6.66l-5.21-6.82-5.97 6.82H1.68l7.73-8.84L1.25 2.25h6.83l4.71 6.23zm-1.16 17.52h1.83L7.08 4.13H5.12z"/>' },
-    { id: "instagram", nome: "Instagram", dica: "Compartilhar no Instagram",
+    { id: "instagram", nome: "Instagram",
       svg: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/>' +
            '<circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>' },
-    { id: "linkedin", nome: "LinkedIn", dica: "Compartilhar no LinkedIn",
+    { id: "linkedin", nome: "LinkedIn",
       svg: '<path fill="currentColor" stroke="none" d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9.75h4v11H3zm6.5 0h3.8v1.5h.05c.53-1 1.83-1.8 3.65-1.8 3.9 0 4.5 2.4 4.5 5.6v6.2h-4v-5.5c0-1.3 0-3-1.85-3s-2.15 1.4-2.15 2.9v5.6h-4z"/>' },
-    { id: "email", nome: "E-mail", dica: "Enviar por e-mail",
+    { id: "email", nome: "E-mail",
       svg: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/>' }
   ];
+  var ICO_COMPARTILHAR = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" ' +
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>' +
+    '<path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>';
+  function icoRede(r) {
+    return '<span class="rede-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" ' +
+      'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + r.svg + "</svg></span>";
+  }
 
   function podeCompartilharArquivo() {
     try {
@@ -1515,71 +1523,92 @@
     var g = graficoDe(cartao);
     return g.titulo + (g.subtitulo ? " — " + g.subtitulo : "") + ". Fonte: " + (g.fonte || "") + ".";
   }
-  function linkDoGrafico(cartao) { return LINK_SITE + "#" + cartao.grafico.id; }
+  function linkDoGrafico(cartao) { return LINK_PREVIA + cartao.grafico.id + ".html"; }
 
-  function barraCompartilhar(cartao) {
-    var caixa = html("div", { "class": "compartilhar" });
-    caixa.appendChild(html("span", { "class": "compartilhar-rotulo", texto: "Compartilhar" }));
+  function menuCompartilhar(cartao) {
+    var caixa = html("div", { "class": "baixar compartilhar" });
+    var botao = html("button", { type: "button", "class": "btn", "aria-haspopup": "menu", "aria-expanded": "false",
+                                 title: "Compartilhar no X, Instagram, LinkedIn ou por e-mail" });
+    botao.innerHTML = ICO_COMPARTILHAR + "<span>Compartilhar</span>";
+    var menu = html("div", { "class": "menu menu-redes", role: "menu", hidden: "" });
     var nativo = podeCompartilharArquivo();
-    // A imagem do Instagram é preparada quando o ponteiro chega na barra: no
-    // iPhone o compartilhar só abre logo depois do toque, e gerar a imagem
-    // leva um instante — esperar por ela no clique perderia o gesto.
-    var pronta = null;
-    function preparar() {
-      if (!pronta) {
-        pronta = { p: gerarCanvas(cartao, tamanhoPorId("ig-4x5")).then(function (c) { return blobDe(c, "image/png"); })
-                       .then(function (b) { pronta.blob = b; return b; }) };
+    // As imagens são preparadas quando o menu abre: no iPhone o compartilhar
+    // só abre logo depois do toque, e gerar a imagem leva um instante.
+    var prontas = {};
+    function preparar(id) {
+      if (!prontas[id]) {
+        prontas[id] = { p: gerarCanvas(cartao, tamanhoPorId(id)).then(function (c) { return blobDe(c, "image/png"); })
+                          .then(function (b) { prontas[id].blob = b; return b; }) };
       }
-      return pronta.p;
+      return prontas[id].p;
     }
-    function nomeIg() { return nomeArquivo(cartao, "png", tamanhoPorId("ig-4x5")); }
-    function instagram() {
-      if (!nativo) {
-        preparar().then(function (b) { salvar(b, nomeIg()); avisar(caixa, "Imagem 4:5 baixada — publique pelo app do Instagram"); });
-        return;
-      }
+    function nome(id) { return nomeArquivo(cartao, "png", tamanhoPorId(id)); }
+    function compartilharImagem(id) {
       var enviar = function (b) {
-        return navigator.share({ files: [new File([b], nomeIg(), { type: "image/png" })],
+        return navigator.share({ files: [new File([b], nome(id), { type: "image/png" })],
                                  text: textoDoPost(cartao) + " " + linkDoGrafico(cartao) });
       };
       var falhou = function (e) {
         if (e && e.name === "AbortError") return;           // a pessoa desistiu
-        preparar().then(function (b) { salvar(b, nomeIg()); });
+        preparar(id).then(function (b) { salvar(b, nome(id)); });
       };
-      if (pronta && pronta.blob) enviar(pronta.blob).catch(falhou);
-      else preparar().then(enviar).catch(falhou);
+      if (prontas[id] && prontas[id].blob) enviar(prontas[id].blob).catch(falhou);
+      else preparar(id).then(enviar).catch(falhou);
     }
-    function urlDa(rede) {
-      var link = encodeURIComponent(linkDoGrafico(cartao)), texto = encodeURIComponent(textoDoPost(cartao));
-      if (rede === "x") return "https://x.com/intent/post?text=" + texto + "&url=" + link;
-      if (rede === "linkedin") return "https://www.linkedin.com/sharing/share-offsite/?url=" + link;
-      if (rede === "email") {
-        return "mailto:?subject=" + encodeURIComponent(graficoDe(cartao).titulo + " — Follow the Money") +
-               "&body=" + texto + "%0D%0A%0D%0A" + link;
+    function abrir(url) { window.open(url, "_blank", "noopener"); }
+    var link = function () { return encodeURIComponent(linkDoGrafico(cartao)); };
+    var texto = function () { return encodeURIComponent(textoDoPost(cartao)); };
+    var acoes = {
+      x: function () {
+        if (nativo) return compartilharImagem("slide");
+        abrir("https://x.com/intent/post?text=" + texto() + "&url=" + link());
+      },
+      instagram: function () {
+        if (nativo) return compartilharImagem("ig-4x5");
+        preparar("ig-4x5").then(function (b) {
+          salvar(b, nome("ig-4x5"));
+          avisar(caixa, "Imagem 4:5 baixada — publique pelo app do Instagram");
+        });
+      },
+      linkedin: function () { abrir("https://www.linkedin.com/sharing/share-offsite/?url=" + link()); },
+      email: function () {
+        location.href = "mailto:?subject=" + encodeURIComponent(graficoDe(cartao).titulo + " — Follow the Money") +
+          "&body=" + texto() + "%0D%0A%0D%0A" + link();
       }
-      return null;
-    }
+    };
+    var notas = {
+      x: nativo ? "imagem 16:9; escolha o X no menu do aparelho" : "o post mostra o gráfico em destaque",
+      instagram: nativo ? "imagem 4:5; escolha o Instagram no menu do aparelho"
+                        : "baixa a imagem 4:5 para publicar pelo app",
+      linkedin: "o post mostra o gráfico em destaque",
+      email: "abre o seu e-mail com o link"
+    };
     REDES.forEach(function (r) {
-      var a = html(r.id === "instagram" ? "button" : "a", {
-        "class": "rede rede-" + r.id, title: r.dica, "aria-label": r.dica
-      });
-      if (r.id === "instagram") a.setAttribute("type", "button");
-      a.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" ' +
-        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + r.svg + "</svg>";
-      if (r.id === "instagram") {
-        a.addEventListener("click", instagram);
-      } else {
-        // o link é montado na hora do clique: o recorte e o período mudam o texto
-        a.addEventListener("click", function () { a.href = urlDa(r.id); });
-        a.href = urlDa(r.id);
-        if (r.id !== "email") { a.target = "_blank"; a.rel = "noopener"; }
-      }
-      caixa.appendChild(a);
+      var b = html("button", { type: "button", role: "menuitem", "class": "item-rede" });
+      b.innerHTML = icoRede(r) + '<span class="item-rede-txt">' + r.nome + "<small>" + notas[r.id] + "</small></span>";
+      b.addEventListener("click", function () { fechar(); acoes[r.id](); });
+      menu.appendChild(b);
     });
-    if (nativo) {
-      caixa.addEventListener("pointerenter", preparar);
-      caixa.addEventListener("touchstart", preparar, { passive: true });
-    }
+
+    function fechar() { menu.hidden = true; botao.setAttribute("aria-expanded", "false"); }
+    botao.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var abrirMenu = menu.hidden;
+      document.querySelectorAll(".menu").forEach(function (m) { m.hidden = true; });
+      menu.hidden = !abrirMenu;
+      botao.setAttribute("aria-expanded", String(abrirMenu));
+      if (abrirMenu) {
+        prontas = {};                    // tema, período ou recorte podem ter mudado
+        if (nativo) ["slide", "ig-4x5"].forEach(preparar);
+        menu.style.left = menu.style.right = "";
+        var r = menu.getBoundingClientRect(), lim = caixa.closest(".card");
+        if (lim && r.left < lim.getBoundingClientRect().left) { menu.style.right = "auto"; menu.style.left = "0"; }
+      }
+    });
+    document.addEventListener("click", function (e) { if (!caixa.contains(e.target)) fechar(); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") fechar(); });
+    caixa.appendChild(botao);
+    caixa.appendChild(menu);
     return caixa;
   }
 
@@ -2059,6 +2088,23 @@
     });
   }
 
+  // ---------- modo imagem (prévia do link no X e no LinkedIn) ----------
+  // "?imagem=ID" desenha só aquele gráfico, em 1200×675 (o tamanho da prévia
+  // grande do X), e deixa o JPEG em <pre id="imagem-pronta"> como data URL.
+  // Quem usa é o scripts/cartoes.py, que lê a página com um navegador sem
+  // tela e grava c/ID.jpg. Nada aqui roda na navegação normal.
+  var MODO_IMAGEM = (location.search.match(/[?&]imagem=([^&]+)/) || [])[1] || null;
+  function gerarImagemDaPrevia(id) {
+    var cartao = cartoes.filter(function (c) { return c.grafico.id === decodeURIComponent(id); })[0];
+    var saida = html("pre", { id: "imagem-pronta" });
+    if (!cartao) { saida.textContent = "ERRO: gráfico não encontrado"; document.body.appendChild(saida); return; }
+    var t = { id: "previa", layout: LAYOUTS.wide, escala: 1200 / LAYOUTS.wide.W };
+    carregarImagens(docs).then(function () { return gerarCanvas(cartao, t); }).then(function (c) {
+      saida.textContent = c.toDataURL("image/jpeg", 0.88);
+      document.body.appendChild(saida);
+    }).catch(function (e) { saida.textContent = "ERRO: " + e.message; document.body.appendChild(saida); });
+  }
+
   function iniciar() {
     // A fiação da página fica aqui, e não no `carregar`: o carregar roda de
     // novo quando o leitor libera o acesso, e ligar o mesmo ouvinte duas vezes
@@ -2104,6 +2150,7 @@
       montarResumo(docs);
       observarCategorias();
       cartoes.forEach(function (c) { desenhar(c, true); });
+      if (MODO_IMAGEM) return gerarImagemDaPrevia(MODO_IMAGEM);
       if (location.hash.length > 1) irPara(location.hash.slice(1));
       // as imagens vêm depois do primeiro desenho: o gráfico aparece na hora,
       // com o preenchimento liso, e ganha a nota quando ela chega

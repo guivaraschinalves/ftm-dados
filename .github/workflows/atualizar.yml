@@ -53,14 +53,20 @@ jobs:
       - name: Dívida Pública — leilões do Tesouro (e o resto do relatório)
         run: python scripts/divida.py
 
+      # A imagem e a página de prévia de cada gráfico (c/), para o post no X
+      # e no LinkedIn mostrar o gráfico. Só refaz o gráfico cujos números
+      # mudaram; usa o google-chrome que já vem no runner.
+      - name: Prévias para compartilhar (c/)
+        run: python scripts/cartoes.py
+
       - name: Commita, se algum número mudou
         run: |
-          if git diff --quiet -- dados; then
+          if git diff --quiet -- dados c && [ -z "$(git status --porcelain -- c)" ]; then
             echo "Nada mudou."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add dados
+          git add dados c
           git commit -m "Atualiza os dados"
           git push

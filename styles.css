@@ -613,17 +613,20 @@ button, summary, a, input, select { touch-action: manipulation; }
    lampejo do conteúdo. O app.js tira a marca ao liberar. */
 :root[data-portao] .app { display: none; }
 
-/* Compartilhar, como na Oaktree: rótulo pequeno e ícones redondos com
-   contorno, cada um indo direto para a rede. Fica numa linha própria,
-   embaixo dos outros controles do cartão. */
-.compartilhar { display: flex; align-items: center; gap: 6px; flex-basis: 100%; position: relative; }
-.compartilhar-rotulo { font-size: 12px; font-weight: 500; letter-spacing: .02em; color: var(--ink-2); margin-right: 4px; }
-.compartilhar .rede {
-  display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0;
-  border: 1px solid var(--control-border); border-radius: 50%; background: transparent; color: var(--ink);
-  cursor: pointer; text-decoration: none; transition: border-color .15s, background-color .15s, color .15s;
+/* Compartilhar: o botão abre a lista das quatro redes, cada uma com o
+   ícone num círculo de contorno (o desenho que ele gostou na Oaktree). */
+.menu-redes .item-rede { display: flex; align-items: center; gap: 12px; }
+.menu-redes .rede-ico {
+  flex: none; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px;
+  border: 1px solid var(--control-border); border-radius: 50%; color: var(--ink);
 }
-.compartilhar .rede:hover { border-color: var(--ink-2); background: var(--hover); }
-.compartilhar .rede:focus-visible { outline: 2px solid var(--accent-fill); outline-offset: 2px; }
-.aviso-curto { position: absolute; left: 0; top: 100%; margin-top: 6px; font-size: 12px; color: var(--ink-2);
-  background: var(--hover); border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px; z-index: 5; }
+.menu-redes .item-rede:hover .rede-ico { border-color: var(--ink-2); }
+.menu-redes .item-rede-txt { display: flex; flex-direction: column; text-align: left; }
+.compartilhar { position: relative; }
+.aviso-curto { position: absolute; right: 0; top: 100%; margin-top: 6px; font-size: 12px; color: var(--ink-2);
+  background: var(--hover); border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px; z-index: 5;
+  white-space: nowrap; }
+/* em tela estreita o botão fica só com o ícone, para a fileira não quebrar */
+@media (max-width: 520px) {
+  .compartilhar > .btn span { display: none; }
+}
