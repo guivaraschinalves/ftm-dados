@@ -1344,9 +1344,9 @@
     btnFs.addEventListener("click", function () { abrirVisor(cartao, true); });
     cartao.botaoTelaCheia = btnFs;
     acoes.appendChild(btnFs);
-    acoes.appendChild(menuCompartilhar(cartao));
     acoes.appendChild(menuBaixar(cartao));
     ferramentas.appendChild(acoes);
+    ferramentas.appendChild(barraCompartilhar(cartao));
     raiz.appendChild(ferramentas);
 
     cartao.frame = html("div", { "class": "frame" });
@@ -1483,19 +1483,27 @@
   }
 
   // ---------- compartilhar ----------
-  // Nenhuma rede deixa um site postar imagem sozinho. O que existe:
-  //  - no celular, o menu de compartilhar do aparelho (Web Share API com
-  //    arquivo), que lista Instagram (feed, Stories, Direct), X, WhatsApp…
-  //    A imagem vai pronta, no formato da rede;
-  //  - no X, a janela de post com texto e link (intent), sem imagem — no
-  //    computador a imagem 16:9 é baixada junto, para anexar;
-  //  - no Instagram pelo computador, nada: baixa-se a imagem 4:5.
-  // O link é sempre o do site do assinante; quem não assina cai no portão.
+  // Como na Oaktree: um rótulo e quatro ícones redondos, cada um indo direto
+  // para a rede. Nenhuma rede deixa um site anexar imagem num post, então:
+  //  - X e LinkedIn abrem a janela de post da rede com o link (o X também com
+  //    o texto) — é o que a Oaktree faz;
+  //  - e-mail abre o programa de e-mail com assunto e corpo prontos;
+  //  - Instagram não tem link de post: no celular abre o menu do aparelho com
+  //    a imagem 4:5 pronta (e lá a pessoa escolhe o Instagram); no
+  //    computador baixa a imagem 4:5 para publicar pelo app.
+  // O link é o do site do assinante; quem não assina cai no portão.
   var LINK_SITE = "https://ftm.app.br/interno/dados/";
-  var ICO_COMPARTILHAR = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" ' +
-    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-    '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>' +
-    '<path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>';
+  var REDES = [
+    { id: "x", nome: "X", dica: "Compartilhar no X",
+      svg: '<path fill="currentColor" stroke="none" d="M18.24 2.25h3.31l-7.23 8.26 8.5 11.24h-6.66l-5.21-6.82-5.97 6.82H1.68l7.73-8.84L1.25 2.25h6.83l4.71 6.23zm-1.16 17.52h1.83L7.08 4.13H5.12z"/>' },
+    { id: "instagram", nome: "Instagram", dica: "Compartilhar no Instagram",
+      svg: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/>' +
+           '<circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>' },
+    { id: "linkedin", nome: "LinkedIn", dica: "Compartilhar no LinkedIn",
+      svg: '<path fill="currentColor" stroke="none" d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9.75h4v11H3zm6.5 0h3.8v1.5h.05c.53-1 1.83-1.8 3.65-1.8 3.9 0 4.5 2.4 4.5 5.6v6.2h-4v-5.5c0-1.3 0-3-1.85-3s-2.15 1.4-2.15 2.9v5.6h-4z"/>' },
+    { id: "email", nome: "E-mail", dica: "Enviar por e-mail",
+      svg: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/>' }
+  ];
 
   function podeCompartilharArquivo() {
     try {
@@ -1509,90 +1517,77 @@
   }
   function linkDoGrafico(cartao) { return LINK_SITE + "#" + cartao.grafico.id; }
 
-  function menuCompartilhar(cartao) {
-    var caixa = html("div", { "class": "baixar compartilhar" });
-    var botao = html("button", { type: "button", "class": "btn", "aria-haspopup": "menu", "aria-expanded": "false",
-                                 title: "Compartilhar no Instagram, no X ou em outro app" });
-    botao.innerHTML = ICO_COMPARTILHAR + "<span>Compartilhar</span>";
-    var menu = html("div", { "class": "menu", role: "menu", hidden: "" });
+  function barraCompartilhar(cartao) {
+    var caixa = html("div", { "class": "compartilhar" });
+    caixa.appendChild(html("span", { "class": "compartilhar-rotulo", texto: "Compartilhar" }));
     var nativo = podeCompartilharArquivo();
-    // A imagem é preparada quando o menu abre: no iPhone o compartilhar só
-    // abre se for chamado logo depois do toque, e gerar a imagem leva um
-    // instante — esperar por ela no clique perderia o gesto.
-    var prontas = {};
-    function preparar(id) {
-      if (!prontas[id]) {
-        prontas[id] = { p: gerarCanvas(cartao, tamanhoPorId(id)).then(function (c) { return blobDe(c, "image/png"); })
-                          .then(function (b) { prontas[id].blob = b; return b; }) };
+    // A imagem do Instagram é preparada quando o ponteiro chega na barra: no
+    // iPhone o compartilhar só abre logo depois do toque, e gerar a imagem
+    // leva um instante — esperar por ela no clique perderia o gesto.
+    var pronta = null;
+    function preparar() {
+      if (!pronta) {
+        pronta = { p: gerarCanvas(cartao, tamanhoPorId("ig-4x5")).then(function (c) { return blobDe(c, "image/png"); })
+                       .then(function (b) { pronta.blob = b; return b; }) };
       }
-      return prontas[id].p;
+      return pronta.p;
     }
-    function item(rotulo, nota, acao) {
-      var b = html("button", { type: "button", role: "menuitem" });
-      b.innerHTML = rotulo + "<small>" + nota + "</small>";
-      b.addEventListener("click", function () { fechar(); acao(); });
-      menu.appendChild(b);
-    }
-    function compartilharNativo(id) {
-      var pronto = prontas[id] && prontas[id].blob;
-      var enviar = function (blob) {
-        var f = new File([blob], nomeArquivo(cartao, "png", tamanhoPorId(id)), { type: "image/png" });
-        return navigator.share({ files: [f], title: graficoDe(cartao).titulo,
+    function nomeIg() { return nomeArquivo(cartao, "png", tamanhoPorId("ig-4x5")); }
+    function instagram() {
+      if (!nativo) {
+        preparar().then(function (b) { salvar(b, nomeIg()); avisar(caixa, "Imagem 4:5 baixada — publique pelo app do Instagram"); });
+        return;
+      }
+      var enviar = function (b) {
+        return navigator.share({ files: [new File([b], nomeIg(), { type: "image/png" })],
                                  text: textoDoPost(cartao) + " " + linkDoGrafico(cartao) });
       };
       var falhou = function (e) {
         if (e && e.name === "AbortError") return;           // a pessoa desistiu
-        preparar(id).then(function (b) { salvar(b, nomeArquivo(cartao, "png", tamanhoPorId(id))); });
+        preparar().then(function (b) { salvar(b, nomeIg()); });
       };
-      if (pronto) enviar(pronto).catch(falhou);
-      else preparar(id).then(enviar).catch(falhou);
+      if (pronta && pronta.blob) enviar(pronta.blob).catch(falhou);
+      else preparar().then(enviar).catch(falhou);
     }
-    if (nativo) {
-      item("Instagram — feed", "imagem 4:5; escolha o Instagram no menu do aparelho",
-           function () { compartilharNativo("ig-4x5"); });
-      item("Instagram — Stories", "imagem 9:16", function () { compartilharNativo("ig-story"); });
-      item("X, WhatsApp ou outro app", "imagem 16:9 com o texto e o link",
-           function () { compartilharNativo("slide"); });
-    } else {
-      item("Postar no X", "abre o post com texto e link; a imagem 16:9 é baixada para você anexar",
-           function () {
-             var url = "https://x.com/intent/post?text=" + encodeURIComponent(textoDoPost(cartao)) +
-                       "&url=" + encodeURIComponent(linkDoGrafico(cartao));
-             window.open(url, "_blank", "noopener");
-             preparar("slide").then(function (b) { salvar(b, nomeArquivo(cartao, "png", tamanhoPorId("slide"))); });
-           });
-      item("Imagem para o Instagram", "baixa a 4:5 do feed; o Instagram não aceita postar pelo navegador",
-           function () { preparar("ig-4x5").then(function (b) { salvar(b, nomeArquivo(cartao, "png", tamanhoPorId("ig-4x5"))); }); });
-    }
-    menu.appendChild(html("hr"));
-    item("Copiar o link", "endereço deste gráfico no site", function () {
-      var l = linkDoGrafico(cartao);
-      (navigator.clipboard ? navigator.clipboard.writeText(l) : Promise.reject()).then(function () {
-        botao.querySelector("span").textContent = "Link copiado";
-        setTimeout(function () { botao.querySelector("span").textContent = "Compartilhar"; }, 1800);
-      }).catch(function () { window.prompt("Copie o link:", l); });
-    });
-
-    function fechar() { menu.hidden = true; botao.setAttribute("aria-expanded", "false"); }
-    botao.addEventListener("click", function (e) {
-      e.stopPropagation();
-      var abrir = menu.hidden;
-      document.querySelectorAll(".menu").forEach(function (m) { m.hidden = true; });
-      menu.hidden = !abrir;
-      botao.setAttribute("aria-expanded", String(abrir));
-      if (abrir) {
-        prontas = {};                    // tema, período ou recorte podem ter mudado
-        if (nativo) ["ig-4x5", "ig-story", "slide"].forEach(preparar);
-        menu.style.left = menu.style.right = "";
-        var r = menu.getBoundingClientRect(), lim = caixa.closest(".card");
-        if (lim && r.left < lim.getBoundingClientRect().left) { menu.style.right = "auto"; menu.style.left = "0"; }
+    function urlDa(rede) {
+      var link = encodeURIComponent(linkDoGrafico(cartao)), texto = encodeURIComponent(textoDoPost(cartao));
+      if (rede === "x") return "https://x.com/intent/post?text=" + texto + "&url=" + link;
+      if (rede === "linkedin") return "https://www.linkedin.com/sharing/share-offsite/?url=" + link;
+      if (rede === "email") {
+        return "mailto:?subject=" + encodeURIComponent(graficoDe(cartao).titulo + " — Follow the Money") +
+               "&body=" + texto + "%0D%0A%0D%0A" + link;
       }
+      return null;
+    }
+    REDES.forEach(function (r) {
+      var a = html(r.id === "instagram" ? "button" : "a", {
+        "class": "rede rede-" + r.id, title: r.dica, "aria-label": r.dica
+      });
+      if (r.id === "instagram") a.setAttribute("type", "button");
+      a.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" ' +
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + r.svg + "</svg>";
+      if (r.id === "instagram") {
+        a.addEventListener("click", instagram);
+      } else {
+        // o link é montado na hora do clique: o recorte e o período mudam o texto
+        a.addEventListener("click", function () { a.href = urlDa(r.id); });
+        a.href = urlDa(r.id);
+        if (r.id !== "email") { a.target = "_blank"; a.rel = "noopener"; }
+      }
+      caixa.appendChild(a);
     });
-    document.addEventListener("click", function (e) { if (!caixa.contains(e.target)) fechar(); });
-    document.addEventListener("keydown", function (e) { if (e.key === "Escape") fechar(); });
-    caixa.appendChild(botao);
-    caixa.appendChild(menu);
+    if (nativo) {
+      caixa.addEventListener("pointerenter", preparar);
+      caixa.addEventListener("touchstart", preparar, { passive: true });
+    }
     return caixa;
+  }
+
+  // Aviso curto embaixo da barra, que some sozinho.
+  function avisar(perto, texto) {
+    var v = html("div", { "class": "aviso-curto", role: "status", texto: texto });
+    perto.appendChild(v);
+    setTimeout(function () { v.remove(); }, 3500);
   }
 
   function salvar(blob, nome) {
