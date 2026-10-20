@@ -612,3 +612,9 @@ button, summary, a, input, select { touch-action: manipulation; }
    pintura e o app.js a tela fica preta, que é a cor do portão, e não um
    lampejo do conteúdo. O app.js tira a marca ao liberar. */
 :root[data-portao] .app { display: none; }
+
+/* Compartilhar: em tela estreita fica só o ícone, para a fileira de botões
+   do cartão não quebrar ("Tela cheia" ia para duas linhas) */
+@media (max-width: 520px) {
+  .compartilhar > .btn span { display: none; }
+}

@@ -1344,6 +1344,7 @@
     btnFs.addEventListener("click", function () { abrirVisor(cartao, true); });
     cartao.botaoTelaCheia = btnFs;
     acoes.appendChild(btnFs);
+    acoes.appendChild(menuCompartilhar(cartao));
     acoes.appendChild(menuBaixar(cartao));
     ferramentas.appendChild(acoes);
     raiz.appendChild(ferramentas);
@@ -1481,6 +1482,119 @@
     return caixa;
   }
 
+  // ---------- compartilhar ----------
+  // Nenhuma rede deixa um site postar imagem sozinho. O que existe:
+  //  - no celular, o menu de compartilhar do aparelho (Web Share API com
+  //    arquivo), que lista Instagram (feed, Stories, Direct), X, WhatsApp…
+  //    A imagem vai pronta, no formato da rede;
+  //  - no X, a janela de post com texto e link (intent), sem imagem — no
+  //    computador a imagem 16:9 é baixada junto, para anexar;
+  //  - no Instagram pelo computador, nada: baixa-se a imagem 4:5.
+  // O link é sempre o do site do assinante; quem não assina cai no portão.
+  var LINK_SITE = "https://ftm.app.br/interno/dados/";
+  var ICO_COMPARTILHAR = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" ' +
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>' +
+    '<path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>';
+
+  function podeCompartilharArquivo() {
+    try {
+      return !!(navigator.canShare && navigator.canShare({
+        files: [new File([""], "x.png", { type: "image/png" })] }));
+    } catch (e) { return false; }
+  }
+  function textoDoPost(cartao) {
+    var g = graficoDe(cartao);
+    return g.titulo + (g.subtitulo ? " — " + g.subtitulo : "") + ". Fonte: " + (g.fonte || "") + ".";
+  }
+  function linkDoGrafico(cartao) { return LINK_SITE + "#" + cartao.grafico.id; }
+
+  function menuCompartilhar(cartao) {
+    var caixa = html("div", { "class": "baixar compartilhar" });
+    var botao = html("button", { type: "button", "class": "btn", "aria-haspopup": "menu", "aria-expanded": "false",
+                                 title: "Compartilhar no Instagram, no X ou em outro app" });
+    botao.innerHTML = ICO_COMPARTILHAR + "<span>Compartilhar</span>";
+    var menu = html("div", { "class": "menu", role: "menu", hidden: "" });
+    var nativo = podeCompartilharArquivo();
+    // A imagem é preparada quando o menu abre: no iPhone o compartilhar só
+    // abre se for chamado logo depois do toque, e gerar a imagem leva um
+    // instante — esperar por ela no clique perderia o gesto.
+    var prontas = {};
+    function preparar(id) {
+      if (!prontas[id]) {
+        prontas[id] = { p: gerarCanvas(cartao, tamanhoPorId(id)).then(function (c) { return blobDe(c, "image/png"); })
+                          .then(function (b) { prontas[id].blob = b; return b; }) };
+      }
+      return prontas[id].p;
+    }
+    function item(rotulo, nota, acao) {
+      var b = html("button", { type: "button", role: "menuitem" });
+      b.innerHTML = rotulo + "<small>" + nota + "</small>";
+      b.addEventListener("click", function () { fechar(); acao(); });
+      menu.appendChild(b);
+    }
+    function compartilharNativo(id) {
+      var pronto = prontas[id] && prontas[id].blob;
+      var enviar = function (blob) {
+        var f = new File([blob], nomeArquivo(cartao, "png", tamanhoPorId(id)), { type: "image/png" });
+        return navigator.share({ files: [f], title: graficoDe(cartao).titulo,
+                                 text: textoDoPost(cartao) + " " + linkDoGrafico(cartao) });
+      };
+      var falhou = function (e) {
+        if (e && e.name === "AbortError") return;           // a pessoa desistiu
+        preparar(id).then(function (b) { salvar(b, nomeArquivo(cartao, "png", tamanhoPorId(id))); });
+      };
+      if (pronto) enviar(pronto).catch(falhou);
+      else preparar(id).then(enviar).catch(falhou);
+    }
+    if (nativo) {
+      item("Instagram — feed", "imagem 4:5; escolha o Instagram no menu do aparelho",
+           function () { compartilharNativo("ig-4x5"); });
+      item("Instagram — Stories", "imagem 9:16", function () { compartilharNativo("ig-story"); });
+      item("X, WhatsApp ou outro app", "imagem 16:9 com o texto e o link",
+           function () { compartilharNativo("slide"); });
+    } else {
+      item("Postar no X", "abre o post com texto e link; a imagem 16:9 é baixada para você anexar",
+           function () {
+             var url = "https://x.com/intent/post?text=" + encodeURIComponent(textoDoPost(cartao)) +
+                       "&url=" + encodeURIComponent(linkDoGrafico(cartao));
+             window.open(url, "_blank", "noopener");
+             preparar("slide").then(function (b) { salvar(b, nomeArquivo(cartao, "png", tamanhoPorId("slide"))); });
+           });
+      item("Imagem para o Instagram", "baixa a 4:5 do feed; o Instagram não aceita postar pelo navegador",
+           function () { preparar("ig-4x5").then(function (b) { salvar(b, nomeArquivo(cartao, "png", tamanhoPorId("ig-4x5"))); }); });
+    }
+    menu.appendChild(html("hr"));
+    item("Copiar o link", "endereço deste gráfico no site", function () {
+      var l = linkDoGrafico(cartao);
+      (navigator.clipboard ? navigator.clipboard.writeText(l) : Promise.reject()).then(function () {
+        botao.querySelector("span").textContent = "Link copiado";
+        setTimeout(function () { botao.querySelector("span").textContent = "Compartilhar"; }, 1800);
+      }).catch(function () { window.prompt("Copie o link:", l); });
+    });
+
+    function fechar() { menu.hidden = true; botao.setAttribute("aria-expanded", "false"); }
+    botao.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var abrir = menu.hidden;
+      document.querySelectorAll(".menu").forEach(function (m) { m.hidden = true; });
+      menu.hidden = !abrir;
+      botao.setAttribute("aria-expanded", String(abrir));
+      if (abrir) {
+        prontas = {};                    // tema, período ou recorte podem ter mudado
+        if (nativo) ["ig-4x5", "ig-story", "slide"].forEach(preparar);
+        menu.style.left = menu.style.right = "";
+        var r = menu.getBoundingClientRect(), lim = caixa.closest(".card");
+        if (lim && r.left < lim.getBoundingClientRect().left) { menu.style.right = "auto"; menu.style.left = "0"; }
+      }
+    });
+    document.addEventListener("click", function (e) { if (!caixa.contains(e.target)) fechar(); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") fechar(); });
+    caixa.appendChild(botao);
+    caixa.appendChild(menu);
+    return caixa;
+  }
+
   function salvar(blob, nome) {
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
@@ -1503,14 +1617,15 @@
   }
   function serializar(svg) { return new XMLSerializer().serializeToString(svg); }
 
-  // pintar: função opcional que desenha as anotações do visor por cima (ctx, escala)
-  function exportar(cartao, t, formato, pintar) {
-    if (formato === "svg") return baixarSVG(cartao, t);
+  // O gráfico num <canvas> no tamanho t, com o fundo do tema. É o que o
+  // download e o compartilhar usam. pintar: função opcional que desenha as
+  // anotações do visor por cima (ctx, escala).
+  function gerarCanvas(cartao, t, pintar) {
     var nomeTema = tema(), L = t.layout, d = construir(cartao, L, nomeTema);
     var W = L.W * t.escala, H = L.H * t.escala;
     // o SVG é rasterizado já no tamanho final: texto e linhas saem nítidos
     d.svg.setAttribute("width", W); d.svg.setAttribute("height", H);
-    Promise.all([
+    return Promise.all([
       carregarImagem("data:image/svg+xml;charset=utf-8," + encodeURIComponent(serializar(d.svg))),
       d.pal.fundo ? carregarImagem(d.pal.fundo) : Promise.resolve(null)
     ]).then(function (r) {
@@ -1527,6 +1642,17 @@
       }
       x.drawImage(r[0], 0, 0, W, H);
       if (pintar) pintar(x, t.escala);
+      return c;
+    });
+  }
+  function blobDe(c, tipo, q) {
+    return new Promise(function (ok) { c.toBlob(ok, tipo, q); });
+  }
+
+  function exportar(cartao, t, formato, pintar) {
+    if (formato === "svg") return baixarSVG(cartao, t);
+    var L = t.layout, W = L.W * t.escala, H = L.H * t.escala;
+    gerarCanvas(cartao, t, pintar).then(function (c) {
       if (formato === "png") {
         c.toBlob(function (b) { salvar(b, nomeArquivo(cartao, "png", t)); }, "image/png");
       } else if (formato === "jpg") {
