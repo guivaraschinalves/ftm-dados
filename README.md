@@ -412,6 +412,36 @@ batem na segunda casa decimal.
 A contribuição por grupo começa em 2020 porque é quando começa a tabela 7060
 do SIDRA (a estrutura de pesos atual do IPCA).
 
+## Ações EUA (Anthropic)
+
+`dados/acoes-eua.json` sai de `scripts/acoes_eua.py`, **na mão**: não há
+série pública por trás. Os números da Anthropic são os do rascunho do
+prospecto (S-1) como o WSJ os reportou em 20/10/2026; os do IPO da SpaceX vêm
+da Reuters, e a série H, da Orrick. O cabeçalho do script diz de onde vem cada
+um. Quando o S-1 sair público ou o IPO ganhar preço, trocar as constantes e
+rodar de novo.
+
+Esses cartões não são série no tempo: são **painéis** (`painel` no gráfico),
+desenhados por `PAINEIS` no `app.js` com a mesma moldura dos outros, então
+baixar, compartilhar e tela cheia funcionam igual — só não há período nem
+caixa do mouse.
+
+- `comparacao`: uma barra por período (`barras: [{rot, v, cor}]`), valor na
+  ponta e a variação % entre uma e a seguinte numa seta. Negativo desce do
+  zero. `aprox: true` põe "≈" no valor; `destaque: {v, cor, rot, rotCurto}`
+  pinta a parte de baixo da barra; `citacao: {texto, autor, cor}` vai à
+  direita (embaixo, em pé).
+- `composicao`: `total` e `partes`, numa barra deitada; `marca` escreve um
+  texto dentro do pedaço.
+- `barras`: barras deitadas (`linhas: [{rot, detalhe, v, cor}]`);
+  `contorno: true` deixa a barra tracejada (o que ainda é intenção) e
+  `prefixo` vai antes do valor ("até ").
+- `paginas`: `paginas: {total, marcadas, cor, legenda}` e a lista `itens: [{t, d}]`.
+
+Unidade nova: `usd-bi-tri` (valor em bilhões; escreve "US$ 965 bi" e
+"US$ 1,77 tri"). Para conferir um cartão em pé, o modo de prévia aceita o
+tamanho: `?imagem=ID&tam=ig-4x5`.
+
 ## O visor (tela cheia de um gráfico)
 
 `abrirVisor` em `app.js` monta um painel único, reaproveitado por todos os
@@ -449,12 +479,12 @@ python3 -m http.server 8000   # http://localhost:8000
 index.html  styles.css  app.js
 assets/     fundo.jpg (fundo dos slides do FtM), logo-ftm.svg, favicon.svg
 dados/      ipca.json, fiscal.json, divida.json, reservas.json,
-            tesouro-direto.json, moedas.json, juros.json (gerados)
+            tesouro-direto.json, moedas.json, juros.json, acoes-eua.json (gerados)
             + o .xlsx do Tesouro, o das reservas e o das moedas
 scripts/    atualizar.py (IPCA), fiscal.py (resultado primário),
             tesouro_direto.py (taxas) e juros.py (Brasil × EUA),
             automáticos; divida.py (dívida), reservas.py (reservas) e
-            moedas.py (câmbio), dos .xlsx, na mão
+            moedas.py (câmbio), dos .xlsx, e acoes_eua.py, na mão
 .github/workflows/atualizar.yml
 ```
 

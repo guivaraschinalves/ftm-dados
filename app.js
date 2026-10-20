@@ -70,7 +70,7 @@
   // fonte, mês de referência e as suas seções; um que faltar é só ignorado.
   var FONTES = ["dados/moedas.json", "dados/bp.json", "dados/ipca.json", "dados/fiscal.json",
                 "dados/divida.json", "dados/tesouro-direto.json", "dados/juros.json",
-                "dados/reservas.json"];
+                "dados/reservas.json", "dados/acoes-eua.json"];
   // ---------- gate de assinante ----------
   // O site roda em dois lugares: ftm.app.br/interno/dados, onde é para
   // assinante, e guivaraschinalves.github.io/ftm-dados, que segue aberto
@@ -145,6 +145,7 @@
     }
     return nfCache[casas];
   }
+  var NF_ATE2 = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
   function pct(v, casas) { return nf(casas === undefined ? 2 : casas).format(v) + "%"; }
 
   // Como cada gráfico escreve os seus números: no eixo (curto) e no valor
@@ -176,6 +177,11 @@
     "usd-bi": { eixo: function (v, passo) { return nf(casasDoPasso(passo)).format(v); },
                 valor: function (v) { return "US$ " + nf(1).format(v) + " bi"; } },
     // o mesmo, com duas casas: o fluxo mensal de criptos anda na casa dos centavos de bilhão
+    // bilhão até mil, trilhão daí para cima: valor de empresa (US$ 965 bi, US$ 1,77 tri)
+    "usd-bi-tri": { eixo: function (v) { return nf(0).format(v); },
+                    valor: function (v) {
+                      return Math.abs(v) >= 1000 ? "US$ " + NF_ATE2.format(v / 1000) + " tri" : "US$ " + nf(0).format(v) + " bi";
+                    } },
     "usd-bi2": { eixo: function (v, passo) { return nf(casasDoPasso(passo)).format(v); },
                  valor: function (v) { return "US$ " + nf(2).format(v) + " bi"; } },
     // tonelada: a casa decimal só importa onde o número é pequeno (os −5,4 t
@@ -352,15 +358,10 @@
 
   // ---------- desenho ----------
   function construir(cartao, L0, nomeTema) {
+    if (cartao.grafico.painel) return construirPainel(cartao, Object.assign({}, L0), nomeTema);
     var g = graficoDe(cartao), pal = PALETAS[nomeTema], F = unidade(g);
     var L = Object.assign({}, L0);
-
-    // subtítulo que não cabe numa linha quebra em duas (versão estreita)
-    var subLinhas = [g.subtitulo || ""];
-    if (g.subtitulo && largura(g.subtitulo, L.sub.fs, "italic") > L.sub.max) {
-      var partes = g.subtitulo.split("; ");
-      subLinhas = partes.length > 1 ? [partes[0] + ";", partes.slice(1).join("; ")] : [g.subtitulo];
-    }
+    var subLinhas = subtituloEmLinhas(g, L);
     var legenda = montarLegenda(g, L);
     var topoLegenda = L.legenda.y || (L.sub.y + (subLinhas.length - 1) * L.sub.fs * 1.2 + 62);
     var y0 = topoLegenda + (legenda.linhas - 1) * L.legenda.passo + 42;
@@ -679,7 +680,19 @@
       }));
     });
 
-    // título, subtítulo, fonte e logo
+    pintarMoldura(svg, g, L, pal, subLinhas);
+    return { svg: svg, L: L, pal: pal, X: X, Y: Y, yDe: yDe, fDe: fDe, d0: d0, d1: d1, vis: vis, esc: esc };
+  }
+
+  // subtítulo que não cabe numa linha quebra em duas, no ponto e vírgula
+  function subtituloEmLinhas(g, L) {
+    if (!g.subtitulo || largura(g.subtitulo, L.sub.fs, "italic") <= L.sub.max) return [g.subtitulo || ""];
+    var partes = g.subtitulo.split("; ");
+    return partes.length > 1 ? [partes[0] + ";", partes.slice(1).join("; ")] : [g.subtitulo];
+  }
+
+  // título, subtítulo, fonte e logo — iguais em todo cartão
+  function pintarMoldura(svg, g, L, pal, subLinhas) {
     svg.appendChild(texto(g.titulo, {
       x: L.titulo.x, y: L.titulo.y, "font-weight": "bold", fill: pal.texto,
       "font-size": corpoQueCabe(g.titulo, L.titulo.fs, L.titulo.max, "bold")
@@ -692,7 +705,8 @@
       }));
     });
     svg.appendChild(texto("Fonte: " + g.fonte + ".", {
-      x: L.fonte.x, y: L.fonte.y, "font-size": L.fonte.fs, fill: pal.texto, "text-anchor": "end"
+      x: L.fonte.x, y: L.fonte.y, "font-size": corpoQueCabe("Fonte: " + g.fonte + ".", L.fonte.fs, L.fonte.x - 30),
+      fill: pal.texto, "text-anchor": "end"
     }));
     if (logoSvg) {
       var lh = L.logo.w * logoSvg.razao;
@@ -702,8 +716,328 @@
       gl.appendChild(gg);
       svg.appendChild(gl);
     }
+  }
 
-    return { svg: svg, L: L, pal: pal, X: X, Y: Y, yDe: yDe, fDe: fDe, d0: d0, d1: d1, vis: vis, esc: esc };
+  // ---------- painéis: cartões que não são série no tempo ----------
+  // Um número contra o outro (receita de um semestre contra o do ano
+  // anterior), as partes de um total, barras deitadas e as páginas de um
+  // documento. O gráfico traz "painel" com o nome do desenho; a moldura
+  // (título, subtítulo, fonte, logo) é a mesma dos outros, então baixar,
+  // compartilhar e tela cheia funcionam igual. Não há eixo de tempo, período
+  // nem caixa do mouse: o número está escrito no próprio desenho.
+  function quebrar(str, fs, maxW, estilo) {
+    var linhas = [], atual = "";
+    String(str).split(" ").forEach(function (p) {
+      var t = atual ? atual + " " + p : p;
+      if (atual && largura(t, fs, estilo) > maxW) { linhas.push(atual); atual = p; } else atual = t;
+    });
+    if (atual) linhas.push(atual);
+    return linhas;
+  }
+  function linhasDeTexto(alvo, linhas, x, y, fs, attrs, entre) {
+    var passo = fs * (entre || 1.25);
+    linhas.forEach(function (l, k) {
+      alvo.appendChild(texto(l, Object.assign({ x: x, y: y + k * passo + fs * 0.8, "font-size": fs }, attrs)));
+    });
+    return linhas.length * passo;
+  }
+  // valor com o sinal na frente da moeda: "−US$ 80,7 bi", e não "US$ -80,7 bi"
+  function valorPainel(F, b) {
+    var v = b.v, s = (b.prefixo || "") + (b.aprox ? "≈ " : "") + F.valor(Math.abs(v));
+    return v < 0 ? "−" + s : s;
+  }
+  function variacao(a, b) {
+    var v = (Math.abs(b) / Math.abs(a) - 1) * 100;
+    return (v >= 0 ? "+" : "−") + nf(0).format(Math.abs(v)) + "%";
+  }
+  function seta2(alvo, x, y, para, cor, t) {
+    // ponta de seta em (x, y), apontando para baixo (para = 1) ou para cima (−1)
+    alvo.appendChild(el("polygon", {
+      points: (x - t) + "," + (y - para * t * 1.6) + " " + (x + t) + "," + (y - para * t * 1.6) + " " + x + "," + y,
+      fill: cor
+    }));
+  }
+
+  function construirPainel(cartao, L, nomeTema) {
+    var g = cartao.grafico, pal = PALETAS[nomeTema], F = unidade(g);
+    var subLinhas = subtituloEmLinhas(g, L);
+    var svg = el("svg", {
+      xmlns: NS, viewBox: "0 0 " + L.W + " " + L.H, width: L.W, height: L.H,
+      role: "img", "aria-label": g.titulo + (g.subtitulo ? ". " + g.subtitulo : "")
+    });
+    var estreito = L.W < L.H * 1.2;
+    var caixa = {
+      x0: estreito ? 44 : 80, x1: L.W - (estreito ? 44 : 80),
+      y0: L.sub.y + (subLinhas.length - 1) * L.sub.fs * 1.2 + (estreito ? 74 : 70),
+      y1: L.fonte.y - (estreito ? 56 : 50)
+    };
+    PAINEIS[g.painel](svg, g, caixa, { pal: pal, F: F, estreito: estreito, u: L.tick });
+    pintarMoldura(svg, g, L, pal, subLinhas);
+    return { svg: svg, L: L, pal: pal, painel: true };
+  }
+
+  // Citação com um fio na cor de destaque à esquerda. Devolve a altura.
+  function citacao(svg, cit, x, y, w, fs, ctx, medir) {
+    var linhas = quebrar(cit.texto, fs, w - fs * 1.4, "italic");
+    var hTexto = linhas.length * fs * 1.32, fsA = fs * 0.78;
+    var h = hTexto + fsA * 1.9;
+    if (medir) return h;
+    svg.appendChild(el("rect", { x: x, y: y, width: 6, height: h, fill: corNoTema(cit.cor || "#F79646", ctx.pal) }));
+    linhasDeTexto(svg, linhas, x + fs * 1.1, y, fs, { "font-style": "italic", fill: ctx.pal.texto }, 1.32);
+    svg.appendChild(texto("— " + cit.autor, {
+      x: x + fs * 1.1, y: y + hTexto + fsA * 1.3, "font-size": fsA, fill: ctx.pal.suave
+    }));
+    return h;
+  }
+
+  var PAINEIS = {
+    // Duas (ou mais) barras, uma por período, com o valor na ponta e a
+    // variação entre uma e a seguinte numa seta. Valor negativo (prejuízo)
+    // desce do zero, e tudo se espelha. "destaque" pinta, na base da barra,
+    // a parte dela que se quer apontar (a receita de dois clientes).
+    comparacao: function (svg, g, c, ctx) {
+      var u = ctx.u, pal = ctx.pal, F = ctx.F, area = { x0: c.x0, x1: c.x1, y0: c.y0, y1: c.y1 };
+      if (g.citacao) {
+        if (ctx.estreito) {
+          var fsC = u * 1.0, hC = citacao(svg, g.citacao, c.x0, 0, c.x1 - c.x0, fsC, ctx, true);
+          citacao(svg, g.citacao, c.x0, c.y1 - hC, c.x1 - c.x0, fsC, ctx);
+          area.y1 = c.y1 - hC - u * 2.2;
+        } else {
+          var xq = c.x0 + (c.x1 - c.x0) * 0.6, fsQ = u * 1.25;
+          var hQ = citacao(svg, g.citacao, xq, 0, c.x1 - xq, fsQ, ctx, true);
+          citacao(svg, g.citacao, xq, (c.y0 + c.y1) / 2 - hQ / 2, c.x1 - xq, fsQ, ctx);
+          area.x1 = xq - u * 3;
+        }
+      }
+      var bs = g.barras, n = bs.length, neg = bs.every(function (b) { return b.v < 0; }), sg = neg ? -1 : 1;
+      var fsVal = u * 1.7, fsCat = u * 1.2, fsVar = u * 2;
+      var maxAbs = Math.max.apply(null, bs.map(function (b) { return Math.abs(b.v); }));
+      var reservaPonta = fsVal * 1.4 + u * 1.2 + fsVar * 1.3, reservaBase = fsCat * 1.9;
+      var hPlot = area.y1 - area.y0 - reservaPonta - reservaBase;
+      var yBase = neg ? area.y0 + reservaBase : area.y1 - reservaBase;
+      var slot = (area.x1 - area.x0) / n, bw = Math.min(slot * 0.44, 300);
+      function cx(k) { return area.x0 + slot * (k + 0.5); }
+      function alt(v) { return Math.abs(v) / maxAbs * hPlot; }
+      // a ponta da barra, e a borda de fora do rótulo de valor
+      function ponta(k) { return yBase - sg * alt(bs[k].v); }
+      function foraDoRotulo(k) { return ponta(k) - sg * fsVal * 1.35; }
+
+      svg.appendChild(el("line", { x1: area.x0, x2: area.x1, y1: yBase, y2: yBase, stroke: pal.zero, "stroke-width": 1.5 }));
+      bs.forEach(function (b, k) {
+        var h = alt(b.v), x = cx(k) - bw / 2;
+        svg.appendChild(el("rect", { x: x, y: neg ? yBase : yBase - h, width: bw, height: Math.max(1, h), fill: corNoTema(b.cor, pal) }));
+        if (b.destaque) {
+          var d = b.destaque, hd = alt(d.v), cd = corNoTema(d.cor, pal);
+          var yd = neg ? yBase : yBase - hd;
+          svg.appendChild(el("rect", { x: x, y: yd, width: bw, height: hd, fill: cd }));
+          // o rótulo vai dentro do pedaço, encolhendo até caber
+          // ("rotCurto" é a segunda tentativa, quando o pedaço é baixo demais)
+          var fsD, ls, hl;
+          [d.rot, d.rotCurto || d.rot].some(function (rot) {
+            for (fsD = u * 0.95; ; fsD *= 0.93) {
+              ls = quebrar(rot, fsD, bw - u * 1.2, "bold");
+              hl = ls.length * fsD * 1.2;
+              if (hl < hd - u * 0.6 || fsD <= u * 0.7) break;
+            }
+            return hl < hd - u * 0.6;
+          });
+          if (hl < hd - u * 0.6) {
+            linhasDeTexto(svg, ls, cx(k), yd + (hd - hl) / 2 - fsD * 0.05, fsD,
+              { "font-weight": "bold", fill: "#1b1f23", "text-anchor": "middle" }, 1.2);
+          } else {
+            // não coube dentro: vai ao lado, com um fio
+            ls = quebrar(d.rot, fsD, slot / 2 - bw / 2 - u, "bold");
+            var xl = x + bw + u * 0.8;
+            svg.appendChild(el("line", { x1: x + bw, x2: xl - 6, y1: yd + hd / 2, y2: yd + hd / 2, stroke: cd, "stroke-width": 2 }));
+            linhasDeTexto(svg, ls, xl, yd + hd / 2 - ls.length * fsD * 0.6, fsD, { "font-weight": "bold", fill: cd }, 1.2);
+          }
+        }
+        svg.appendChild(texto(valorPainel(F, b), {
+          x: cx(k), y: neg ? ponta(k) + fsVal * 1.05 : ponta(k) - fsVal * 0.35, "font-size": fsVal,
+          "font-weight": "bold", fill: corNoTema(b.corRotulo || b.cor, pal), "text-anchor": "middle"
+        }));
+        svg.appendChild(texto(b.rot, {
+          x: cx(k), y: neg ? yBase - fsCat * 0.55 : yBase + fsCat * 1.3, "font-size": fsCat,
+          fill: pal.texto, "text-anchor": "middle"
+        }));
+        if (k === 0) return;
+        // a variação: sai de cima do rótulo anterior, cruza e desce no seguinte
+        var x0 = cx(k - 1), x1 = cx(k), t = u * 0.4, cor = pal.suave;
+        var yA = neg ? Math.max(foraDoRotulo(k - 1), foraDoRotulo(k)) + u * 1.1
+                     : Math.min(foraDoRotulo(k - 1), foraDoRotulo(k)) - u * 1.1;
+        var y0 = foraDoRotulo(k - 1) - sg * u * 0.3, y1 = foraDoRotulo(k) - sg * u * 0.3;
+        svg.appendChild(el("path", {
+          d: "M" + x0 + " " + y0 + "V" + yA + "H" + x1 + "V" + (y1 - sg * t * 1.4),
+          fill: "none", stroke: cor, "stroke-width": 2.5, "stroke-linejoin": "round"
+        }));
+        seta2(svg, x1, y1, sg, cor, t * 1.3);
+        var fv = corpoQueCabe(variacao(bs[k - 1].v, b.v), fsVar, (x1 - x0) * 0.8, "bold");
+        svg.appendChild(texto(variacao(bs[k - 1].v, b.v), {
+          x: (x0 + x1) / 2, y: neg ? yA + fv * 1.05 : yA - fv * 0.3, "font-size": fv, "font-weight": "bold",
+          fill: pal.texto, "text-anchor": "middle"
+        }));
+      });
+    },
+
+    // Um total partido em pedaços, numa barra deitada; embaixo, uma coluna
+    // por pedaço com o valor e o que ele é.
+    composicao: function (svg, g, c, ctx) {
+      var u = ctx.u, pal = ctx.pal, F = ctx.F, W = c.x1 - c.x0, ps = g.partes;
+      var soma = ps.reduce(function (a, p) { return a + Math.abs(p.v); }, 0);
+      // o bloco inteiro (total, barra, legenda) fica no meio da altura
+      var fsT = u * 1.35, fsV = u * 1.55, fsR = u * 1.05, n = ps.length, cw = W / n;
+      var linhasR = Math.max.apply(null, ps.map(function (p) { return quebrar(p.rot, fsR, cw - u * 2.5).length; }));
+      var hb = Math.min(ctx.estreito ? 190 : 230, (c.y1 - c.y0) * 0.3);
+      var hBloco = fsT * 1.9 + hb + u * 1.8 + fsV * 1.3 + linhasR * fsR * 1.25;
+      var y = c.y0 + Math.max(0, (c.y1 - c.y0 - hBloco) / 2) - fsT * 0.2;
+      var tot = (g.total.rot ? g.total.rot + ": " : "") + valorPainel(F, g.total);
+      svg.appendChild(texto(tot, {
+        x: c.x0, y: y + fsT, "font-size": corpoQueCabe(tot, fsT, W, "bold"), "font-weight": "bold", fill: pal.texto
+      }));
+      var yb = y + fsT * 1.9, x = c.x0;
+      ps.forEach(function (p) {
+        var w = Math.abs(p.v) / soma * W, cor = corNoTema(p.cor, pal);
+        svg.appendChild(el("rect", { x: x, y: yb, width: w, height: hb, fill: cor }));
+        var pc = nf(0).format(Math.abs(p.v) / soma * 100) + "%", fsP = u * 1.6;
+        if (largura(pc, fsP, "bold") < w - u) {
+          svg.appendChild(texto(pc, { x: x + u * 0.7, y: yb + fsP * 1.15, "font-size": fsP, "font-weight": "bold", fill: "#ffffff" }));
+          if (p.marca && largura(p.marca, u * 1.05) < w - u) {
+            svg.appendChild(texto(p.marca, { x: x + u * 0.7, y: yb + hb - u * 0.7, "font-size": u * 1.05, fill: "#ffffff" }));
+          }
+        }
+        x += w;
+      });
+      // colunas de legenda
+      var yL = yb + hb + u * 1.8;
+      ps.forEach(function (p, k) {
+        var xc = c.x0 + k * cw, cor = corNoTema(p.cor, pal);
+        svg.appendChild(el("rect", { x: xc, y: yL + fsV * 0.15, width: fsV * 0.8, height: fsV * 0.8, fill: cor }));
+        svg.appendChild(texto(valorPainel(F, p), { x: xc + fsV * 1.2, y: yL + fsV * 0.85, "font-size": fsV, "font-weight": "bold", fill: pal.texto }));
+        linhasDeTexto(svg, quebrar(p.rot, fsR, cw - u * 2.5), xc + fsV * 1.2, yL + fsV * 1.3, fsR, { fill: pal.suave });
+      });
+    },
+
+    // Barras deitadas, uma por linha: nome e detalhe à esquerda (em cima, no
+    // celular), barra e valor à direita. "contorno": barra vazada e tracejada,
+    // para o que ainda é intenção, não fato.
+    barras: function (svg, g, c, ctx) {
+      var u = ctx.u, pal = ctx.pal, F = ctx.F, ls = g.linhas, n = ls.length, W = c.x1 - c.x0;
+      var maxV = Math.max.apply(null, ls.map(function (l) { return Math.abs(l.v); }));
+      var fsN = u * 1.15, fsD = u * 0.92, fsV = u * 1.5;
+      var xRot = c.x0, wRot = ctx.estreito ? W : W * 0.34;
+      var xb = ctx.estreito ? c.x0 : c.x0 + wRot + u * 1.5;
+      var wVal = Math.max.apply(null, ls.map(function (l) { return largura(valorPainel(F, l), fsV, "bold"); })) + u;
+      var wMax = c.x1 - xb - wVal;
+      var hRow = (c.y1 - c.y0) / n;
+      ls.forEach(function (l, k) {
+        var y = c.y0 + k * hRow, cor = corNoTema(l.cor, pal);
+        var nome = quebrar(l.rot, fsN, wRot, "bold"), det = l.detalhe ? quebrar(l.detalhe, fsD, wRot) : [];
+        var hTxt = nome.length * fsN * 1.2 + det.length * fsD * 1.25;
+        var hb = Math.min(ctx.estreito ? hRow * 0.34 : hRow * 0.52, 110), yb, yt;
+        if (ctx.estreito) {
+          var bloco = hTxt + u * 0.6 + hb;
+          yt = y + (hRow - bloco) / 2; yb = yt + hTxt + u * 0.6;
+        } else {
+          yb = y + (hRow - hb) / 2; yt = y + (hRow - hTxt) / 2;
+        }
+        var yy = yt + linhasDeTexto(svg, nome, xRot, yt, fsN, { "font-weight": "bold", fill: pal.texto }, 1.2);
+        linhasDeTexto(svg, det, xRot, yy, fsD, { fill: pal.suave });
+        var w = Math.abs(l.v) / maxV * wMax;
+        svg.appendChild(el("rect", l.contorno ? {
+          x: xb + 1.5, y: yb + 1.5, width: w - 3, height: hb - 3, fill: cor, "fill-opacity": 0.12, stroke: cor,
+          "stroke-width": 3, "stroke-dasharray": "12 8"
+        } : { x: xb, y: yb, width: w, height: hb, fill: cor }));
+        svg.appendChild(texto(valorPainel(F, l), {
+          x: xb + w + u * 0.6, y: yb + hb / 2, "font-size": fsV, "font-weight": "bold", fill: cor,
+          "dominant-baseline": "central"
+        }));
+      });
+    },
+
+    // As páginas de um documento, com a fração que interessa pintada, e a
+    // lista do que há nela.
+    paginas: function (svg, g, c, ctx) {
+      var u = ctx.u, pal = ctx.pal, W = c.x1 - c.x0, H = c.y1 - c.y0, P = g.paginas;
+      var corD = corNoTema(P.cor || "#C0504D", pal);
+      // onde ficam as páginas e onde fica a lista
+      var pg, li;
+      if (ctx.estreito) {
+        pg = { x0: c.x0, x1: c.x1, y0: c.y0, y1: c.y0 + H * 0.3 };
+        li = { x0: c.x0, x1: c.x1, y0: pg.y1 + u * 1.6, y1: c.y1 };
+      } else {
+        pg = { x0: c.x0, x1: c.x0 + W * 0.38, y0: c.y0, y1: c.y1 };
+        li = { x0: c.x0 + W * 0.44, x1: c.x1, y0: c.y0, y1: c.y1 };
+      }
+      var fsCap = u * 1.35, capL = quebrar(P.legenda, fsCap, pg.x1 - pg.x0, "bold");
+      var hCap = capL.length * fsCap * 1.2 + u;
+      var gap = u * 1.1, nP = P.total, pw = (pg.x1 - pg.x0 - gap * (nP - 1)) / nP;
+      var ph = Math.min(pw * 1.38, pg.y1 - pg.y0 - hCap);
+      pw = Math.min(pw, ph / 1.38);
+      var larguraTodas = pw * nP + gap * (nP - 1), xp = pg.x0 + (ctx.estreito ? (pg.x1 - pg.x0 - larguraTodas) / 2 : 0);
+      var yp = pg.y0 + (pg.y1 - pg.y0 - ph - hCap) / 2;
+      for (var k = 0; k < nP; k++) {
+        var x = xp + k * (pw + gap), marcada = k >= nP - P.marcadas, dob = pw * 0.2;
+        var cor = marcada ? corD : pal.suave;
+        svg.appendChild(el("path", {
+          d: "M" + x + " " + yp + "H" + (x + pw - dob) + "L" + (x + pw) + " " + (yp + dob) + "V" + (yp + ph) + "H" + x + "Z",
+          fill: marcada ? corD : "none", "fill-opacity": marcada ? 0.22 : null, stroke: cor, "stroke-width": 3, "stroke-linejoin": "round"
+        }));
+        svg.appendChild(el("path", {
+          d: "M" + (x + pw - dob) + " " + yp + "V" + (yp + dob) + "H" + (x + pw),
+          fill: "none", stroke: cor, "stroke-width": 3, "stroke-linejoin": "round"
+        }));
+        // as linhas de texto da página
+        var m = pw * 0.14, passo = Math.max(8, ph / 16);
+        for (var yl = yp + dob + passo * 0.6, j = 0; yl < yp + ph - m; yl += passo, j++) {
+          var wl = (pw - 2 * m) * (j % 4 === 3 ? 0.6 : 1);
+          svg.appendChild(el("rect", { x: x + m, y: yl, width: wl, height: Math.max(3, passo * 0.28), rx: 1.5, fill: cor, opacity: marcada ? 0.85 : 0.35 }));
+        }
+      }
+      var yc = yp + ph + u * 1.2;
+      linhasDeTexto(svg, capL, ctx.estreito ? (pg.x0 + pg.x1) / 2 : pg.x0, yc, fsCap,
+        { "font-weight": "bold", fill: corD, "text-anchor": ctx.estreito ? "middle" : "start" }, 1.2);
+
+      // a lista: o corpo encolhe até caber
+      var its = g.itens, k2 = 1, montado;
+      function montar(k) {
+        var fsI = u * 1.08 * k, fsS = u * 0.9 * k, wT = li.x1 - li.x0 - fsI * 1.3, total = 0;
+        var blocos = its.map(function (it) {
+          var a = quebrar(it.t, fsI, wT, "bold"), b = quebrar(it.d, fsS, wT);
+          var h = a.length * fsI * 1.2 + b.length * fsS * 1.25;
+          total += h;
+          return { a: a, b: b, h: h };
+        });
+        var vao = (its.length - 1) * u * 0.9 * k;
+        return { fsI: fsI, fsS: fsS, blocos: blocos, total: total + vao, vao: u * 0.9 * k };
+      }
+      do { montado = montar(k2); k2 *= 0.96; } while (montado.total > li.y1 - li.y0 && k2 > 0.5);
+      var y = li.y0 + Math.max(0, (li.y1 - li.y0 - montado.total) / 2);
+      montado.blocos.forEach(function (b) {
+        svg.appendChild(el("rect", { x: li.x0, y: y + montado.fsI * 0.28, width: montado.fsI * 0.62, height: montado.fsI * 0.62, fill: corD }));
+        var xT = li.x0 + montado.fsI * 1.3;
+        var yy = y + linhasDeTexto(svg, b.a, xT, y, montado.fsI, { "font-weight": "bold", fill: pal.texto }, 1.2);
+        linhasDeTexto(svg, b.b, xT, yy, montado.fsS, { fill: pal.suave });
+        y += b.h + montado.vao;
+      });
+    }
+  };
+
+  // o que vai no CSV de um painel: um rótulo e um valor por linha
+  function linhasDoPainel(g) {
+    if (g.painel === "comparacao") {
+      var r = [];
+      g.barras.forEach(function (b) {
+        r.push([b.rot, b.v]);
+        if (b.destaque) r.push([b.rot + " — " + b.destaque.rot, b.destaque.v]);
+      });
+      return r;
+    }
+    if (g.painel === "composicao") {
+      return [[g.total.rot, g.total.v]].concat(g.partes.map(function (p) { return [p.rot, p.v]; }));
+    }
+    if (g.painel === "barras") return g.linhas.map(function (l) { return [l.rot, l.v]; });
+    if (g.painel === "paginas") return g.itens.map(function (it) { return [it.t, it.d]; });
+    return [];
   }
 
   // ---------- passar o mouse ----------
@@ -731,6 +1065,7 @@
   }
 
   function ligarHover(cartao, desenho) {
+    if (desenho.painel) return;
     var svg = desenho.svg, L = desenho.L, pal = desenho.pal, g = graficoDe(cartao);
     var camada = el("g", { "pointer-events": "none" });
     var alvo = el("rect", { x: L.x0, y: L.y0, width: L.x1 - L.x0, height: L.y1 - L.y0, fill: "transparent" });
@@ -1189,7 +1524,7 @@
     return { ini: ini, fim: fim };
   }
   function periodosDisponiveis(g) {
-    if (g.categorias) return [];   // eixo de categorias não tem janela de tempo
+    if (g.categorias || g.painel) return [];   // eixo de categorias não tem janela de tempo
     var e = extensao(g), passo = passosPorAno(g), anos = (e.fim - e.ini + 1) / passo;
     var lista = [{ id: "tudo", rot: "Tudo" }];
     (g.diario ? [20, 10, 5, 2, 1] : [20, 10, 5]).forEach(function (a) {
@@ -1725,6 +2060,13 @@
     // o arquivo leva toda série desenhada, inclusive a que serve de pano de
     // fundo (legenda: false): na tela ela é contexto, no CSV é dado
     var g = graficoDe(cartao), cols = g.series;
+    if (g.painel) {
+      var ls = [["item", "valor"]].concat(linhasDoPainel(g)).map(function (l) {
+        return l.map(function (x) { return String(x).replace(/;/g, ",").replace(/^(-?\d+)\.(\d+)$/, "$1,$2"); }).join(";");
+      });
+      salvar(new Blob(["\ufeff" + ls.join("\r\n")], { type: "text/csv;charset=utf-8" }), nomeArquivo(cartao, "csv"));
+      return;
+    }
     var meses = {};
     cols.forEach(function (s) { s.dados.forEach(function (d) { meses[d[0]] = true; }); });
     var mapas = cols.map(function (s) { return s.dados.reduce(function (o, d) { o[d[0]] = d[1]; return o; }, {}); });
@@ -2098,7 +2440,9 @@
     var cartao = cartoes.filter(function (c) { return c.grafico.id === decodeURIComponent(id); })[0];
     var saida = html("pre", { id: "imagem-pronta" });
     if (!cartao) { saida.textContent = "ERRO: gráfico não encontrado"; document.body.appendChild(saida); return; }
-    var t = { id: "previa", layout: LAYOUTS.wide, escala: 1200 / LAYOUTS.wide.W };
+    // "&tam=ig-4x5" (um dos TAMANHOS) desenha no formato em pé: serve para conferir
+    var tam = (location.search.match(/[?&]tam=([^&]+)/) || [])[1];
+    var t = tam ? tamanhoPorId(tam) : { id: "previa", layout: LAYOUTS.wide, escala: 1200 / LAYOUTS.wide.W };
     carregarImagens(docs).then(function () { return gerarCanvas(cartao, t); }).then(function (c) {
       saida.textContent = c.toDataURL("image/jpeg", 0.88);
       document.body.appendChild(saida);

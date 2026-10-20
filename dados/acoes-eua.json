@@ -1,0 +1,184 @@
+{
+ "atualizado": "2026-10-20",
+ "referencia": "2026-06",
+ "fonte": "The Wall Street Journal (rascunho do prospecto da Anthropic), Reuters e Orrick",
+ "categoria": "Ações EUA",
+ "secoes": [
+  {
+   "titulo": "Anthropic",
+   "graficos": [
+    {
+     "id": "anthropic-receita",
+     "painel": "comparacao",
+     "titulo": "Anthropic: receita no semestre",
+     "subtitulo": "Receita no 1º semestre, em US$ bilhões; variação sobre o 1º semestre do ano anterior",
+     "unidade": "usd-bi",
+     "fonte": "Anthropic, rascunho do prospecto (S-1), via The Wall Street Journal (20/10/2026)",
+     "barras": [
+      {
+       "rot": "1º sem. 2025",
+       "v": 1.1,
+       "cor": "#95A5A6"
+      },
+      {
+       "rot": "1º sem. 2026",
+       "v": 16.3,
+       "cor": "#4F81BD",
+       "destaque": {
+        "v": 3.26,
+        "cor": "#F79646",
+        "rot": "2 clientes: cerca de 1/5 da receita",
+        "rotCurto": "2 clientes: ≈ 1/5"
+       }
+      }
+     ],
+     "citacao": {
+      "texto": "A Anthropic espera que “uma parcela significativa” da receita venha de “um número limitado de clientes no futuro previsível”.",
+      "autor": "rascunho do prospecto (S-1), tradução livre",
+      "cor": "#F79646"
+     }
+    },
+    {
+     "id": "anthropic-prejuizo",
+     "painel": "comparacao",
+     "titulo": "Anthropic: prejuízo líquido no semestre",
+     "subtitulo": "Prejuízo líquido no 1º semestre, em US$ bilhões; variação sobre o 1º semestre do ano anterior",
+     "unidade": "usd-bi",
+     "fonte": "Anthropic, rascunho do prospecto (S-1), via The Wall Street Journal (20/10/2026)",
+     "barras": [
+      {
+       "rot": "1º sem. 2025",
+       "v": -13.0,
+       "cor": "#95A5A6"
+      },
+      {
+       "rot": "1º sem. 2026",
+       "v": -80.7,
+       "cor": "#C0504D"
+      }
+     ]
+    },
+    {
+     "id": "anthropic-spacex-ipo",
+     "painel": "barras",
+     "titulo": "Anthropic × SpaceX: valor de mercado no IPO",
+     "subtitulo": "Valor de mercado, em US$; tracejado, o que o IPO da Anthropic pode alcançar (ainda sem preço)",
+     "unidade": "usd-bi-tri",
+     "fonte": "Reuters (SpaceX), The Wall Street Journal (IPO da Anthropic) e Orrick (série H)",
+     "linhas": [
+      {
+       "rot": "Anthropic: série H",
+       "detalhe": "Última rodada privada, maio de 2026 (pós-money)",
+       "v": 965,
+       "cor": "#95A5A6"
+      },
+      {
+       "rot": "SpaceX: IPO",
+       "detalhe": "Nasdaq, junho de 2026; captou US$ 85,7 bi",
+       "v": 1770,
+       "cor": "#4BACC6"
+      },
+      {
+       "rot": "Anthropic: IPO",
+       "detalhe": "Valor que a abertura de capital pode alcançar",
+       "v": 2000,
+       "cor": "#F79646",
+       "contorno": true,
+       "prefixo": "até "
+      }
+     ]
+    },
+    {
+     "id": "anthropic-computacao",
+     "painel": "comparacao",
+     "titulo": "Anthropic: gasto com computação no semestre",
+     "subtitulo": "Capacidade computacional e infraestrutura no 1º semestre, em US$ bilhões; 2026 é aproximado (“quase US$ 9 bi”)",
+     "unidade": "usd-bi",
+     "fonte": "Anthropic, rascunho do prospecto (S-1), via The Wall Street Journal (20/10/2026)",
+     "barras": [
+      {
+       "rot": "1º sem. 2025",
+       "v": 2.3,
+       "cor": "#95A5A6"
+      },
+      {
+       "rot": "1º sem. 2026",
+       "v": 9.0,
+       "cor": "#4F81BD",
+       "aprox": true
+      }
+     ]
+    },
+    {
+     "id": "anthropic-valor-justo",
+     "painel": "composicao",
+     "titulo": "Anthropic: US$ 72 bi do prejuízo não saíram do caixa",
+     "subtitulo": "Prejuízo líquido do 1º semestre de 2026, em US$ bilhões, por origem",
+     "unidade": "usd-bi",
+     "fonte": "Anthropic, rascunho do prospecto (S-1), via The Wall Street Journal (20/10/2026)",
+     "total": {
+      "rot": "Prejuízo líquido do 1º semestre de 2026",
+      "v": -80.7
+     },
+     "partes": [
+      {
+       "rot": "Variação do valor justo de notas conversíveis e de outros instrumentos emitidos para captar recursos",
+       "v": 72.0,
+       "cor": "#C0504D",
+       "marca": "não caixa"
+      },
+      {
+       "rot": "Demais itens (resultado operacional, juros e outros)",
+       "v": 8.7,
+       "cor": "#95A5A6"
+      }
+     ],
+     "nota": "A Anthropic captou parte do dinheiro com **notas conversíveis** e outros instrumentos que viram ações. Eles ficam no balanço como passivo, medido a **valor justo**: quando a empresa passa a valer mais, o direito de converter vale mais, o passivo cresce e a diferença entra no resultado como despesa. Foram US$ 72 bi no 1º semestre de 2026.\n\nÉ uma despesa **não caixa** — nenhum dinheiro saiu da empresa. Ela é o reflexo contábil da valorização da Anthropic, que foi de US$ 380 bi na série G (fevereiro) a US$ 965 bi na série H (maio) e mira até US$ 2 tri no IPO. Quando os papéis viram ações, o passivo deixa de existir."
+    },
+    {
+     "id": "anthropic-riscos",
+     "painel": "paginas",
+     "titulo": "Anthropic: um terço do prospecto são fatores de risco",
+     "subtitulo": "Parcela do rascunho do prospecto dedicada a fatores de risco; os riscos citados pelo WSJ",
+     "fonte": "Anthropic, rascunho do prospecto (S-1), via The Wall Street Journal (20/10/2026)",
+     "paginas": {
+      "total": 3,
+      "marcadas": 1,
+      "cor": "#C0504D",
+      "legenda": "Cerca de 1/3 das páginas: fatores de risco"
+     },
+     "itens": [
+      {
+       "t": "Concentração de clientes",
+       "d": "Cerca de 1/5 da receita do 1º semestre veio de dois clientes, e a dependência de poucos deve continuar"
+      },
+      {
+       "t": "Falta de capacidade computacional",
+       "d": "Os parceiros de nuvem não entregaram toda a capacidade pedida e cada vez mais veem a Anthropic como concorrente"
+      },
+      {
+       "t": "US$ 450 bi em contratos de nuvem",
+       "d": "Compromissos para os próximos 7 a 10 anos, na maior parte não canceláveis"
+      },
+      {
+       "t": "Data centers de terceiros",
+       "d": "Operadores com pouco histórico, cujas instalações podem ser menos confiáveis que as dos grandes provedores"
+      },
+      {
+       "t": "Danos causados pelos modelos",
+       "d": "De ciberataques sofisticados a possível chantagem: modelos podem mostrar “autopreservação” para evitar o desligamento"
+      },
+      {
+       "t": "Responsabilidade e seguro",
+       "d": "A empresa responde por dados roubados e incidentes causados pelos modelos; uma catástrofe pode ser grande demais para ter seguro"
+      },
+      {
+       "t": "Resistência a data centers",
+       "d": "Oposição política “mais organizada e coordenada”, e o perfil público da Anthropic atrai atenção para os projetos dela"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
