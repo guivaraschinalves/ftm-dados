@@ -1910,16 +1910,9 @@
           "&body=" + texto() + "%0D%0A%0D%0A" + link();
       }
     };
-    var notas = {
-      x: "abre o X com o post pronto e o gráfico em destaque",
-      instagram: nativo ? "imagem 4:5; escolha o Instagram no menu do aparelho"
-                        : "baixa a imagem 4:5 para publicar pelo app",
-      linkedin: "abre o LinkedIn com o gráfico em destaque",
-      email: "abre o seu e-mail com o link"
-    };
     REDES.forEach(function (r) {
       var b = html("button", { type: "button", role: "menuitem", "class": "item-rede" });
-      b.innerHTML = icoRede(r) + '<span class="item-rede-txt">' + r.nome + "<small>" + notas[r.id] + "</small></span>";
+      b.innerHTML = icoRede(r) + '<span class="item-rede-txt">' + r.nome + "</span>";
       b.addEventListener("click", function () { fechar(); acoes[r.id](); });
       menu.appendChild(b);
     });
