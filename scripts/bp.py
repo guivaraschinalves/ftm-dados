@@ -92,18 +92,9 @@ COD = dict(
 DOLAR_COMPRA, DOLAR_VENDA = 3697, 3698
 PIB_12, PIB_MES = 4192, 4385
 
-# Projeção do BC para 2026, Relatório de Política Monetária de setembro de 2026
-# (boxe "Projeções para a evolução das contas externas", Tabela 1, coluna
-# "Proj. 2026 Atual"), em US$ bilhões. A renda secundária não está na tabela:
-# é o que fecha a conta (−60 − 75 + 56 + 85 = +6). Entra em dez/2026 no gráfico
-# de 12 meses, que é o acumulado do ano inteiro. Trocar a cada RPM.
-PROJ_BC = dict(mes="2026-12", rpm="RPM de setembro de 2026", cc=-60.0, comercial=75.0,
-               servicos=-56.0, renda1=-85.0)
-PROJ_BC["renda2"] = PROJ_BC["cc"] - PROJ_BC["comercial"] - PROJ_BC["servicos"] - PROJ_BC["renda1"]
-
 # Cores do tema do Office, as mesmas dos slides.
 AZUL, VERMELHO, VERDE, ROXO, CIANO, LARANJA = "#4F81BD", "#C0504D", "#9BBB59", "#8064A2", "#4BACC6", "#F79646"
-AZUL_ESCURO, AMARELO, BRANCO, CINZA = "#1F497D", "#FFFF00", "#FFFFFF", "#95A5A6"
+AZUL_ESCURO, AMARELO, BRANCO = "#1F497D", "#FFFF00", "#FFFFFF"
 
 MESES = {"jan": 1, "fev": 2, "mar": 3, "abr": 4, "mai": 5, "jun": 6,
          "jul": 7, "ago": 8, "set": 9, "out": 10, "nov": 11, "dez": 12}
@@ -327,25 +318,8 @@ def graficos(s, dolar, pib12, pib_mes):
                 barra("Renda Secundária", AZUL_ESCURO, acc(s[COD["renda2"]])),
                 serie("Saldo Conta Corrente", BRANCO, acc(cc), rotulo=True)]
 
-    def projecao_bc(atual):
-        """A projeção do BC em dez/2026: as mesmas cores, apagadas e fora da
-        legenda, e uma linha pontilhada do último mês publicado até ela."""
-        m, fraco = PROJ_BC["mes"], 0.4
-        if m <= max(atual):
-            return []                             # o ano já fechou: sai sozinha
-        ult = max(atual)
-        return [barra("Balança Comercial (proj. BC)", AZUL, {m: PROJ_BC["comercial"]}, opacidade=fraco, legenda=False),
-                barra("Serviços (proj. BC)", VERMELHO, {m: PROJ_BC["servicos"]}, opacidade=fraco, legenda=False),
-                barra("Renda Primária (proj. BC)", VERDE, {m: PROJ_BC["renda1"]}, opacidade=fraco, legenda=False),
-                barra("Renda Secundária (proj. BC)", AZUL_ESCURO, {m: PROJ_BC["renda2"]}, opacidade=fraco,
-                      legenda=False),
-                serie("Projeção do BC para 2026 (%s)" % PROJ_BC["rpm"], CINZA,
-                      {ult: atual[ult], m: PROJ_BC["cc"]}, traco="pontilhado", rotulo=True)]
-
-    cc12 = a12(cc)
     corrente = [
-        grafico("bp-cc-12m", "Conta Corrente do Brasil", SUB12, conta_corrente(a12) + projecao_bc(cc12),
-                barra=1, buracoMax=5),             # a linha da projeção atravessa os meses vazios
+        grafico("bp-cc-12m", "Conta Corrente do Brasil", SUB12, conta_corrente(a12), barra=1),
         grafico("bp-cc-3m", "Conta Corrente do Brasil", SUB3, conta_corrente(a3), barra=1),
     ]
 

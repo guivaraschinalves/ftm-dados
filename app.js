@@ -587,8 +587,7 @@
           x: X(p.i + 0.5) - bw / 2 + 0.6, y: Math.min(ya, yb) + 0.6, width: Math.max(0.6, bw - 1.2),
           height: Math.max(0.6, h - 1.2), fill: "none", stroke: cor, "stroke-width": 1.2
         } : {
-          x: X(p.i + 0.5) - bw / 2, y: Math.min(ya, yb), width: bw, height: h, fill: cor,
-          opacity: s.opacidade || null
+          x: X(p.i + 0.5) - bw / 2, y: Math.min(ya, yb), width: bw, height: h, fill: cor
         }));
       });
     });
