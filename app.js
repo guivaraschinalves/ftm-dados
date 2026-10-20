@@ -1820,13 +1820,13 @@
   // ---------- compartilhar ----------
   // Botão "Compartilhar" que abre quatro opções: X, Instagram, LinkedIn e
   // e-mail. Nenhuma rede deixa um site anexar imagem num post, então:
-  //  - no celular, X e Instagram vão pelo menu do aparelho com a própria
-  //    imagem (16:9 para o X, 4:5 para o Instagram);
-  //  - no computador, X, LinkedIn e e-mail levam o link da PÁGINA DE PRÉVIA do
+  //  - X, LinkedIn e e-mail vão direto para a rede (como na Oaktree), em
+  //    qualquer aparelho, com o link da PÁGINA DE PRÉVIA do
   //    gráfico (c/ID.html, feita pelo scripts/cartoes.py), cujas etiquetas
   //    apontam para a imagem dele: o post mostra o gráfico grande, e quem
   //    clica vai para o gráfico no site do assinante;
-  //  - Instagram no computador: baixa a imagem 4:5 (não há post pelo navegador).
+  //  - Instagram não tem post pela web: no celular vai a imagem 4:5 pelo menu
+  //    do aparelho; no computador, baixa a imagem 4:5.
   var LINK_PREVIA = "https://guivaraschinalves.github.io/ftm-dados/c/";
   var REDES = [
     { id: "x", nome: "X",
@@ -1894,10 +1894,9 @@
     var link = function () { return encodeURIComponent(linkDoGrafico(cartao)); };
     var texto = function () { return encodeURIComponent(textoDoPost(cartao)); };
     var acoes = {
-      x: function () {
-        if (nativo) return compartilharImagem("slide");
-        abrir("https://x.com/intent/post?text=" + texto() + "&url=" + link());
-      },
+      // direto para a rede, como na Oaktree, em qualquer aparelho: o link é o da
+      // página de prévia, e é ela que faz o gráfico aparecer como imagem no post
+      x: function () { abrir("https://x.com/intent/post?text=" + texto() + "&url=" + link()); },
       instagram: function () {
         if (nativo) return compartilharImagem("ig-4x5");
         preparar("ig-4x5").then(function (b) {
@@ -1912,10 +1911,10 @@
       }
     };
     var notas = {
-      x: nativo ? "imagem 16:9; escolha o X no menu do aparelho" : "o post mostra o gráfico em destaque",
+      x: "abre o X com o post pronto e o gráfico em destaque",
       instagram: nativo ? "imagem 4:5; escolha o Instagram no menu do aparelho"
                         : "baixa a imagem 4:5 para publicar pelo app",
-      linkedin: "o post mostra o gráfico em destaque",
+      linkedin: "abre o LinkedIn com o gráfico em destaque",
       email: "abre o seu e-mail com o link"
     };
     REDES.forEach(function (r) {
@@ -1934,7 +1933,7 @@
       botao.setAttribute("aria-expanded", String(abrirMenu));
       if (abrirMenu) {
         prontas = {};                    // tema, período ou recorte podem ter mudado
-        if (nativo) ["slide", "ig-4x5"].forEach(preparar);
+        if (nativo) preparar("ig-4x5");
         menu.style.left = menu.style.right = "";
         var r = menu.getBoundingClientRect(), lim = caixa.closest(".card");
         if (lim && r.left < lim.getBoundingClientRect().left) { menu.style.right = "auto"; menu.style.left = "0"; }
