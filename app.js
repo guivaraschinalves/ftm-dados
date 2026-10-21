@@ -1713,6 +1713,10 @@
     var btnLimpar = html("button", { type: "button", "class": "visor-btn", texto: "Limpar anotações" });
     btnLimpar.addEventListener("click", function () { anot.limpar(); });
 
+    // Recortes do gráfico (Consolidado, SI…): ficam fora de "inline", que em
+    // tela cheia vira o hambúrguer, para dar para trocar sem sair dela
+    var recortes = html("div", { "class": "visor-recortes", role: "group", "aria-label": "Recorte do gráfico" });
+    barra.appendChild(recortes);
     inline.appendChild(btnFs);
     inline.appendChild(btnDesenho);
     inline.appendChild(btnDesfazer);
@@ -1846,10 +1850,27 @@
     box.appendChild(btnBaixar);
     document.body.appendChild(box);
 
-    visor = { box: box, palco: palco, tela: tela, anot: anot, fechar: btnFechar,
+    visor = { box: box, palco: palco, tela: tela, anot: anot, fechar: btnFechar, recortes: recortes,
               mostrarChrome: mostrarChrome, fecharMenu: fecharMenu, desenho: alternarDesenho,
               cartao: null, tamanho: TAMANHOS[0], layout: "wide" };
     alternarDesenho(false);
+  }
+
+  function montarRecortesDoVisor() {
+    var box = visor.recortes, c = visor.cartao, vs = c.grafico.variantes;
+    box.innerHTML = "";
+    box.hidden = !vs;
+    if (!vs) return;
+    vs.forEach(function (v, k) {
+      var b = html("button", { type: "button", "class": "visor-btn", texto: v.rot, "aria-pressed": String(k === (c.variante || 0)) });
+      b.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        c.escolherVariante(k);
+        Array.prototype.forEach.call(box.children, function (x, j) { x.setAttribute("aria-pressed", String(j === k)); });
+        pintarVisor();
+      });
+      box.appendChild(b);
+    });
   }
 
   function pintarVisor() {
@@ -1866,6 +1887,7 @@
   function abrirVisor(cartao, comTelaCheia) {
     if (!visor) montarVisor();
     visor.cartao = cartao;
+    montarRecortesDoVisor();
     visor.layout = window.innerWidth < 700 ? "narrow" : "wide";
     visor.tamanho = visor.layout === "wide" ? TAMANHOS[0] : TAMANHOS[1];
     pintarVisor();
@@ -1941,18 +1963,21 @@
       var grupoVar = html("div", { "class": "periodos", role: "group", "aria-label": "Recorte de " + g.titulo });
       g.variantes.forEach(function (v, k) {
         var b = html("button", { type: "button", texto: v.rot, "aria-pressed": String(k === 0) });
-        b.addEventListener("click", function () {
-          cartao.variante = k;
-          Array.prototype.forEach.call(grupoVar.children, function (x, j) {
-            x.setAttribute("aria-pressed", String(j === k));
-          });
-          montarPeriodos();
-          montarSelecao();
-          desenhar(cartao, true);
-        });
+        b.addEventListener("click", function () { cartao.escolherVariante(k); });
         grupoVar.appendChild(b);
       });
       esquerda.appendChild(grupoVar);
+      // o visor (tela cheia) chama esta mesma função, e os botões do cartão
+      // acompanham a escolha feita lá
+      cartao.escolherVariante = function (k) {
+        cartao.variante = k;
+        Array.prototype.forEach.call(grupoVar.children, function (x, j) {
+          x.setAttribute("aria-pressed", String(j === k));
+        });
+        montarPeriodos();
+        montarSelecao();
+        desenhar(cartao, true);
+      };
     }
 
     // seleção de séries: um botão por linha do gráfico, para o leitor tirar o
@@ -2674,6 +2699,10 @@
         abrirTemas(false);
         btn.focus();
       }
+    });
+    // clique fora da gaveta fecha a gaveta
+    document.addEventListener("click", function (ev) {
+      if (btn.getAttribute("aria-expanded") === "true" && !lateral().contains(ev.target)) abrirTemas(false);
     });
     // Na rolagem: o cabeçalho do celular ganha fundo depois que a página sai
     // do topo, e o menu acende a categoria em que o leitor está. Um quadro

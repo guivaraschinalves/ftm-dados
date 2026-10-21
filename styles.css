@@ -384,6 +384,10 @@ body.visor-aberto { overflow: hidden; }
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap; max-width: calc(100% - 90px);
 }
 .visor-barra-inline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* recortes do gráfico: continuam à vista em tela cheia (o resto vira hambúrguer) */
+.visor-recortes { display: flex; gap: 6px; flex-wrap: wrap; order: 2; }
+.visor-recortes[hidden] { display: none; }
+.visor-menu-caixa { order: 1; }
 /* Botões do visor: vidro sobre o escuro, como os botões de vidro do site. */
 .visor-btn, .visor-baixar, .visor-menu-btn, .visor-fechar {
   font: inherit; font-size: 14px; font-weight: 500; color: #fff; cursor: pointer;
@@ -470,33 +474,53 @@ body.visor-aberto { overflow: hidden; }
 .periodos-dica.escolhido { color: var(--ink); font-weight: 600; }
 .periodos button[hidden] { display: none; }
 
-/* ---------- celular: a barra lateral vira cabeçalho com gaveta ---------- */
-@media (max-width: 860px) {
-  .app { grid-template-columns: minmax(0, 1fr); }
-  .lateral {
-    position: sticky; top: 0; z-index: 40; height: auto; overflow: visible;
-    padding: 12px 16px; gap: 0; border-right: 0; border-bottom: 1px solid transparent;
-    background: transparent; transition: background-color .25s, border-color .25s;
-  }
-  /* rolou ou abriu a gaveta: o cabeçalho ganha o fundo com desfoque do site */
-  .lateral[data-rolado="true"], .lateral[data-aberto="true"] {
-    background: rgba(0, 0, 0, .85); border-bottom-color: var(--border);
-    -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
-  }
-  :root[data-theme="light"] .lateral[data-rolado="true"],
-  :root[data-theme="light"] .lateral[data-aberto="true"] { background: rgba(244, 245, 247, .9); }
-  .logo { width: 96px; }
-  .menu-temas { display: inline-grid; }
+/* ---------- a barra lateral é um cabeçalho com gaveta, em qualquer tela ----------
+   A lista de temas fica escondida e abre pelo botão "Temas"; antes ela era
+   uma coluna fixa de 280px no computador. */
+.app { grid-template-columns: minmax(0, 1fr); }
+.lateral {
+  position: sticky; top: 0; z-index: 40; height: auto; overflow: visible;
+  padding: 12px 16px; gap: 0; border-right: 0; border-bottom: 1px solid transparent;
+  background: transparent; transition: background-color .25s, border-color .25s;
+}
+/* rolou ou abriu a gaveta: o cabeçalho ganha o fundo com desfoque do site */
+.lateral[data-rolado="true"], .lateral[data-aberto="true"] {
+  background: rgba(0, 0, 0, .85); border-bottom-color: var(--border);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+}
+:root[data-theme="light"] .lateral[data-rolado="true"],
+:root[data-theme="light"] .lateral[data-aberto="true"] { background: rgba(244, 245, 247, .9); }
+.logo { width: 96px; }
+.menu-temas { display: inline-grid; }
+.lateral-corpo {
+  display: none; position: absolute; top: 100%; left: 0; right: 0;
+  max-height: calc(100dvh - 64px); overflow-y: auto; overscroll-behavior: contain;
+  padding: 16px 16px 24px; gap: 10px;
+  background: var(--bg); border-bottom: 1px solid var(--border);
+  box-shadow: 0 24px 40px rgba(0, 0, 0, .45);
+}
+.lateral[data-aberto="true"] .lateral-corpo { display: flex; }
+.nav-grupo[data-atual="true"] > .nav-rotulo::before { left: -8px; }
+.lateral-rodape { margin-top: 12px; }
+
+/* computador: a gaveta é um painel à direita, embaixo do botão, e o conteúdo
+   fica no meio da tela */
+@media (min-width: 861px) {
+  .lateral { padding: 12px 32px; }
+  .logo { width: 112px; }
   .lateral-corpo {
-    display: none; position: absolute; top: 100%; left: 0; right: 0;
-    max-height: calc(100dvh - 64px); overflow-y: auto; overscroll-behavior: contain;
-    padding: 16px 16px 24px; gap: 10px;
-    background: var(--bg); border-bottom: 1px solid var(--border);
-    box-shadow: 0 24px 40px rgba(0, 0, 0, .45);
+    left: auto; right: 24px; top: calc(100% + 6px); width: 360px; max-height: calc(100vh - 80px);
+    border: 1px solid var(--border); border-radius: var(--raio-md);
   }
-  .lateral[data-aberto="true"] .lateral-corpo { display: flex; }
+  .menu-temas { width: auto; padding: 0 12px; gap: 8px; grid-auto-flow: column; }
+  .menu-temas-rotulo { font: inherit; font-size: 14px; font-weight: 500; }
+  .conteudo { margin: 0 auto; width: 100%; }
   .nav-grupo[data-atual="true"] > .nav-rotulo::before { left: -8px; }
-  .lateral-rodape { margin-top: 12px; }
+}
+.menu-temas-rotulo { display: none; }
+@media (min-width: 861px) { .menu-temas-rotulo { display: inline; } }
+
+@media (max-width: 860px) {
   .conteudo { padding: 0 16px 56px; }
   .abertura { padding: 28px 0 32px; }
   .abertura::before, .abertura::after { inset: -72px -16px 0; }
