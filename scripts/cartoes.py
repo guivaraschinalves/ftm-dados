@@ -185,7 +185,20 @@ def main():
     agora = {id_: resumo(g, doc) for id_, g, doc in lista}
     refazer = [(id_, g) for id_, g, doc in lista
                if todos or antes.get(id_) != agora[id_] or not os.path.exists(os.path.join(SAIDA, id_ + ".jpg"))]
-    print("%d gráficos, %d a refazer" % (len(lista), len(refazer)))
+    # LIMITE: no máximo n imagens por rodada (o deploy do lps-ftm tem 20 min no
+    # total; as que ficarem saem nas rodadas seguintes, que o manifesto lembra)
+    limite = int(os.environ.get("LIMITE") or 0)
+    pendentes = 0
+    if limite and len(refazer) > limite:
+        pendentes = len(refazer) - limite
+        for id_, _ in refazer[limite:]:          # adiados: seguem marcados como pendentes
+            if id_ in antes:
+                agora[id_] = antes[id_]
+            else:
+                agora.pop(id_, None)
+        refazer = refazer[:limite]
+    print("%d gráficos, %d a refazer%s" % (len(lista), len(refazer),
+                                           ", %d ficam para a próxima rodada" % pendentes if pendentes else ""))
     if refazer:
         chrome = achar_chrome()
         servidor = servir()
@@ -213,12 +226,14 @@ def main():
             servidor.shutdown()
     # as páginas são baratas: refaz todas (pega mudança de título e de endereço)
     for id_, g, doc in lista:
+        if id_ not in agora or not os.path.exists(os.path.join(SAIDA, id_ + ".jpg")):
+            continue                              # sem imagem ainda: a página espera por ela
         with open(os.path.join(SAIDA, id_ + ".html"), "w", encoding="utf-8") as f:
             f.write(pagina(id_, g, agora[id_]))
     # gráfico que saiu do site: some a imagem e a página
     for arq in os.listdir(SAIDA):
         nome, ext = os.path.splitext(arq)
-        if ext in (".jpg", ".html") and nome not in agora:
+        if ext in (".jpg", ".html") and nome not in {i for i, _, _ in lista}:
             os.remove(os.path.join(SAIDA, arq))
     json.dump(agora, open(MANIFESTO, "w"), indent=0, sort_keys=True)
     print("c/: %d páginas, %.1f MB de imagens" % (len(lista), sum(
