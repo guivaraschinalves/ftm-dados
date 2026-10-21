@@ -156,7 +156,7 @@ def pagina(id_, g, versao):
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<title>{t} — Follow the Money</title>
+<title>{t} | Follow the Money</title>
 <meta name="description" content="{s}">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Follow the Money">

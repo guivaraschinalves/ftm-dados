@@ -283,7 +283,7 @@ def composicao_dpf(p):
     val = valores(g, linhas, cols)
     def series(fonte, **extra):
         return [serie(n, COR_INDEXADOR[n], fonte[n], **extra) for _, n in cols]
-    return grafico("divida-composicao", "Composição da Dívida Pública Federal", "Por indexador",
+    return grafico("divida-composicao", "Composição da Dívida Pública Federal", "Estoque da DPF, por indexador",
                    variantes=[
                        variante(PCT, series(pct, rotulo=True), "%"),
                        variante(BI, series(val, tipo="barra"), "bi", barra=1),
@@ -301,7 +301,7 @@ def detentores(p):
     val = valores(g, linhas, cols)
     def series(fonte, **extra):
         return [serie(n, COR_DETENTOR[n], fonte[n], **extra) for _, n in cols]
-    return grafico("divida-detentores", "Detentores da dívida interna (DPMFi)", "Quem carrega os títulos",
+    return grafico("divida-detentores", "Detentores da dívida interna (DPMFi)", "Estoque da DPMFi, por detentor",
                    variantes=[
                        variante(PCT, series(pct, rotulo=True), "%"),
                        variante(BI, series(val, tipo="barra"), "bi", barra=1),
@@ -469,7 +469,7 @@ def custo(p):
                (11, "LTN", AZUL, dict(rotulo=True)), (12, "NTN-B", LARANJA, dict(rotulo=True))]
     externa = [(21, "DPFe", BRANCO, dict(rotulo=True))]
     MENSAL = "Custo médio mensal, em % a.a."
-    NOTA_MENSAL = ("O custo de um mês só é anualizado, então oscila muito — na dívida externa, "
+    NOTA_MENSAL = ("O custo de um mês só é anualizado, então oscila muito; na dívida externa, "
                    "com a variação cambial do mês.")
     ACUM = "Custo médio acumulado em 12 meses, em % a.a."
     saida = [

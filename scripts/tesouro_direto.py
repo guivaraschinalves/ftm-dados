@@ -206,24 +206,24 @@ def main():
 
     secoes = [dict(titulo="Taxa por prazo", graficos=[
         cartao("td-prefixado", "Tesouro Prefixado",
-               "Taxa contratada na compra, em % a.a. — " + MEDIA,
+               "Taxa contratada na compra, em % a.a.; " + MEDIA,
                "Tesouro Prefixado", [2, 5],
                "Sem o de 10 anos: o prefixado sem cupom mais longo que o Tesouro Direto já "
-               "ofertou tinha 6,9 anos — o de 10 está no cartão seguinte, com juros semestrais. "
+               "ofertou tinha 6,9 anos; o de 10 está no cartão seguinte, com juros semestrais. "
                "A linha de 5 anos começa em 2015, quando passou a existir papel desse prazo."),
         cartao("td-prefixado-js", "Tesouro Prefixado com Juros Semestrais",
-               "Taxa contratada na compra, em % a.a. — " + MEDIA,
+               "Taxa contratada na compra, em % a.a.; " + MEDIA,
                "Tesouro Prefixado com Juros Semestrais", [2, 5, 10],
                "É aqui que existe o prefixado de 10 anos: a NTN-F chega a 11 anos de prazo, "
                "enquanto o prefixado sem cupom nunca passou de 6,9. A linha de 2 anos é "
                "interrompida em 2013-2014 e 2016-2017, quando não havia papel curto em oferta."),
         cartao("td-ipca", "Tesouro IPCA+",
-               "Juro real contratado na compra, em % a.a. — " + MEDIA,
+               "Juro real contratado na compra, em % a.a.; " + MEDIA,
                "Tesouro IPCA+", [5, 10, 20],
                "A linha de 20 anos começa em 2010, quando passou a existir papel desse prazo."),
     ]), dict(titulo="Taxa por vencimento", graficos=[
         cartao_vencimentos("td-ntnb-vencimentos", "NTN-B por vencimento",
-                           "Tesouro IPCA+ com Juros Semestrais, juro real em % a.a. — " + MEDIA,
+                           "Tesouro IPCA+ com Juros Semestrais, juro real em % a.a.; " + MEDIA,
                            "Tesouro IPCA+ com Juros Semestrais", [2035, 2045, 2050],
                            "Aqui é o papel em si, sem interpolação: cada linha é a taxa daquele "
                            "vencimento, do dia em que ele entrou em oferta até hoje."),

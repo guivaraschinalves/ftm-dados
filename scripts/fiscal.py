@@ -241,7 +241,7 @@ def tres_graficos(r, mensal, doze_pct, pct_ano, anos):
     return [
         dict(id="fiscal-%s-bi" % r["id"],
              titulo=r["titulo"],
-             subtitulo="Em R$ bilhões correntes — positivo é superávit, negativo é déficit",
+             subtitulo="Em R$ bilhões correntes",
              variantes=[
                  variante("Acumulado em 12 meses", [serie(r["curto"], BRANCO, bi_12, 1, rotulo=True)], "bi"),
                  variante("No mês", [serie("No mês", AZUL, bi_mes, 1, tipo="barra")], "bi"),
@@ -251,13 +251,13 @@ def tres_graficos(r, mensal, doze_pct, pct_ano, anos):
                   "inflação." % r["mensal"]),
         dict(id="fiscal-%s-pib" % r["id"],
              titulo="Resultado %s em %% do PIB" % r["nome"],
-             subtitulo="Acumulado em 12 meses — positivo é superávit, negativo é déficit",
+             subtitulo="% do PIB, acumulado em 12 meses",
              unidade="%",
              series=[serie("% do PIB", BRANCO, doze_pct, 2, rotulo=True)],
              nota="Série %d do SGS, com o sinal invertido." % r["pct12"]),
         dict(id="fiscal-%s-ano" % r["id"],
              titulo="Resultado %s acumulado no ano" % r["nome"],
-             subtitulo="Em % do PIB, mês a mês — cada linha é um ano",
+             subtitulo="% do PIB, acumulado no ano; uma linha por ano",
              unidade="%",
              categorias=MESES,
              variantes=variantes_por_ano(pct_ano, anos),
@@ -265,7 +265,7 @@ def tres_graficos(r, mensal, doze_pct, pct_ano, anos):
                   "a linha de cada ano vai de janeiro até dezembro, e a do ano corrente para no "
                   "último mês divulgado. Atenção ao denominador: o BC divide o acumulado do ano pelo "
                   "PIB **dos mesmos meses**, não pelo de um ano inteiro. Por isso janeiro sozinho "
-                  "aparece em ±10%% — é o resultado de janeiro sobre o PIB de janeiro, e a "
+                  "aparece em ±10%%: é o resultado de janeiro sobre o PIB de janeiro, e a "
                   "arrecadação se concentra no começo do ano. A linha vai se assentando conforme os "
                   "meses entram, e em dezembro cai exatamente no acumulado em 12 meses do gráfico "
                   "anterior." % r["pct_ano"]),
@@ -293,14 +293,14 @@ def grafico_esferas(esferas, fed_sem_inss, inss, consolidado):
     return dict(
         id="fiscal-primario-esferas",
         titulo="Resultado primário por esfera",
-        subtitulo="Em R$ bilhões correntes, acumulado em 12 meses — positivo é superávit",
+        subtitulo="Em R$ bilhões correntes, acumulado em 12 meses",
         selecao=True,
         variantes=[
             variante("Por esfera", colunas(sete) + [linha_total], "bi", barra=1),
             variante("Com o INSS à parte", colunas(com_inss) + [linha_total], "bi", barra=1),
         ],
         nota="Colunas empilhadas: quem está em superávit sobe a partir do zero, quem está em "
-             "déficit desce — a altura de cada cor é o quanto aquela esfera põe ou tira, e a linha "
+             "déficit desce; a altura de cada cor é o quanto aquela esfera põe ou tira, e a linha "
              "branca é o consolidado, a soma das duas pilhas. As sete esferas somam o consolidado: "
              "o script confere isso a cada rodada e a diferença máxima em 297 meses é de R$ 20 "
              "mil, puro arredondamento. O INSS entra dentro do Governo Federal (séries 7853 e "
@@ -353,7 +353,7 @@ def graficos_divida(saldo, pib12, pct_2008, pct_ate2007):
                            linha_do_topo(pct_2008, "Topo")], "%"),
              ],
              nota="A metodologia mudou em 2008. A de até 2007 conta os títulos do Tesouro na "
-                  "carteira do Banco Central e por isso dá um número bem maior — é a que o FMI "
+                  "carteira do Banco Central e por isso dá um número bem maior. É a que o FMI "
                   "usa nas comparações entre países. Ela sai aqui do saldo em R$ (série %d) "
                   "dividido pelo PIB dos últimos 12 meses (série %d), o que dá exatamente a série "
                   "%d publicada pelo BC e ainda estica a história de 2002 para 1998. A de 2008 em "
@@ -361,12 +361,12 @@ def graficos_divida(saldo, pib12, pct_2008, pct_ate2007):
                   % (DIVIDA_SALDO, PIB12, DIVIDA_ATE2007, DIVIDA_2008)),
         dict(id="fiscal-divida-crescimento",
              titulo="Dívida bruta e PIB",
-             subtitulo="Variação em 12 meses, em %, dos dois lados da razão dívida/PIB",
+             subtitulo="Variação % em 12 meses da dívida bruta e do PIB nominal",
              unidade="%",
              series=[serie("Dívida bruta", BRANCO, cresc12(saldo), 2, rotulo=True),
                      serie("PIB nominal (12 meses)", AZUL, cresc12(pib12), 2, rotulo=True)],
              nota="A razão dívida/PIB sobe quando a linha branca fica acima da azul e cai quando "
-                  "fica abaixo — é a mesma conta do gráfico anterior, vista pelo numerador e pelo "
+                  "fica abaixo: é a mesma conta do gráfico anterior, vista pelo numerador e pelo "
                   "denominador. Os dois são valores correntes, então a inflação infla os dois "
                   "lados. A dívida é a da metodologia até 2007 (série %d)." % DIVIDA_SALDO),
     ]

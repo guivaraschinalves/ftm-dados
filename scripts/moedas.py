@@ -173,7 +173,7 @@ def grafico_poder_real(pp):
     return dict(
         id="moedas-pp-real",
         titulo="Perda de poder de compra do real",
-        subtitulo="O que R$ 100 da estreia do real compram em cada mês, descontado o IPCA",
+        subtitulo="R$ 100 de junho de 1994, deflacionados pelo IPCA",
         unidade="brl",
         eixo=dict(max=TETO_PODER),
         fonte=FONTE_REAL,
@@ -187,7 +187,7 @@ def grafico_poder_dolar(pp):
     return dict(
         id="moedas-pp-dolar",
         titulo="Perda de poder de compra do dólar",
-        subtitulo="O que US$ 100 de dezembro de 1912 compram em cada mês, descontado o CPI",
+        subtitulo="US$ 100 de dezembro de 1912, deflacionados pelo CPI",
         unidade="usd",
         eixo=dict(max=TETO_PODER),
         # um rótulo por década: em 113 anos de série, o passo que o eixo escolhe
@@ -218,7 +218,7 @@ def grafico_valorizacao(sv):
     return dict(
         id="moedas-sobrevalorizacao",
         titulo="Sobre/(sub)valorização do real",
-        subtitulo="Distância entre o dólar pela PPC e o dólar de mercado",
+        subtitulo="Dólar pela PPC ÷ dólar de mercado − 1, em %",
         unidade="%",
         fonte=FONTE_CAMBIO,
         series=[serie("Sobre/(sub)valorização do real", LARANJA, sv, 2,
@@ -230,7 +230,7 @@ def grafico_diferencial(br_maior, us_maior):
     return dict(
         id="moedas-diferencial",
         titulo="Diferencial de inflação entre Brasil e Estados Unidos",
-        subtitulo="IPCA menos CPI, os dois acumulados em 12 meses",
+        subtitulo="IPCA − CPI, acumulados em 12 meses, em p.p.",
         unidade="%",
         fonte="IBGE (IPCA) e BLS (CPI-U), via FRED",
         series=[

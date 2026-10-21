@@ -146,7 +146,7 @@ def main():
             "ações. Eles ficam no balanço como passivo, medido a **valor justo**: quando a empresa passa a "
             "valer mais, o direito de converter vale mais, o passivo cresce e a diferença entra no resultado "
             "como despesa. Foram US$ 72 bi no 1º semestre de 2026.\n\n"
-            "É uma despesa **não caixa** — nenhum dinheiro saiu da empresa. Ela é o reflexo contábil da "
+            "É uma despesa **não caixa**: nenhum dinheiro saiu da empresa. Ela é o reflexo contábil da "
             "valorização da Anthropic, que foi de US$ 380 bi na série G (fevereiro) a US$ 965 bi na série H "
             "(maio) e mira até US$ 2 tri no IPO. Quando os papéis viram ações, o passivo deixa de existir."
         ),

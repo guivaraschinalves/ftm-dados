@@ -804,7 +804,7 @@
     if (medir) return h;
     svg.appendChild(el("rect", { x: x, y: y, width: 6, height: h, fill: corNoTema(cit.cor || "#F79646", ctx.pal) }));
     linhasDeTexto(svg, linhas, x + fs * 1.1, y, fs, { "font-style": "italic", fill: ctx.pal.texto }, 1.32);
-    svg.appendChild(texto("— " + cit.autor, {
+    svg.appendChild(texto(cit.autor, {
       x: x + fs * 1.1, y: y + hTexto + fsA * 1.3, "font-size": fsA, fill: ctx.pal.suave
     }));
     return h;
@@ -987,7 +987,7 @@
       // na tabela e no celular, o período curto ("2026")
       var curtas = g.colunasCurtas || g.colunas;
       function txtV(v, aprox) {
-        if (v === null || v === undefined) return "—";
+        if (v === null || v === undefined) return "n/d";
         // o que arredonda para zero sai sem sinal ("0,0", não "−0,0")
         return (aprox ? "≈ " : "") + (v < -0.05 ? "−" : "") + nf(1).format(Math.abs(v));
       }
@@ -1424,7 +1424,7 @@
       var r = [];
       g.barras.forEach(function (b) {
         r.push([b.rot, b.v]);
-        if (b.destaque) r.push([b.rot + " — " + b.destaque.rot, b.destaque.v]);
+        if (b.destaque) r.push([b.rot + ": " + b.destaque.rot, b.destaque.v]);
       });
       return r;
     }
@@ -2356,7 +2356,7 @@
   }
   function textoDoPost(cartao) {
     var g = graficoDe(cartao);
-    return g.titulo + (g.subtitulo ? " — " + g.subtitulo : "") + ". Fonte: " + (g.fonte || "") + ".";
+    return g.titulo + (g.subtitulo ? ". " + g.subtitulo : "") + ". Fonte: " + (g.fonte || "") + ".";
   }
   function linkDoGrafico(cartao) { return LINK_PREVIA + cartao.grafico.id + ".html"; }
 
@@ -2401,12 +2401,12 @@
         if (nativo) return compartilharImagem("ig-4x5");
         preparar("ig-4x5").then(function (b) {
           salvar(b, nome("ig-4x5"));
-          avisar(caixa, "Imagem 4:5 baixada — publique pelo app do Instagram");
+          avisar(caixa, "Imagem 4:5 baixada; publique pelo app do Instagram");
         });
       },
       linkedin: function () { abrir("https://www.linkedin.com/sharing/share-offsite/?url=" + link()); },
       email: function () {
-        location.href = "mailto:?subject=" + encodeURIComponent(graficoDe(cartao).titulo + " — Follow the Money") +
+        location.href = "mailto:?subject=" + encodeURIComponent(graficoDe(cartao).titulo + " | Follow the Money") +
           "&body=" + texto() + "%0D%0A%0D%0A" + link();
       }
     };

@@ -467,8 +467,8 @@ def grafico_moedas(moedas, preco):
         selecao=True,
         eixo=dict(alvo=10),
         series=colunas + [linha],
-        nota="São as reservas **alocadas** — a parte que os bancos centrais informam ao FMI moeda "
-             "por moeda — mais o ouro, avaliado ao preço do fim do trimestre. A altura de cada cor "
+        nota="São as reservas **alocadas** (a parte que os bancos centrais informam ao FMI moeda "
+             "por moeda) mais o ouro, avaliado ao preço do fim do trimestre. A altura de cada cor "
              "é o estoque daquela moeda e a linha branca é o preço do ouro, que corre na escala da "
              "direita. A série começa em 2000, o primeiro trimestre em que a planilha traz o ouro. "
              "Dólar canadense e dólar australiano só ganham coluna própria em 2012 e o yuan em "
@@ -550,7 +550,7 @@ def grafico_participacao(moedas):
         trimestral=True,
         selecao=True,
         series=series,
-        nota="É o gráfico anterior dividido pelo total de cada trimestre — o denominador é a soma "
+        nota="É o gráfico anterior dividido pelo total de cada trimestre; o denominador é a soma "
              "das dez faixas, ouro incluído. Em 2012 e 2016 o dólar canadense, o australiano e o "
              "yuan saem de \"outras moedas\" e passam a ter faixa própria: o degrau naquelas três "
              "linhas é mudança de classificação, não de composição.")
@@ -620,9 +620,9 @@ def grafico_ouro_tesouros(moedas, tesouros, eua):
         ],
         nota="Os dois numeradores vêm de lugares diferentes e o denominador é o mesmo dos dois "
              "gráficos anteriores: a soma das dez faixas da composição, com o ouro a preço de "
-             "mercado. O ouro é do World Gold Council — o FMI (COFER) entra com o valor das "
+             "mercado. O ouro é do World Gold Council; o FMI (COFER) entra com o valor das "
              "reservas em cada moeda, não com o ouro. Os Treasuries são a série %s do Financial "
-             "Accounts (Z.1) do Fed — títulos do Tesouro americano em poder de instituições "
+             "Accounts (Z.1) do Fed: títulos do Tesouro americano em poder de instituições "
              "oficiais estrangeiras, que são bancos centrais e fundos soberanos. Por isso a linha "
              "dos Treasuries não é a parte em Treasuries da faixa do dólar: o numerador conta "
              "instituições oficiais que podem estar fora do COFER, e a faixa do dólar inclui muito "
@@ -692,14 +692,14 @@ def grafico_comercio(painel_, china, qual):
         buracoMax=4,
         fonte=FONTE_COMERCIO,
         series=series,
-        nota="Os dez maiores de hoje, cada um com a sua série inteira — o ranking sai do último "
+        nota="Os dez maiores de hoje, cada um com a sua série inteira. O ranking sai do último "
              "trimestre em que o painel do FMI está cheio (%s), e não do trimestre mais recente, "
              "onde só parte dos países já reportou e quem está atrasado cairia do ranking sem ter "
              "encolhido. Pelo mesmo motivo algumas linhas terminam antes das outras. **A China não "
              "entra na estatística do FMI**: a linha pontilhada vem da alfândega dela, pelo que ela "
              "reporta à ONU (HS 710812, ouro não monetário em bruto, que para a China é quase toda "
-             "a posição 7108). São duas réguas diferentes — o FMI mede mudança de propriedade pelo "
-             "balanço de pagamentos, a alfândega mede mercadoria cruzando a fronteira —, então a "
+             "a posição 7108). São duas réguas diferentes (o FMI mede mudança de propriedade pelo "
+             "balanço de pagamentos, a alfândega mede mercadoria cruzando a fronteira), então a "
              "linha da China indica a ordem de grandeza, não um número que se some aos outros. O "
              "trimestre dela vai até o fim de 2024, que é até onde o Comtrade tem o mês a mês; o "
              "ponto de 2025 vem do total do ano, que já está publicado e cai exatamente onde a "
@@ -726,7 +726,7 @@ def grafico_variacao(acum, anual, qual):
             variante("Total mundial", mundo),
         ],
         nota="Variação da tonelagem de metal: o preço do ouro não entra nesta conta. O total "
-             "mundial é o agregado do próprio FMI — a outra coluna de total da planilha soma as "
+             "mundial é o agregado do próprio FMI; a outra coluna de total da planilha soma as "
              "colunas de país e quebra nos trimestres recentes, em que a maioria ainda não "
              "reportou, e por isso não é usada aqui. Ela também não fecha com a soma dos países, "
              "que varia com quem reportou em cada trimestre.")
@@ -750,7 +750,7 @@ def grafico_pct(pct):
         nota="A conta é o ouro a preço de mercado sobre o total das reservas do país: a fatia "
              "sobe tanto quando ele compra metal quanto quando o ouro se valoriza. São os vinte "
              "membros do G20, do que tem mais ouro para o que tem menos. A União Europeia, que tem "
-             "cadeira no G20, entra como Zona do Euro, o agregado que a planilha traz — ele já "
+             "cadeira no G20, entra como Zona do Euro, o agregado que a planilha traz, que já "
              "contém Alemanha, França e Itália, que aparecem à parte por serem membros também.")
 
 
@@ -778,7 +778,7 @@ def grafico_balanco(linhas):
         ],
         nota="Oferta e demanda fecham no mesmo número em todo trimestre, por construção do "
              "balanço: o balcão (OTC e outros) é o item que fecha a conta, e é por isso que ele é "
-             "o único que aparece abaixo do zero — ali o balcão devolveu metal ao mercado em vez "
+             "o único que aparece abaixo do zero: ali o balcão devolveu metal ao mercado em vez "
              "de absorvê-lo. A oferta é só mineração e ouro reciclado; o hedge dos produtores "
              "está dentro do balcão. Investimento é barras, moedas e ETFs juntos.")
 
@@ -807,12 +807,12 @@ def grafico_balanco_media(linhas):
                   dir=True, largura=5),
         ],
         nota="As duas linhas de toneladas são a mesma linha: no balanço do mercado a oferta é "
-             "igual à demanda em todo trimestre, por construção — o balcão (OTC) é o item que "
+             "igual à demanda em todo trimestre, por construção; o balcão (OTC) é o item que "
              "fecha a conta. A diferença entre as duas colunas da planilha não passa de 2×10⁻¹³ t "
              "em 66 trimestres, que é erro de arredondamento do Excel. A oferta vai pontilhada e "
              "mais fina por cima da demanda só para ficar visível. O que o gráfico mostra, então, "
-             "é o tamanho do mercado — alisado em quatro trimestres para tirar a sazonalidade das "
-             "joias — contra o preço, que corre na escala da direita e não é alisado: é o preço do "
+             "é o tamanho do mercado, alisado em quatro trimestres para tirar a sazonalidade das "
+             "joias, contra o preço, que corre na escala da direita e não é alisado: é o preço do "
              "fim de cada trimestre.")
 
 
@@ -842,7 +842,7 @@ def grafico_demanda_paises(blocos):
              "Coreia do Sul, Tailândia e Vietnã), e Grande China é o continente mais Hong Kong e "
              "Taiwan. Oceania é só a Austrália, a única da região na planilha, e ela só tem dado a "
              "partir de 2021. A faixa cinza é o resíduo da própria planilha (\"other & stock "
-             "change\"), o que falta para os países listados fecharem no total do mundo — com ela "
+             "change\"), o que falta para os países listados fecharem no total do mundo; com ela "
              "a pilha encosta exatamente na linha branca.")
 
 
@@ -860,7 +860,7 @@ def grafico_minas(anos, linhas):
         selecao=True,
         fonte="Metals Focus, pelo World Gold Council",
         series=colunas + [total],
-        nota="As sete regiões são os subtotais da própria aba, e somadas dão o total do mundo — "
+        nota="As sete regiões são os subtotais da própria aba, e somadas dão o total do mundo, e "
              "o script confere isso a cada rodada. CIS é a Comunidade de Estados Independentes "
              "(Rússia, Uzbequistão, Cazaquistão, Quirguistão e outros). Turquia está dentro da "
              "Ásia, como na planilha.")
@@ -883,7 +883,7 @@ def grafico_estoque(anos, linhas):
             variante("Por destino", pilha(ESTOQUE), selecao=True),
             variante("Com o investimento aberto", pilha(ESTOQUE_ABERTO), selecao=True),
         ],
-        nota="É todo o ouro já extraído, onde ele está hoje — não é produção do ano, é estoque "
+        nota="É todo o ouro já extraído, onde ele está hoje: não é produção do ano, é estoque "
              "acumulado. Os quatro blocos somam o total; o segundo recorte abre o investimento "
              "privado em barras e moedas e em ETFs. A última coluna é o ano corrente até o fim do "
              "segundo trimestre de 2026, por isso ela é menor que um ano cheio.")
