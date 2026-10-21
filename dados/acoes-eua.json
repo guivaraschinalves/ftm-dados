@@ -473,10 +473,12 @@
        "id": "spacex-receita-trimestral",
        "painel": "colunas",
        "titulo": "SpaceX: receita por trimestre e o guidance do 1º tri de 2027",
-       "subtitulo": "Receita por segmento, em US$ bilhões; 1º tri de 2026 = 9 meses − 2º tri − 3º tri, e o guidance é de US$ 33 a 37 bi",
+       "subtitulo": "Receita por segmento, em US$ bilhões; 2T25, 4T25 e 1T26 saem da diferença entre períodos publicados, e o guidance é de US$ 33 a 37 bi",
        "unidade": "usd-bi",
-       "fonte": "SpaceX, release de resultados do 3º trimestre de 2026; guidance da teleconferência",
+       "fonte": "SpaceX, release de resultados do 3º trimestre de 2026 e S-1; guidance da teleconferência",
        "periodos": [
+        "1T25",
+        "2T25",
         "3T25",
         "4T25",
         "1T26",
@@ -490,8 +492,10 @@
          "nome": "Espaço",
          "cor": "#8064A2",
          "v": [
+          0.865,
+          0.746,
           1.666,
-          null,
+          0.809,
           0.619,
           0.962,
           1.767,
@@ -503,8 +507,10 @@
          "nome": "Conectividade",
          "cor": "#4BACC6",
          "v": [
+          2.475,
+          2.587,
           3.097,
-          null,
+          3.228,
           3.257,
           4.291,
           5.248,
@@ -516,8 +522,10 @@
          "nome": "SI",
          "cor": "#F79646",
          "v": [
+          0.727,
+          0.738,
           0.813,
-          null,
+          0.923,
           0.818,
           2.561,
           7.56,
@@ -634,8 +642,10 @@
        "titulo": "SpaceX: depreciação e amortização por trimestre",
        "subtitulo": "D&A por segmento, em US$ bilhões; o imobilizado líquido foi de US$ 42,6 bi em dez/25 a US$ 89,5 bi em set/26",
        "unidade": "usd-bi",
-       "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
+       "fonte": "SpaceX, release de resultados do 3º trimestre de 2026 e S-1",
        "periodos": [
+        "1T25",
+        "2T25",
         "3T25",
         "4T25",
         "1T26",
@@ -647,8 +657,10 @@
          "nome": "Espaço",
          "cor": "#8064A2",
          "v": [
+          0.162,
+          0.146,
           0.264,
-          null,
+          0.185,
           0.166,
           0.158,
           0.185
@@ -658,8 +670,10 @@
          "nome": "Conectividade",
          "cor": "#4BACC6",
          "v": [
+          0.51,
+          0.568,
           0.628,
-          null,
+          0.67,
           0.783,
           0.805,
           0.986
@@ -669,8 +683,10 @@
          "nome": "SI",
          "cor": "#F79646",
          "v": [
+          0.771,
+          0.813,
           0.922,
-          null,
+          1.062,
           1.493,
           1.885,
           2.473
@@ -690,7 +706,7 @@
          "id": "spacex-espaco-lancamentos",
          "painel": "colunas",
          "titulo": "SpaceX, Espaço: lançamentos por trimestre",
-         "subtitulo": "Número de lançamentos, para clientes e internos (Starlink e testes)",
+         "subtitulo": "Número de lançamentos, para clientes e internos (Starlink e Starship)",
          "unidade": "n",
          "casas": 0,
          "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
@@ -777,10 +793,12 @@
          "id": "spacex-espaco-receita",
          "painel": "colunas",
          "titulo": "SpaceX, Espaço: receita por linha de negócio",
-         "subtitulo": "Por trimestre, em US$ bilhões; 1º tri de 2026 = 9 meses − 2º tri − 3º tri",
+         "subtitulo": "Por trimestre, em US$ bilhões; 2T25, 4T25 e 1T26 saem da diferença entre períodos publicados",
          "unidade": "usd-bi",
-         "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
+         "fonte": "SpaceX, release de resultados do 3º trimestre de 2026 e S-1",
          "periodos": [
+          "1T25",
+          "2T25",
           "3T25",
           "4T25",
           "1T26",
@@ -792,8 +810,10 @@
            "nome": "Serviços de lançamento",
            "cor": "#4F81BD",
            "v": [
+            0.566,
+            0.49,
             1.0,
-            null,
+            0.52,
             0.33,
             0.648,
             1.13
@@ -803,8 +823,10 @@
            "nome": "Lançamento e desenvolvimento",
            "cor": "#8064A2",
            "v": [
+            0.299,
+            0.256,
             0.666,
-            null,
+            0.289,
             0.289,
             0.314,
             0.637
@@ -818,15 +840,17 @@
          "titulo": "SpaceX, Espaço: da receita ao resultado operacional",
          "subtitulo": "Por trimestre, em US$ bilhões; receita para cima, custos para baixo, e a linha é o resultado operacional",
          "unidade": "usd-bi",
-         "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
+         "fonte": "SpaceX, release de resultados do 3º trimestre de 2026 e S-1 (4º tri de 2025 = ano − 9 meses)",
          "colunas": [
           "3º tri 2025",
+          "4º tri 2025",
           "1º tri 2026",
           "2º tri 2026",
           "3º tri 2026"
          ],
          "colunasCurtas": [
           "3T25",
+          "4T25",
           "1T26",
           "2T26",
           "3T26"
@@ -836,6 +860,7 @@
            "rot": "Receita",
            "v": [
             1.666,
+            0.809,
             0.619,
             0.962,
             1.767
@@ -846,6 +871,7 @@
            "rot": "Custo da receita",
            "v": [
             -0.477,
+            -0.248,
             -0.281,
             -0.329,
             -0.435
@@ -856,6 +882,7 @@
            "rot": "P&D",
            "v": [
             -0.849,
+            -0.935,
             -0.93,
             -1.076,
             -1.225
@@ -866,11 +893,23 @@
            "rot": "Vendas, gerais e administrativas",
            "v": [
             -0.081,
+            -0.093,
             -0.07,
             -0.099,
             -0.114
            ],
            "cor": "#7F7F7F"
+          },
+          {
+           "rot": "Impairment",
+           "v": [
+            null,
+            -0.009,
+            null,
+            null,
+            null
+           ],
+           "cor": "#E8C547"
           }
          ],
          "marcos": [
@@ -878,6 +917,7 @@
            "rot": "Resultado operacional",
            "v": [
             0.259,
+            -0.476,
             -0.662,
             -0.542,
             -0.007
@@ -894,7 +934,7 @@
          "id": "spacex-conectividade-assinantes",
          "painel": "colunas",
          "titulo": "SpaceX, Conectividade: assinantes do Starlink",
-         "subtitulo": "Assinantes residenciais e de pequenas empresas, em milhões, no fim do trimestre; sem os contratos de empresas e governo",
+         "subtitulo": "Assinantes de planos pessoais e de negócios, em milhões, no fim do trimestre; sem os contratos gerenciados de empresas e governo",
          "unidade": "mi",
          "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
          "periodos": [
@@ -951,10 +991,12 @@
          "id": "spacex-conectividade-receita",
          "painel": "colunas",
          "titulo": "SpaceX, Conectividade: receita por linha de negócio",
-         "subtitulo": "Por trimestre, em US$ bilhões; 1º tri de 2026 = 9 meses − 2º tri − 3º tri",
+         "subtitulo": "Por trimestre, em US$ bilhões; 2T25, 4T25 e 1T26 saem da diferença entre períodos publicados",
          "unidade": "usd-bi",
-         "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
+         "fonte": "SpaceX, release de resultados do 3º trimestre de 2026 e S-1",
          "periodos": [
+          "1T25",
+          "2T25",
           "3T25",
           "4T25",
           "1T26",
@@ -966,8 +1008,10 @@
            "nome": "Consumidor",
            "cor": "#4BACC6",
            "v": [
+            1.492,
+            1.72,
             1.986,
-            null,
+            2.01,
             2.148,
             2.485,
             3.121
@@ -977,8 +1021,10 @@
            "nome": "Empresas e governo",
            "cor": "#4F81BD",
            "v": [
+            0.983,
+            0.867,
             1.111,
-            null,
+            1.218,
             1.109,
             1.806,
             2.127
@@ -992,15 +1038,17 @@
          "titulo": "SpaceX, Conectividade: da receita ao resultado operacional",
          "subtitulo": "Por trimestre, em US$ bilhões; receita para cima, custos para baixo, e a linha é o resultado operacional",
          "unidade": "usd-bi",
-         "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
+         "fonte": "SpaceX, release de resultados do 3º trimestre de 2026 e S-1 (4º tri de 2025 = ano − 9 meses)",
          "colunas": [
           "3º tri 2025",
+          "4º tri 2025",
           "1º tri 2026",
           "2º tri 2026",
           "3º tri 2026"
          ],
          "colunasCurtas": [
           "3T25",
+          "4T25",
           "1T26",
           "2T26",
           "3T26"
@@ -1010,6 +1058,7 @@
            "rot": "Receita",
            "v": [
             3.097,
+            3.228,
             3.257,
             4.291,
             5.248
@@ -1020,6 +1069,7 @@
            "rot": "Custo da receita",
            "v": [
             -1.657,
+            -1.65,
             -1.651,
             -2.06,
             -2.368
@@ -1030,6 +1080,7 @@
            "rot": "P&D",
            "v": [
             -0.141,
+            -0.169,
             -0.205,
             -0.294,
             -0.188
@@ -1040,6 +1091,7 @@
            "rot": "Vendas, gerais e administrativas",
            "v": [
             -0.109,
+            -0.133,
             -0.213,
             -0.281,
             -0.325
@@ -1052,6 +1104,7 @@
            "rot": "Resultado operacional",
            "v": [
             1.19,
+            1.276,
             1.188,
             1.656,
             2.367
@@ -1106,10 +1159,12 @@
          "id": "spacex-si-receita",
          "painel": "colunas",
          "titulo": "SpaceX, SI: receita por linha de negócio",
-         "subtitulo": "Por trimestre, em US$ bilhões; 1º tri de 2026 = 9 meses − 2º tri − 3º tri",
+         "subtitulo": "Por trimestre, em US$ bilhões; 2T25, 4T25 e 1T26 saem da diferença entre períodos publicados",
          "unidade": "usd-bi",
-         "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
+         "fonte": "SpaceX, release de resultados do 3º trimestre de 2026 e S-1",
          "periodos": [
+          "1T25",
+          "2T25",
           "3T25",
           "4T25",
           "1T26",
@@ -1121,8 +1176,10 @@
            "nome": "Publicidade",
            "cor": "#95A5A6",
            "v": [
+            0.443,
+            0.426,
             0.454,
-            null,
+            0.521,
             0.343,
             0.367,
             0.538
@@ -1132,8 +1189,10 @@
            "nome": "Soluções e infraestrutura de SI",
            "cor": "#F79646",
            "v": [
+            0.284,
+            0.312,
             0.359,
-            null,
+            0.402,
             0.475,
             2.194,
             7.022
@@ -1147,15 +1206,17 @@
          "titulo": "SpaceX, SI: da receita ao resultado operacional",
          "subtitulo": "Por trimestre, em US$ bilhões; receita para cima, custos para baixo, e a linha é o resultado operacional",
          "unidade": "usd-bi",
-         "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
+         "fonte": "SpaceX, release de resultados do 3º trimestre de 2026 e S-1 (4º tri de 2025 = ano − 9 meses)",
          "colunas": [
           "3º tri 2025",
+          "4º tri 2025",
           "1º tri 2026",
           "2º tri 2026",
           "3º tri 2026"
          ],
          "colunasCurtas": [
           "3T25",
+          "4T25",
           "1T26",
           "2T26",
           "3T26"
@@ -1165,6 +1226,7 @@
            "rot": "Receita",
            "v": [
             0.813,
+            0.923,
             0.818,
             2.561,
             7.56
@@ -1175,6 +1237,7 @@
            "rot": "Custo da receita",
            "v": [
             -0.571,
+            -0.604,
             -0.456,
             -1.106,
             -2.675
@@ -1185,6 +1248,7 @@
            "rot": "P&D",
            "v": [
             -1.301,
+            -1.733,
             -2.379,
             -2.178,
             -3.183
@@ -1195,6 +1259,7 @@
            "rot": "Vendas, gerais e administrativas",
            "v": [
             -0.385,
+            -0.744,
             -0.463,
             -0.532,
             -1.268
@@ -1205,6 +1270,7 @@
            "rot": "Reestruturação",
            "v": [
             -0.278,
+            -0.015,
             0.011,
             -0.002,
             -0.003
@@ -1217,6 +1283,7 @@
            "rot": "Resultado operacional",
            "v": [
             -1.722,
+            -2.173,
             -2.469,
             -1.257,
             0.431
@@ -1286,10 +1353,12 @@
        "id": "spacex-capex-trimestral",
        "painel": "colunas",
        "titulo": "SpaceX: capex por trimestre e o guidance do 4º tri",
-       "subtitulo": "Capex por segmento, em US$ bilhões; o guidance do 4º tri de 2026 é de US$ 35 a 40 bi",
+       "subtitulo": "Capex por segmento, em US$ bilhões; 2T25, 4T25 e 1T26 por diferença, e o guidance do 4º tri de 2026 é de US$ 35 a 40 bi",
        "unidade": "usd-bi",
-       "fonte": "SpaceX, release de resultados do 3º trimestre de 2026; guidance da teleconferência",
+       "fonte": "SpaceX, release de resultados do 3º trimestre de 2026 e S-1; guidance da teleconferência",
        "periodos": [
+        "1T25",
+        "2T25",
         "3T25",
         "4T25",
         "1T26",
@@ -1302,8 +1371,10 @@
          "nome": "Espaço",
          "cor": "#8064A2",
          "v": [
+          0.759,
+          0.946,
           1.113,
-          null,
+          1.014,
           1.052,
           1.174,
           1.606,
@@ -1314,8 +1385,10 @@
          "nome": "Conectividade",
          "cor": "#4BACC6",
          "v": [
+          0.814,
+          1.13,
           1.007,
-          null,
+          1.227,
           1.332,
           1.367,
           1.543,
@@ -1326,8 +1399,10 @@
          "nome": "SI",
          "cor": "#F79646",
          "v": [
+          2.567,
+          0.75,
           4.76,
-          null,
+          4.65,
           7.723,
           15.828,
           16.444,
@@ -1549,7 +1624,7 @@
         {
          "rot": "Preço / lucro",
          "valor": "106x",
-         "detalhe": "Sobre US$ 1,40 (LPA do 3º tri × 4); o lucro do tri tem US$ 1,0 bi de outras receitas e US$ 0,4 bi de benefício fiscal"
+         "detalhe": "Sobre US$ 1,40 (LPA do 3º tri × 4); o lucro do tri tem US$ 1,0 bi de outras receitas e US$ 0,4 bi de benefício fiscal, e em 12 meses até setembro há prejuízo de US$ 2,8 bi"
         },
         {
          "rot": "Preço / vendas",
@@ -1574,8 +1649,14 @@
        "titulo": "SpaceX: preço / vendas conforme a receita que se usa",
        "subtitulo": "Valor de mercado de US$ 2,01 tri ÷ receita anual; tracejado, o que depende de guidance ou meta",
        "unidade": "x",
-       "fonte": "SpaceX, release de resultados do 3º trimestre de 2026 e teleconferência; preço do Motley Fool",
+       "fonte": "SpaceX, release de resultados do 3º trimestre de 2026, S-1 e teleconferência; preço do Motley Fool",
        "linhas": [
+        {
+         "rot": "12 meses até setembro de 2026",
+         "detalhe": "US$ 32,0 bi, do 4º tri de 2025 ao 3º tri de 2026",
+         "v": 62.6,
+         "cor": "#4F81BD"
+        },
         {
          "rot": "3º tri de 2026 × 4",
          "detalhe": "US$ 58,3 bi, o último trimestre",

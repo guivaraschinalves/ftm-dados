@@ -993,15 +993,25 @@
       }
       var linhasT = g.itens.map(function (it) { return { it: it, marco: false }; })
         .concat((g.marcos || []).map(function (m) { return { it: m, marco: true }; }));
-      var wValor = Math.max.apply(null, linhasT.map(function (l) {
-        return Math.max.apply(null, l.it.v.map(function (v, k) {
-          return largura(txtV(v, l.it.medido && l.it.medido[k]), fsV, "bold");
-        }));
-      }).concat([largura(curtas[0], fsV * 0.85, "bold")])) + u * 1.2;
-      // a tabela tem a largura do texto dela: nome mais longo (até um teto) e valores
-      var pad = fsN * 0.8 + u * 0.3;
-      var nomeMax = Math.max.apply(null, linhasT.map(function (l) { return largura(l.it.rot, fsN, l.marco ? "bold" : null); }));
-      var wNome = Math.min(nomeMax, (ctx.estreito ? (c.x1 - c.x0) * 0.62 : 700) - wValor * nC - pad - u);
+      // a tabela tem a largura do texto dela: nome mais longo (até um teto) e
+      // valores. Com muitos períodos (cinco trimestres, no celular) a letra
+      // diminui até sobrar para o nome ao menos a palavra mais longa dele.
+      var wValor, pad, nomeMax, wNome, tetoTabela = ctx.estreito ? (c.x1 - c.x0) * 0.62 : 700;
+      var palavraMax = Math.max.apply(null, linhasT.map(function (l) {
+        return Math.max.apply(null, l.it.rot.split(" ").map(function (p) { return largura(p, 100, "bold"); }));
+      }));
+      for (var tent = 0; tent < 12; tent++) {
+        wValor = Math.max.apply(null, linhasT.map(function (l) {
+          return Math.max.apply(null, l.it.v.map(function (v, k) {
+            return largura(txtV(v, l.it.medido && l.it.medido[k]), fsV, "bold");
+          }));
+        }).concat([largura(curtas[0], fsV * 0.85, "bold")])) + u * 0.9;
+        pad = fsN * 0.8 + u * 0.3;
+        nomeMax = Math.max.apply(null, linhasT.map(function (l) { return largura(l.it.rot, fsN, l.marco ? "bold" : null); }));
+        wNome = Math.min(nomeMax, tetoTabela - wValor * nC - pad - u);
+        if (wNome >= palavraMax * fsN / 100 * 1.05 || fsN < u * 0.55) break;
+        fsN *= 0.93; fsV = fsN;
+      }
       var xT = c.x1 - (pad + wNome + u + wValor * nC), xV0 = c.x1 - wValor * nC;
 
       // escala: do maior empilhado para cima ao maior para baixo
@@ -1248,7 +1258,9 @@
         var nome = quebrar(l.rot, fsN, wNome, l.total ? "bold" : null);
         linhasDeTexto(svg, nome, c.x0, y + hRow / 2 - nome.length * fsN * 1.15 / 2, fsN,
           { fill: l.total ? pal.texto : pal.suave, "font-weight": l.total ? "bold" : null }, 1.15);
-        var txt = l.total ? valorPainel(F, l) : (l.v >= 0 ? "+" : "−") + F.valor(Math.abs(l.v));
+        // passo pequeno (câmbio de −US$ 43 mi) com duas casas, senão vira "US$ 0,0 bi"
+        var Fp = Math.abs(l.v) < 0.1 && UNIDADES[g.unidade + "2"] ? UNIDADES[g.unidade + "2"] : F;
+        var txt = l.total ? valorPainel(F, l) : (l.v >= 0 ? "+" : "−") + Fp.valor(Math.abs(l.v));
         svg.appendChild(texto(txt, { x: c.x1, y: y + hRow / 2, "font-size": fsV, "font-weight": "bold", fill: l.total ? pal.texto : cor,
           "text-anchor": "end", "dominant-baseline": "central" }));
       });

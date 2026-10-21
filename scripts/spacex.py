@@ -64,6 +64,7 @@ DA = {
 }
 DA_TOT_3T26, DA_TOT_3T25, DA_TOT_9M26 = 3644, 1814, 8934
 LUCRO = (4404, -1054)          # 3T26, 3T25
+LUCRO_9M26, LUCRO_9M25, LUCRO_2T26 = -413, -2590, -541   # 2T26 = 9M − 1T (S-1) − 3T
 LPA_DILUIDO = (0.35, -0.36)    # 3T26, 3T25
 LPA_9M26 = -0.15
 
@@ -92,6 +93,46 @@ SI_REC = {"Publicidade": (538, 367, 454, 1248, 1323),
 SI_CUSTO = {"Custo da receita": (2675, 1106, 571, 4237, 1574), "P&D": (3183, 2178, 1301, 7740, 3331),
             "Vendas, gerais e administrativas": (1268, 532, 385, 2263, 1083),
             "Reestruturação": (3, 2, 278, -6, 472)}
+
+# ---------- S-1 (dados/Space Exploration Technologies - S-1.pdf) ----------
+# Só as demonstrações financeiras: 2023 a 2025 e o 1º tri de 2026 e de 2025.
+# Com elas: 1T25 direto, 2T25 = 9M25 − 1T25 − 3T25 e 4T25 = ano − 9M25, o
+# que fecha a série trimestral de 1T25 a 3T26 para tudo que é fluxo. Os
+# números operacionais (lançamentos, assinantes, GW) não estão nessas páginas.
+SEGS = ("Espaço", "Conectividade", "SI")
+S1_ANO25 = {   # Note 19 e Note 3 (ano de 2025)
+    "receita": {"Espaço": 4086, "Conectividade": 11387, "SI": 3201},
+    "oper": {"Espaço": -657, "Conectividade": 4423, "SI": -6355},
+    "da": {"Espaço": 757, "Conectividade": 2376, "SI": 3568},
+    "capex": {"Espaço": 3832, "Conectividade": 4178, "SI": 12727},
+    "custos": {"Espaço": {"Custo da receita": 1352, "P&D": 3004, "Vendas, gerais e administrativas": 349, "Impairment": 38},
+               "Conectividade": {"Custo da receita": 5921, "P&D": 575, "Vendas, gerais e administrativas": 468},
+               "SI": {"Custo da receita": 2178, "P&D": 5064, "Vendas, gerais e administrativas": 1827, "Reestruturação": 487}},
+    "linhas": {"Serviços de lançamento": 2576, "Lançamento e desenvolvimento": 1510, "Consumidor": 7208,
+               "Empresas e governo": 4179, "Publicidade": 1844, "Soluções e infraestrutura de SI": 1357},
+}
+S1_1T25 = {    # Note 18 e Note 3 do trimestre (1º tri de 2025)
+    "receita": {"Espaço": 865, "Conectividade": 2475, "SI": 727},
+    "oper": {"Espaço": -70, "Conectividade": 1033, "SI": -936},
+    "da": {"Espaço": 162, "Conectividade": 510, "SI": 771},
+    "capex": {"Espaço": 759, "Conectividade": 814, "SI": 2567},
+    "custos": {"Espaço": {"Custo da receita": 297, "P&D": 526, "Vendas, gerais e administrativas": 88, "Impairment": 24},
+               "Conectividade": {"Custo da receita": 1214, "P&D": 123, "Vendas, gerais e administrativas": 105},
+               "SI": {"Custo da receita": 451, "P&D": 908, "Vendas, gerais e administrativas": 300, "Reestruturação": 4}},
+    "linhas": {"Serviços de lançamento": 566, "Lançamento e desenvolvimento": 299, "Consumidor": 1492,
+               "Empresas e governo": 983, "Publicidade": 443, "Soluções e infraestrutura de SI": 284},
+}
+S1_1T26 = {    # só para conferir o 1T26 que sai por diferença no release
+    "receita": {"Espaço": 619, "Conectividade": 3257, "SI": 818},
+    "da": {"Espaço": 166, "Conectividade": 783, "SI": 1493},
+    "capex": {"Espaço": 1052, "Conectividade": 1332, "SI": 7723},
+    "linhas": {"Serviços de lançamento": 330, "Lançamento e desenvolvimento": 289, "Consumidor": 2148,
+               "Empresas e governo": 1109, "Publicidade": 343, "Soluções e infraestrutura de SI": 475},
+    "custos_tot": {"Custo da receita": 2388, "P&D": 3514, "Vendas, gerais e administrativas": 746},
+    "lucro": -4276,
+}
+S1_LUCRO_ANO25 = -4937
+S1_CAPEX_FC_ANO25 = 20737      # compras de imobilizado no fluxo de caixa de 2025
 
 # ponte SI, 3T26: resultado operacional → EBITDA ajustado
 SI_PONTE = [("Depreciação e amortização", 2473), ("Remuneração em ações", 821),
@@ -175,6 +216,21 @@ def conferir():
         for k in range(5):
             assert sum(v[k] for v in rec.values()) == RECEITA[seg][k], (seg, k)
             assert RECEITA[seg][k] - sum(v[k] for v in custo.values()) == OPER[seg][k], (seg, k)
+    # S-1: o 1T26 tirado por diferença do release bate com o publicado no S-1
+    linhas_rel = {**ESPACO_REC, **CONEX_REC, **SI_REC}
+    for seg in SEGS:
+        assert primeiro_tri(RECEITA[seg]) == S1_1T26["receita"][seg], seg
+        assert primeiro_tri(DA[seg]) == S1_1T26["da"][seg], seg
+        assert primeiro_tri(CAPEX[seg]) == S1_1T26["capex"][seg], seg
+        for fonte in (S1_ANO25, S1_1T25):        # cada segmento do S-1 fecha
+            assert fonte["receita"][seg] - sum(fonte["custos"][seg].values()) == fonte["oper"][seg], seg
+    for nome, v in S1_1T26["linhas"].items():
+        assert primeiro_tri(linhas_rel[nome]) == v, nome
+    for nome, v in S1_1T26["custos_tot"].items():
+        custos = (ESPACO_CUSTO, CONEX_CUSTO, SI_CUSTO)
+        assert sum(primeiro_tri(c[nome]) for c in custos if nome in c) == v, nome
+    assert sum(S1_ANO25["capex"].values()) == S1_CAPEX_FC_ANO25
+    assert LUCRO_9M26 - S1_1T26["lucro"] - LUCRO[0] == LUCRO_2T26
     for k in range(5):
         assert ESPACO_OP["lanc_clientes"][k] + ESPACO_OP["lanc_internos"][k] == ESPACO_OP["lanc_total"][k]
         # a tabela arredonda cada linha: as partes erram o total em até 1 t (119 + 358 = 477 × 476)
@@ -210,35 +266,41 @@ def secoes():
     }
     del pares_resultado["metricas"]
 
-    # trimestres: 3T25, 4T25 (n.d.), 1T26, 2T26, 3T26 e o que vier de guidance
-    def tri(t):
-        return [bi(t[2]), None, bi(primeiro_tri(t)), bi(t[1]), bi(t[0])]
+    # trimestres de 1T25 a 3T26: 1T25 do S-1, 2T25 = 9M25 − 1T25 − 3T25,
+    # 4T25 = ano (S-1) − 9M25, 1T26 = 9M26 − 2T26 − 3T26
+    Q7 = ["1T25", "2T25", "3T25", "4T25", "1T26", "2T26", "3T26"]
+
+    def sete(t, q1_25, ano25):
+        return [q1_25, t[4] - q1_25 - t[2], t[2], ano25 - t[4], primeiro_tri(t), t[1], t[0]]
+
+    def tri(t, chave, seg):
+        return [bi(x) for x in sete(t, S1_1T25[chave][seg], S1_ANO25[chave][seg])]
 
     receita_tri = {
         "id": "spacex-receita-trimestral", "painel": "colunas",
         "titulo": "SpaceX: receita por trimestre e o guidance do 1º tri de 2027",
-        "subtitulo": "Receita por segmento, em US$ bilhões; 1º tri de 2026 = 9 meses − 2º tri − 3º tri, e o guidance é de US$ 33 a 37 bi",
-        "unidade": "usd-bi", "fonte": REL + "; guidance da teleconferência",
-        "periodos": ["3T25", "4T25", "1T26", "2T26", "3T26", "4T26", "1T27"],
-        "series": [{"nome": s, "cor": COR_SEG[s], "v": tri(RECEITA[s]) + [None, None]} for s in ("Espaço", "Conectividade", "SI")],
+        "subtitulo": "Receita por segmento, em US$ bilhões; 2T25, 4T25 e 1T26 saem da diferença entre períodos publicados, e o guidance é de US$ 33 a 37 bi",
+        "unidade": "usd-bi", "fonte": REL + " e S-1; guidance da teleconferência",
+        "periodos": Q7 + ["4T26", "1T27"],
+        "series": [{"nome": s, "cor": COR_SEG[s], "v": tri(RECEITA[s], "receita", s) + [None, None]} for s in SEGS],
         "guia": [{"p": "1T27", "lo": 33, "hi": 37}],
     }
     capex_tri = {
         "id": "spacex-capex-trimestral", "painel": "colunas",
         "titulo": "SpaceX: capex por trimestre e o guidance do 4º tri",
-        "subtitulo": "Capex por segmento, em US$ bilhões; o guidance do 4º tri de 2026 é de US$ 35 a 40 bi",
-        "unidade": "usd-bi", "fonte": REL + "; guidance da teleconferência",
-        "periodos": ["3T25", "4T25", "1T26", "2T26", "3T26", "4T26"],
-        "series": [{"nome": s, "cor": COR_SEG[s], "v": tri(CAPEX[s]) + [None]} for s in ("Espaço", "Conectividade", "SI")],
+        "subtitulo": "Capex por segmento, em US$ bilhões; 2T25, 4T25 e 1T26 por diferença, e o guidance do 4º tri de 2026 é de US$ 35 a 40 bi",
+        "unidade": "usd-bi", "fonte": REL + " e S-1; guidance da teleconferência",
+        "periodos": Q7 + ["4T26"],
+        "series": [{"nome": s, "cor": COR_SEG[s], "v": tri(CAPEX[s], "capex", s) + [None]} for s in SEGS],
         "guia": [{"p": "4T26", "lo": 35, "hi": 40}],
     }
     da_tri = {
         "id": "spacex-depreciacao", "painel": "colunas",
         "titulo": "SpaceX: depreciação e amortização por trimestre",
         "subtitulo": "D&A por segmento, em US$ bilhões; o imobilizado líquido foi de US$ 42,6 bi em dez/25 a US$ 89,5 bi em set/26",
-        "unidade": "usd-bi", "fonte": REL,
-        "periodos": ["3T25", "4T25", "1T26", "2T26", "3T26"],
-        "series": [{"nome": s, "cor": COR_SEG[s], "v": tri(DA[s])} for s in ("Espaço", "Conectividade", "SI")],
+        "unidade": "usd-bi", "fonte": REL + " e S-1",
+        "periodos": Q7,
+        "series": [{"nome": s, "cor": COR_SEG[s], "v": tri(DA[s], "da", s)} for s in SEGS],
     }
     ponte = {
         "id": "spacex-ponte-ebitda", "painel": "cascata",
@@ -328,6 +390,9 @@ def secoes():
     mcap = PRECO * ACOES_MI / 1000                     # US$ bi
     lpa_ano = LPA_DILUIDO[0] * 4
     rec_ano = RECEITA_TOT[0] * 4 / 1000
+    # 12 meses até setembro de 2026: 4T25 (ano − 9M25, S-1) + 9M26
+    rec_12m = (sum(S1_ANO25["receita"].values()) - RECEITA_TOT[4] + RECEITA_TOT[3]) / 1000
+    lucro_12m = (S1_LUCRO_ANO25 - LUCRO_9M25 + LUCRO_9M26) / 1000
     ebitda_ano = EBITDA_TOT[0] * 4 / 1000
     caixa_liq = (CAIXA[1] + TITULOS_SALDO[1] - divida[1]) / 1000
     ev = mcap - caixa_liq
@@ -346,7 +411,7 @@ def secoes():
             {"rot": "Lucro por ação, 3º tri", "valor": f"US$ {fmt(LPA_DILUIDO[0], 2)}",
              "detalhe": f"Diluído; era −US$ {fmt(-LPA_DILUIDO[1], 2)} no 3º tri de 2025 e é −US$ {fmt(-LPA_9M26, 2)} em 9 meses de 2026"},
             {"rot": "Preço / lucro", "valor": f"{fmt(PRECO / lpa_ano, 0)}x",
-             "detalhe": f"Sobre US$ {fmt(lpa_ano, 2)} (LPA do 3º tri × 4); o lucro do tri tem US$ 1,0 bi de outras receitas e US$ 0,4 bi de benefício fiscal"},
+             "detalhe": f"Sobre US$ {fmt(lpa_ano, 2)} (LPA do 3º tri × 4); o lucro do tri tem US$ 1,0 bi de outras receitas e US$ 0,4 bi de benefício fiscal, e em 12 meses até setembro há prejuízo de US$ {fmt(-lucro_12m, 1)} bi"},
             {"rot": "Preço / vendas", "valor": f"{fmt(mcap / rec_ano, 0)}x",
              "detalhe": f"Sobre US$ {fmt(rec_ano, 1)} bi (receita do 3º tri × 4)"},
             {"rot": "EV / EBITDA ajustado", "valor": f"{fmt(ev / ebitda_ano, 0)}x",
@@ -359,8 +424,9 @@ def secoes():
         "id": "spacex-preco-vendas", "painel": "barras",
         "titulo": "SpaceX: preço / vendas conforme a receita que se usa",
         "subtitulo": f"Valor de mercado de US$ {fmt(mcap / 1000, 2)} tri ÷ receita anual; tracejado, o que depende de guidance ou meta",
-        "unidade": "x", "fonte": REL + " e teleconferência; preço do Motley Fool",
+        "unidade": "x", "fonte": REL + ", S-1 e teleconferência; preço do Motley Fool",
         "linhas": [
+            {"rot": "12 meses até setembro de 2026", "detalhe": f"US$ {fmt(rec_12m, 1)} bi, do 4º tri de 2025 ao 3º tri de 2026", "v": round(mcap / rec_12m, 1), "cor": AZUL},
             {"rot": "3º tri de 2026 × 4", "detalhe": f"US$ {fmt(rec_ano, 1)} bi, o último trimestre", "v": round(mcap / rec_ano, 1), "cor": AZUL},
             {"rot": "ARR de dezembro de 2026", "detalhe": "US$ 100 bi, receita de dezembro × 12 (meta do CFO)",
              "v": round(mcap / 100, 1), "cor": LARANJA, "contorno": True},
@@ -463,33 +529,34 @@ def secoes():
         return [t[2], None, None, t[1], t[0]]
 
     def dre(id_, seg, custos, cor):
-        """Receita para cima, custos para baixo, resultado operacional riscado: 3T25, 1T26, 2T26, 3T26."""
-        def q(t):
-            return [bi(t[2]), bi(primeiro_tri(t)), bi(t[1]), bi(t[0])]
-        itens = [{"rot": "Receita", "v": q(RECEITA[seg]), "cor": cor}]
+        """Receita para cima, custos para baixo, resultado operacional riscado: 3T25 a 3T26 (4T25 = ano − 9M25)."""
+        def q(t, ano25):
+            return [bi(t[2]), bi(ano25 - t[4]), bi(primeiro_tri(t)), bi(t[1]), bi(t[0])]
+        itens = [{"rot": "Receita", "v": q(RECEITA[seg], S1_ANO25["receita"][seg]), "cor": cor}]
         cores_c = [VERMELHO, "#D99694", "#7F7F7F", "#E8C547"]
         for (nome, t), c in zip(custos.items(), cores_c):
-            if not any(q(t)):          # impairment só existe nos 9 meses de 2025
+            v = q(t, S1_ANO25["custos"][seg].get(nome, 0))
+            if not any(v):
                 continue
-            itens.append({"rot": nome, "v": [-x if x else None for x in q(t)], "cor": c})
+            itens.append({"rot": nome, "v": [-x if x else None for x in v], "cor": c})
         return {
             "id": id_, "painel": "pilhas",
             "titulo": f"SpaceX, {seg}: da receita ao resultado operacional",
             "subtitulo": "Por trimestre, em US$ bilhões; receita para cima, custos para baixo, e a linha é o resultado operacional",
-            "unidade": "usd-bi", "fonte": REL,
-            "colunas": ["3º tri 2025", "1º tri 2026", "2º tri 2026", "3º tri 2026"],
-            "colunasCurtas": ["3T25", "1T26", "2T26", "3T26"],
+            "unidade": "usd-bi", "fonte": REL + " e S-1 (4º tri de 2025 = ano − 9 meses)",
+            "colunas": ["3º tri 2025", "4º tri 2025", "1º tri 2026", "2º tri 2026", "3º tri 2026"],
+            "colunasCurtas": ["3T25", "4T25", "1T26", "2T26", "3T26"],
             "itens": itens,
-            "marcos": [{"rot": "Resultado operacional", "v": q(OPER[seg])}],
+            "marcos": [{"rot": "Resultado operacional", "v": q(OPER[seg], S1_ANO25["oper"][seg])}],
         }
 
     def receita_aberta(id_, seg, partes, cores):
         return {
             "id": id_, "painel": "colunas",
             "titulo": f"SpaceX, {seg}: receita por linha de negócio",
-            "subtitulo": "Por trimestre, em US$ bilhões; 1º tri de 2026 = 9 meses − 2º tri − 3º tri",
-            "unidade": "usd-bi", "fonte": REL, "periodos": QT,
-            "series": [{"nome": n, "cor": c, "v": [None if x is None else bi(x) for x in tri_n(t)]}
+            "subtitulo": "Por trimestre, em US$ bilhões; 2T25, 4T25 e 1T26 saem da diferença entre períodos publicados",
+            "unidade": "usd-bi", "fonte": REL + " e S-1", "periodos": Q7,
+            "series": [{"nome": n, "cor": c, "v": [bi(x) for x in sete(t, S1_1T25["linhas"][n], S1_ANO25["linhas"][n])]}
                        for (n, t), c in zip(partes.items(), cores)],
         }
 
@@ -497,7 +564,7 @@ def secoes():
     espaco = [
         {"id": "spacex-espaco-lancamentos", "painel": "colunas",
          "titulo": "SpaceX, Espaço: lançamentos por trimestre",
-         "subtitulo": "Número de lançamentos, para clientes e internos (Starlink e testes)",
+         "subtitulo": "Número de lançamentos, para clientes e internos (Starlink e Starship)",
          "unidade": "n", "casas": 0, "fonte": REL, "periodos": QT,
          "series": [{"nome": "Para clientes", "cor": AZUL, "v": tri_n(o["lanc_clientes"])},
                     {"nome": "Internos", "cor": CINZA, "v": tri_n(o["lanc_internos"])}]},
@@ -513,7 +580,7 @@ def secoes():
     conectividade = [
         {"id": "spacex-conectividade-assinantes", "painel": "colunas",
          "titulo": "SpaceX, Conectividade: assinantes do Starlink",
-         "subtitulo": "Assinantes residenciais e de pequenas empresas, em milhões, no fim do trimestre; sem os contratos de empresas e governo",
+         "subtitulo": "Assinantes de planos pessoais e de negócios, em milhões, no fim do trimestre; sem os contratos gerenciados de empresas e governo",
          "unidade": "mi", "fonte": REL, "periodos": QT,
          "series": [{"nome": "Assinantes", "cor": AZUL_CLARO, "v": saldo(CONEX_ASSIN)}]},
         {"id": "spacex-conectividade-arpu", "painel": "colunas",
