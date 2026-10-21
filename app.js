@@ -1856,6 +1856,27 @@
       fecharVisor();
     });
 
+    // setas para o gráfico anterior e o seguinte, na ordem da página
+    function seta(dir) {
+      var b = html("button", { type: "button", "class": "visor-seta visor-seta-" + (dir < 0 ? "ant" : "prox"),
+        "aria-label": dir < 0 ? "Gráfico anterior" : "Próximo gráfico" });
+      b.appendChild(el("svg", { viewBox: "0 0 24 24", width: "22", height: "22", "aria-hidden": "true" }, [
+        el("path", { d: dir < 0 ? "M15 5l-7 7 7 7" : "M9 5l7 7-7 7", fill: "none", stroke: "currentColor",
+          "stroke-width": "2.4", "stroke-linecap": "round", "stroke-linejoin": "round" })
+      ]));
+      b.addEventListener("click", function (ev) { ev.stopPropagation(); irNoVisor(dir); });
+      box.appendChild(b);
+      return b;
+    }
+    var setaAnt = seta(-1), setaProx = seta(1);
+    // ← e → do teclado fazem o mesmo (menos com o foco num campo ou desenhando)
+    document.addEventListener("keydown", function (ev) {
+      if (box.hidden || desenhando || ev.altKey || ev.ctrlKey || ev.metaKey) return;
+      if (ev.key !== "ArrowLeft" && ev.key !== "ArrowRight") return;
+      ev.preventDefault();
+      irNoVisor(ev.key === "ArrowLeft" ? -1 : 1);
+    });
+
     box.appendChild(btnFechar);
     box.appendChild(barra);
     box.appendChild(palco);
@@ -1863,6 +1884,7 @@
     document.body.appendChild(box);
 
     visor = { box: box, palco: palco, tela: tela, anot: anot, fechar: btnFechar, recortes: recortes,
+              setaAnt: setaAnt, setaProx: setaProx,
               mostrarChrome: mostrarChrome, fecharMenu: fecharMenu, desenho: alternarDesenho,
               cartao: null, tamanho: TAMANHOS[0], layout: "wide" };
     alternarDesenho(false);
@@ -1896,10 +1918,34 @@
     visor.palco.style.setProperty("--ar", L.W / L.H);
   }
 
+  // Passa o visor para o gráfico vizinho (dir = −1 ou 1). Não dá a volta: no
+  // primeiro e no último a seta daquele lado some.
+  function irNoVisor(dir) {
+    if (!visor || !visor.cartao) return;
+    var j = cartoes.indexOf(visor.cartao) + dir;
+    if (j < 0 || j >= cartoes.length) return;
+    visor.cartao = cartoes[j];
+    montarRecortesDoVisor();
+    visor.anot.limpar();
+    visor.desenho(false);
+    pintarVisor();
+    atualizarSetas();
+    visor.mostrarChrome(true);
+  }
+  function atualizarSetas() {
+    var i = cartoes.indexOf(visor.cartao);
+    [[visor.setaAnt, cartoes[i - 1], "Anterior: "], [visor.setaProx, cartoes[i + 1], "Próximo: "]].forEach(function (x) {
+      x[0].hidden = !x[1];
+      if (x[1]) x[0].title = x[2] + x[1].grafico.titulo;
+    });
+  }
+
   function abrirVisor(cartao, comTelaCheia) {
     if (!visor) montarVisor();
     visor.cartao = cartao;
+    visor.abertoEm = cartao;
     montarRecortesDoVisor();
+    atualizarSetas();
     visor.layout = window.innerWidth < 700 ? "narrow" : "wide";
     visor.tamanho = visor.layout === "wide" ? TAMANHOS[0] : TAMANHOS[1];
     pintarVisor();
@@ -1929,7 +1975,15 @@
     document.body.classList.remove("visor-aberto");
     var volta = visor.cartao;
     visor.cartao = null;
-    if (volta && volta.botaoTelaCheia) volta.botaoTelaCheia.focus();
+    // andou pelas setas: a página vai até o último gráfico visto (abrindo o
+    // que estiver fechado no caminho), em vez de voltar ao de partida
+    if (volta && volta !== visor.abertoEm) {
+      // depois de a tela cheia terminar de sair, senão a rolagem se perde
+      setTimeout(function () {
+        irPara(volta.grafico.id);
+        if (volta.botaoTelaCheia) volta.botaoTelaCheia.focus({ preventScroll: true });
+      }, 150);
+    } else if (volta && volta.botaoTelaCheia) volta.botaoTelaCheia.focus({ preventScroll: true });
   }
 
   // ---------- cartão ----------

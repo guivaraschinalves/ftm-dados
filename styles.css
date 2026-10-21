@@ -432,6 +432,22 @@ body.visor-aberto { overflow: hidden; }
   min-height: 36px; border-radius: var(--raio-md); padding: 0 16px;
 }
 
+/* setas para o gráfico anterior e o seguinte, no meio das laterais */
+.visor-seta {
+  position: absolute; z-index: 1; top: 50%; transform: translateY(-50%);
+  width: 48px; height: 48px; border-radius: 50%; padding: 0;
+  display: grid; place-items: center; color: #fff; cursor: pointer;
+  background: rgba(0, 0, 0, .55); border: 1px solid rgba(255, 255, 255, .25);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  transition: background-color .15s, opacity .25s ease;
+}
+.visor-seta:hover { background: rgba(255, 255, 255, .18); }
+.visor-seta[hidden] { display: none; }
+.visor-seta-ant { left: 14px; }
+.visor-seta-prox { right: 14px; }
+.visor.chrome-oculto .visor-seta { opacity: 0; pointer-events: none; }
+@media (max-width: 860px) { .visor-seta { width: 40px; height: 40px; } .visor-seta-ant { left: 6px; } .visor-seta-prox { right: 6px; } }
+
 /* Tela cheia: o gráfico vale a tela inteira e os controles passam a flutuar
    sobre ele. Daí o fundo escuro opaco, o menu de hambúrguer no lugar dos
    botões soltos e o sumiço automático depois de um tempo parado.
