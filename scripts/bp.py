@@ -50,6 +50,25 @@ positivo) e déficit (o que é negativo), como na planilha.
 A necessidade de capital de curto prazo é −(conta corrente + ID no país), em
 12 meses, e a legenda é a do slide.
 
+A DÍVIDA EXTERNA
+
+A seção "Dívida externa" é trimestral e vem do SGS, fora da tabela:
+
+  - **3684** — dívida externa bruta, US$ milhões (o SGS data o trimestre no
+    primeiro mês: "01/04/2026" é o 2º trimestre, posição de fim de junho).
+  - **3685** — dívida externa líquida: a bruta menos as reservas, os haveres
+    de bancos comerciais no exterior (Cosif) e os créditos brasileiros no
+    exterior (Banco do Brasil).
+  - **3546** — reservas internacionais, conceito liquidez, mensal; vale o
+    último mês do trimestre (jun/2026: 367.558, igual aos ativos de reserva
+    da posição de investimento internacional).
+
+O BC não publica mais os haveres de bancos e os créditos no exterior em
+separado (nem no SGS, nem nas tabelas especiais). A soma dos dois sai por
+diferença: bruta − líquida − reservas (2º tri/2026: 407.103 − 5.083 −
+367.558 = 34.461). O SGS revisou a série: 2017 dá 19,5 bi hoje, contra
+12,9 + 1,2 bi no relatório de 2018.
+
 Os acumulados são somas móveis dos meses (3 ou 12), datadas no último mês da
 janela. Cada gráfico começa onde o slide começa (`INICIO_*`).
 """
@@ -91,6 +110,8 @@ COD = dict(
 )
 DOLAR_COMPRA, DOLAR_VENDA = 3697, 3698
 PIB_12, PIB_MES = 4192, 4385
+DIVIDA_BRUTA, DIVIDA_LIQUIDA, RESERVAS_LIQUIDEZ = 3684, 3685, 3546
+INICIO_DIVIDA = "2000-Q1"     # antes disso o BC só compilou alguns trimestres
 
 # Cores do tema do Office, as mesmas dos slides.
 AZUL, VERMELHO, VERDE, ROXO, CIANO, LARANJA = "#4F81BD", "#C0504D", "#9BBB59", "#8064A2", "#4BACC6", "#F79646"
@@ -406,6 +427,39 @@ def graficos(s, dolar, pib12, pib_mes):
     ]
 
 
+def trimestre(serie_sgs):
+    """{"aaaa-mm": v} do SGS trimestral (mês 01, 04, 07, 10) -> {"aaaa-Qn": v}."""
+    return {"%s-Q%d" % (m[:4], (int(m[5:]) - 1) // 3 + 1): v for m, v in serie_sgs.items()}
+
+
+def fim_de_trimestre(mensal):
+    """Mensal -> trimestral, com o valor do último mês do trimestre."""
+    return {"%s-Q%d" % (m[:4], int(m[5:]) // 3): v for m, v in mensal.items() if int(m[5:]) % 3 == 0}
+
+
+def divida_externa(bruta, liquida, reservas):
+    bruta, liquida = trimestre(bruta), trimestre(liquida)
+    reservas = fim_de_trimestre(reservas)
+    tri = [t for t in sorted(bruta) if t >= INICIO_DIVIDA and t in liquida and t in reservas]
+    so = lambda d: {t: d[t] / 1000 for t in tri}                      # noqa: E731
+    outros = {t: bruta[t] - liquida[t] - reservas[t] for t in tri}
+    SUB = "US$ bilhões, fim de trimestre"
+    return dict(titulo="Dívida externa", graficos=[
+        grafico("bp-divida-externa", "Dívida Externa do Brasil",
+                SUB + "; líquida = bruta − reservas − haveres de bancos no exterior − créditos brasileiros no exterior",
+                [serie("Dívida externa bruta", VERMELHO, so(bruta), rotulo=True),
+                 serie("Reservas internacionais", LARANJA, so(reservas), rotulo=True),
+                 serie("Dívida externa líquida", BRANCO, so(liquida), rotulo=True)],
+                trimestral=True),
+        grafico("bp-divida-externa-ativos", "Ativos Deduzidos da Dívida Externa Bruta",
+                SUB + "; haveres de bancos e créditos no exterior = bruta − líquida − reservas",
+                [barra("Reservas internacionais", LARANJA, so(reservas)),
+                 barra("Haveres de bancos e créditos no exterior", AZUL, so(outros), rotulo=True),
+                 serie("Dívida externa bruta", VERMELHO, so(bruta), rotulo=True)],
+                trimestral=True, barra=1),
+    ])
+
+
 def main():
     print("Baixando a tabela do BC…")
     s = ler_tabela(baixar(URL_TABELA))
@@ -421,6 +475,9 @@ def main():
     pib12, pib_mes = sgs(PIB_12, "1995-01"), sgs(PIB_MES, "1995-01")
 
     secoes = graficos(s, dolar, pib12, pib_mes)
+    print("Baixando a dívida externa do SGS…")
+    secoes.append(divida_externa(sgs(DIVIDA_BRUTA, "2000-01"), sgs(DIVIDA_LIQUIDA, "2000-01"),
+                                 sgs(RESERVAS_LIQUIDEZ, "2000-01")))
     doc = dict(
         atualizado=datetime.date.today().isoformat(),
         referencia=ref,
