@@ -121,6 +121,8 @@ body {
 /* terceiro nível (empresa > assunto > gráfico): um degrau a mais de recuo */
 .nav-sub .nav-sub > .nav-sub-rotulo { padding-left: 34px; }
 .nav-sub .nav-sub > a { margin-left: 41px; }
+.nav-sub .nav-sub .nav-sub > .nav-sub-rotulo { padding-left: 48px; }
+.nav-sub .nav-sub .nav-sub > a { margin-left: 55px; }
 .nav-rotulo:hover, .nav-sub-rotulo:hover { background: var(--hover); color: var(--ink); }
 /* a categoria que está na tela acende no menu: traço azul à esquerda */
 .nav-grupo[data-atual="true"] > .nav-rotulo::before {

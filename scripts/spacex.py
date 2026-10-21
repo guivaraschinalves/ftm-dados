@@ -67,6 +67,32 @@ LUCRO = (4404, -1054)          # 3T26, 3T25
 LPA_DILUIDO = (0.35, -0.36)    # 3T26, 3T25
 LPA_9M26 = -0.15
 
+# ---------- páginas dos segmentos (4, 5 e 6 do release; 3 a 5 do PDF) ----------
+# mesma ordem: (3T26, 2T26, 3T25, 9M26, 9M25). Saldo de fim de período
+# (assinantes, ARPU, GW) não tem 1º tri: os 9 meses repetem o 3º tri.
+ESPACO_OP = {
+    "lanc_clientes": (12, 10, 15, 29, 36), "lanc_internos": (23, 28, 29, 84, 92),
+    "lanc_total": (35, 38, 44, 113, 128),
+    "carga_clientes": (119, 87, 111, 251, 274), "carga_interna": (358, 397, 415, 1266, 1353),
+    "massa": (476, 485, 525, 1517, 1627),
+}
+ESPACO_REC = {"Serviços de lançamento": (1130, 648, 1000, 2108, 2056),
+              "Lançamento e desenvolvimento": (637, 314, 666, 1240, 1221)}
+ESPACO_CUSTO = {"Custo da receita": (435, 329, 477, 1045, 1104), "P&D": (1225, 1076, 849, 3231, 2069),
+                "Vendas, gerais e administrativas": (114, 99, 81, 283, 256), "Impairment": (0, 0, 0, 0, 29)}
+CONEX_ASSIN = (13.6, 12.0, 7.2)      # mi, fim de período (3T26, 2T26, 3T25)
+CONEX_ARPU = (69, 66, 83)            # US$/mês
+CONEX_REC = {"Consumidor": (3121, 2485, 1986, 7754, 5198),
+             "Empresas e governo": (2127, 1806, 1111, 5042, 2961)}
+CONEX_CUSTO = {"Custo da receita": (2368, 2060, 1657, 6079, 4271), "P&D": (188, 294, 141, 687, 406),
+               "Vendas, gerais e administrativas": (325, 281, 109, 819, 335)}
+SI_GW = (1.7, 1.4, 0.6)              # compute nominal, fim de período
+SI_REC = {"Publicidade": (538, 367, 454, 1248, 1323),
+          "Soluções e infraestrutura de SI": (7022, 2194, 359, 9691, 955)}
+SI_CUSTO = {"Custo da receita": (2675, 1106, 571, 4237, 1574), "P&D": (3183, 2178, 1301, 7740, 3331),
+            "Vendas, gerais e administrativas": (1268, 532, 385, 2263, 1083),
+            "Reestruturação": (3, 2, 278, -6, 472)}
+
 # ponte SI, 3T26: resultado operacional → EBITDA ajustado
 SI_PONTE = [("Depreciação e amortização", 2473), ("Remuneração em ações", 821),
             ("Remuneração em ações da compra do Cursor", 1217),
@@ -142,6 +168,17 @@ def conferir():
     assert CAIXA_INICIO + FCO[1] + INVEST_TOT + FIN_TOT + CAMBIO == CAIXA_FIM
     for k in (0, 1):
         assert PASSIVO[k] + PREFERENCIAIS[k] + PL[k] == ATIVO[k]
+    # cada segmento: as partes da receita somam a receita, e receita − custos
+    # dá o resultado operacional publicado, nas cinco colunas
+    for seg, rec, custo in (("Espaço", ESPACO_REC, ESPACO_CUSTO), ("Conectividade", CONEX_REC, CONEX_CUSTO),
+                            ("SI", SI_REC, SI_CUSTO)):
+        for k in range(5):
+            assert sum(v[k] for v in rec.values()) == RECEITA[seg][k], (seg, k)
+            assert RECEITA[seg][k] - sum(v[k] for v in custo.values()) == OPER[seg][k], (seg, k)
+    for k in range(5):
+        assert ESPACO_OP["lanc_clientes"][k] + ESPACO_OP["lanc_internos"][k] == ESPACO_OP["lanc_total"][k]
+        # a tabela arredonda cada linha: as partes erram o total em até 1 t (119 + 358 = 477 × 476)
+        assert abs(ESPACO_OP["carga_clientes"][k] + ESPACO_OP["carga_interna"][k] - ESPACO_OP["massa"][k]) <= 2
 
 
 def secoes():
@@ -416,9 +453,97 @@ def secoes():
                       "v": round(cx / r * 100), "cor": CINZA} for n, cx, r in PARES_CAPEX],
     }
 
+    # ---------- por segmento ----------
+    QT = ["3T25", "4T25", "1T26", "2T26", "3T26"]
+
+    def tri_n(t, escala=1):             # fluxo: 1T26 = 9M − 2T − 3T
+        return [t[2] / escala, None, primeiro_tri(t) / escala, t[1] / escala, t[0] / escala]
+
+    def saldo(t):                        # fim de período: sem 1T26
+        return [t[2], None, None, t[1], t[0]]
+
+    def dre(id_, seg, custos, cor):
+        """Receita para cima, custos para baixo, resultado operacional riscado: 3T25, 1T26, 2T26, 3T26."""
+        def q(t):
+            return [bi(t[2]), bi(primeiro_tri(t)), bi(t[1]), bi(t[0])]
+        itens = [{"rot": "Receita", "v": q(RECEITA[seg]), "cor": cor}]
+        cores_c = [VERMELHO, "#D99694", "#7F7F7F", "#E8C547"]
+        for (nome, t), c in zip(custos.items(), cores_c):
+            if not any(q(t)):          # impairment só existe nos 9 meses de 2025
+                continue
+            itens.append({"rot": nome, "v": [-x if x else None for x in q(t)], "cor": c})
+        return {
+            "id": id_, "painel": "pilhas",
+            "titulo": f"SpaceX, {seg}: da receita ao resultado operacional",
+            "subtitulo": "Por trimestre, em US$ bilhões; receita para cima, custos para baixo, e a linha é o resultado operacional",
+            "unidade": "usd-bi", "fonte": REL,
+            "colunas": ["3º tri 2025", "1º tri 2026", "2º tri 2026", "3º tri 2026"],
+            "colunasCurtas": ["3T25", "1T26", "2T26", "3T26"],
+            "itens": itens,
+            "marcos": [{"rot": "Resultado operacional", "v": q(OPER[seg])}],
+        }
+
+    def receita_aberta(id_, seg, partes, cores):
+        return {
+            "id": id_, "painel": "colunas",
+            "titulo": f"SpaceX, {seg}: receita por linha de negócio",
+            "subtitulo": "Por trimestre, em US$ bilhões; 1º tri de 2026 = 9 meses − 2º tri − 3º tri",
+            "unidade": "usd-bi", "fonte": REL, "periodos": QT,
+            "series": [{"nome": n, "cor": c, "v": [None if x is None else bi(x) for x in tri_n(t)]}
+                       for (n, t), c in zip(partes.items(), cores)],
+        }
+
+    o = ESPACO_OP
+    espaco = [
+        {"id": "spacex-espaco-lancamentos", "painel": "colunas",
+         "titulo": "SpaceX, Espaço: lançamentos por trimestre",
+         "subtitulo": "Número de lançamentos, para clientes e internos (Starlink e testes)",
+         "unidade": "n", "casas": 0, "fonte": REL, "periodos": QT,
+         "series": [{"nome": "Para clientes", "cor": AZUL, "v": tri_n(o["lanc_clientes"])},
+                    {"nome": "Internos", "cor": CINZA, "v": tri_n(o["lanc_internos"])}]},
+        {"id": "spacex-espaco-massa", "painel": "colunas",
+         "titulo": "SpaceX, Espaço: massa levada à órbita",
+         "subtitulo": "Toneladas métricas por trimestre, carga de clientes e interna",
+         "unidade": "n", "casas": 0, "fonte": REL, "periodos": QT, "totais": tri_n(o["massa"]),
+         "series": [{"nome": "Carga de clientes", "cor": AZUL, "v": tri_n(o["carga_clientes"])},
+                    {"nome": "Carga interna", "cor": CINZA, "v": tri_n(o["carga_interna"])}]},
+        receita_aberta("spacex-espaco-receita", "Espaço", ESPACO_REC, [AZUL, ROXO]),
+        dre("spacex-espaco-resultado", "Espaço", ESPACO_CUSTO, ROXO),
+    ]
+    conectividade = [
+        {"id": "spacex-conectividade-assinantes", "painel": "colunas",
+         "titulo": "SpaceX, Conectividade: assinantes do Starlink",
+         "subtitulo": "Assinantes residenciais e de pequenas empresas, em milhões, no fim do trimestre; sem os contratos de empresas e governo",
+         "unidade": "mi", "fonte": REL, "periodos": QT,
+         "series": [{"nome": "Assinantes", "cor": AZUL_CLARO, "v": saldo(CONEX_ASSIN)}]},
+        {"id": "spacex-conectividade-arpu", "painel": "colunas",
+         "titulo": "SpaceX, Conectividade: receita média por assinante",
+         "subtitulo": "ARPU mensal do consumidor Starlink, em US$ por mês",
+         "unidade": "usd", "casas": 0, "fonte": REL, "periodos": QT,
+         "series": [{"nome": "ARPU", "cor": AZUL_CLARO, "v": saldo(CONEX_ARPU)}]},
+        receita_aberta("spacex-conectividade-receita", "Conectividade", CONEX_REC, [AZUL_CLARO, AZUL]),
+        dre("spacex-conectividade-resultado", "Conectividade", CONEX_CUSTO, AZUL_CLARO),
+    ]
+    si = [
+        {"id": "spacex-si-compute", "painel": "colunas",
+         "titulo": "SpaceX, SI: compute nominal instalado",
+         "subtitulo": "Gigawatts no fim do trimestre; o guidance para o fim de 2026 é de 2,5 a 3 GW",
+         "unidade": "gw", "fonte": REL + "; guidance da teleconferência", "periodos": QT + ["4T26"],
+         "series": [{"nome": "Compute nominal", "cor": LARANJA, "v": saldo(SI_GW) + [None]}],
+         "guia": [{"p": "4T26", "lo": 2.5, "hi": 3}], "casasGuia": 1},
+        receita_aberta("spacex-si-receita", "SI", SI_REC, [CINZA, LARANJA]),
+        dre("spacex-si-resultado", "SI", SI_CUSTO, LARANJA),
+    ]
+    por_segmento = {"titulo": "Por segmento", "subsecoes": [
+        {"titulo": "Espaço", "graficos": espaco},
+        {"titulo": "Conectividade", "graficos": conectividade},
+        {"titulo": "SI", "graficos": si},
+    ]}
+
     # uma seção só, a empresa, com os assuntos dentro (como a Anthropic no menu)
     return [{"titulo": "SpaceX", "subsecoes": [
         {"titulo": "Resultado", "graficos": [pares_resultado, receita_tri, ponte, da_tri]},
+        por_segmento,
         {"titulo": "Fluxo de caixa", "graficos": [cascata_caixa, capex_tri, fcl]},
         {"titulo": "Balanço", "graficos": [balanco, liquidez]},
         {"titulo": "Valuation", "graficos": [quadros, ps]},

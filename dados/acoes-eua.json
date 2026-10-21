@@ -681,6 +681,554 @@
      ]
     },
     {
+     "titulo": "Por segmento",
+     "subsecoes": [
+      {
+       "titulo": "Espaço",
+       "graficos": [
+        {
+         "id": "spacex-espaco-lancamentos",
+         "painel": "colunas",
+         "titulo": "SpaceX, Espaço: lançamentos por trimestre",
+         "subtitulo": "Número de lançamentos, para clientes e internos (Starlink e testes)",
+         "unidade": "n",
+         "casas": 0,
+         "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
+         "periodos": [
+          "3T25",
+          "4T25",
+          "1T26",
+          "2T26",
+          "3T26"
+         ],
+         "series": [
+          {
+           "nome": "Para clientes",
+           "cor": "#4F81BD",
+           "v": [
+            15.0,
+            null,
+            7.0,
+            10.0,
+            12.0
+           ]
+          },
+          {
+           "nome": "Internos",
+           "cor": "#95A5A6",
+           "v": [
+            29.0,
+            null,
+            33.0,
+            28.0,
+            23.0
+           ]
+          }
+         ]
+        },
+        {
+         "id": "spacex-espaco-massa",
+         "painel": "colunas",
+         "titulo": "SpaceX, Espaço: massa levada à órbita",
+         "subtitulo": "Toneladas métricas por trimestre, carga de clientes e interna",
+         "unidade": "n",
+         "casas": 0,
+         "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
+         "periodos": [
+          "3T25",
+          "4T25",
+          "1T26",
+          "2T26",
+          "3T26"
+         ],
+         "totais": [
+          525.0,
+          null,
+          556.0,
+          485.0,
+          476.0
+         ],
+         "series": [
+          {
+           "nome": "Carga de clientes",
+           "cor": "#4F81BD",
+           "v": [
+            111.0,
+            null,
+            45.0,
+            87.0,
+            119.0
+           ]
+          },
+          {
+           "nome": "Carga interna",
+           "cor": "#95A5A6",
+           "v": [
+            415.0,
+            null,
+            511.0,
+            397.0,
+            358.0
+           ]
+          }
+         ]
+        },
+        {
+         "id": "spacex-espaco-receita",
+         "painel": "colunas",
+         "titulo": "SpaceX, Espaço: receita por linha de negócio",
+         "subtitulo": "Por trimestre, em US$ bilhões; 1º tri de 2026 = 9 meses − 2º tri − 3º tri",
+         "unidade": "usd-bi",
+         "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
+         "periodos": [
+          "3T25",
+          "4T25",
+          "1T26",
+          "2T26",
+          "3T26"
+         ],
+         "series": [
+          {
+           "nome": "Serviços de lançamento",
+           "cor": "#4F81BD",
+           "v": [
+            1.0,
+            null,
+            0.33,
+            0.648,
+            1.13
+           ]
+          },
+          {
+           "nome": "Lançamento e desenvolvimento",
+           "cor": "#8064A2",
+           "v": [
+            0.666,
+            null,
+            0.289,
+            0.314,
+            0.637
+           ]
+          }
+         ]
+        },
+        {
+         "id": "spacex-espaco-resultado",
+         "painel": "pilhas",
+         "titulo": "SpaceX, Espaço: da receita ao resultado operacional",
+         "subtitulo": "Por trimestre, em US$ bilhões; receita para cima, custos para baixo, e a linha é o resultado operacional",
+         "unidade": "usd-bi",
+         "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
+         "colunas": [
+          "3º tri 2025",
+          "1º tri 2026",
+          "2º tri 2026",
+          "3º tri 2026"
+         ],
+         "colunasCurtas": [
+          "3T25",
+          "1T26",
+          "2T26",
+          "3T26"
+         ],
+         "itens": [
+          {
+           "rot": "Receita",
+           "v": [
+            1.666,
+            0.619,
+            0.962,
+            1.767
+           ],
+           "cor": "#8064A2"
+          },
+          {
+           "rot": "Custo da receita",
+           "v": [
+            -0.477,
+            -0.281,
+            -0.329,
+            -0.435
+           ],
+           "cor": "#C0504D"
+          },
+          {
+           "rot": "P&D",
+           "v": [
+            -0.849,
+            -0.93,
+            -1.076,
+            -1.225
+           ],
+           "cor": "#D99694"
+          },
+          {
+           "rot": "Vendas, gerais e administrativas",
+           "v": [
+            -0.081,
+            -0.07,
+            -0.099,
+            -0.114
+           ],
+           "cor": "#7F7F7F"
+          }
+         ],
+         "marcos": [
+          {
+           "rot": "Resultado operacional",
+           "v": [
+            0.259,
+            -0.662,
+            -0.542,
+            -0.007
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "titulo": "Conectividade",
+       "graficos": [
+        {
+         "id": "spacex-conectividade-assinantes",
+         "painel": "colunas",
+         "titulo": "SpaceX, Conectividade: assinantes do Starlink",
+         "subtitulo": "Assinantes residenciais e de pequenas empresas, em milhões, no fim do trimestre; sem os contratos de empresas e governo",
+         "unidade": "mi",
+         "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
+         "periodos": [
+          "3T25",
+          "4T25",
+          "1T26",
+          "2T26",
+          "3T26"
+         ],
+         "series": [
+          {
+           "nome": "Assinantes",
+           "cor": "#4BACC6",
+           "v": [
+            7.2,
+            null,
+            null,
+            12.0,
+            13.6
+           ]
+          }
+         ]
+        },
+        {
+         "id": "spacex-conectividade-arpu",
+         "painel": "colunas",
+         "titulo": "SpaceX, Conectividade: receita média por assinante",
+         "subtitulo": "ARPU mensal do consumidor Starlink, em US$ por mês",
+         "unidade": "usd",
+         "casas": 0,
+         "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
+         "periodos": [
+          "3T25",
+          "4T25",
+          "1T26",
+          "2T26",
+          "3T26"
+         ],
+         "series": [
+          {
+           "nome": "ARPU",
+           "cor": "#4BACC6",
+           "v": [
+            83,
+            null,
+            null,
+            66,
+            69
+           ]
+          }
+         ]
+        },
+        {
+         "id": "spacex-conectividade-receita",
+         "painel": "colunas",
+         "titulo": "SpaceX, Conectividade: receita por linha de negócio",
+         "subtitulo": "Por trimestre, em US$ bilhões; 1º tri de 2026 = 9 meses − 2º tri − 3º tri",
+         "unidade": "usd-bi",
+         "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
+         "periodos": [
+          "3T25",
+          "4T25",
+          "1T26",
+          "2T26",
+          "3T26"
+         ],
+         "series": [
+          {
+           "nome": "Consumidor",
+           "cor": "#4BACC6",
+           "v": [
+            1.986,
+            null,
+            2.148,
+            2.485,
+            3.121
+           ]
+          },
+          {
+           "nome": "Empresas e governo",
+           "cor": "#4F81BD",
+           "v": [
+            1.111,
+            null,
+            1.109,
+            1.806,
+            2.127
+           ]
+          }
+         ]
+        },
+        {
+         "id": "spacex-conectividade-resultado",
+         "painel": "pilhas",
+         "titulo": "SpaceX, Conectividade: da receita ao resultado operacional",
+         "subtitulo": "Por trimestre, em US$ bilhões; receita para cima, custos para baixo, e a linha é o resultado operacional",
+         "unidade": "usd-bi",
+         "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
+         "colunas": [
+          "3º tri 2025",
+          "1º tri 2026",
+          "2º tri 2026",
+          "3º tri 2026"
+         ],
+         "colunasCurtas": [
+          "3T25",
+          "1T26",
+          "2T26",
+          "3T26"
+         ],
+         "itens": [
+          {
+           "rot": "Receita",
+           "v": [
+            3.097,
+            3.257,
+            4.291,
+            5.248
+           ],
+           "cor": "#4BACC6"
+          },
+          {
+           "rot": "Custo da receita",
+           "v": [
+            -1.657,
+            -1.651,
+            -2.06,
+            -2.368
+           ],
+           "cor": "#C0504D"
+          },
+          {
+           "rot": "P&D",
+           "v": [
+            -0.141,
+            -0.205,
+            -0.294,
+            -0.188
+           ],
+           "cor": "#D99694"
+          },
+          {
+           "rot": "Vendas, gerais e administrativas",
+           "v": [
+            -0.109,
+            -0.213,
+            -0.281,
+            -0.325
+           ],
+           "cor": "#7F7F7F"
+          }
+         ],
+         "marcos": [
+          {
+           "rot": "Resultado operacional",
+           "v": [
+            1.19,
+            1.188,
+            1.656,
+            2.367
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "titulo": "SI",
+       "graficos": [
+        {
+         "id": "spacex-si-compute",
+         "painel": "colunas",
+         "titulo": "SpaceX, SI: compute nominal instalado",
+         "subtitulo": "Gigawatts no fim do trimestre; o guidance para o fim de 2026 é de 2,5 a 3 GW",
+         "unidade": "gw",
+         "fonte": "SpaceX, release de resultados do 3º trimestre de 2026; guidance da teleconferência",
+         "periodos": [
+          "3T25",
+          "4T25",
+          "1T26",
+          "2T26",
+          "3T26",
+          "4T26"
+         ],
+         "series": [
+          {
+           "nome": "Compute nominal",
+           "cor": "#F79646",
+           "v": [
+            0.6,
+            null,
+            null,
+            1.4,
+            1.7,
+            null
+           ]
+          }
+         ],
+         "guia": [
+          {
+           "p": "4T26",
+           "lo": 2.5,
+           "hi": 3
+          }
+         ],
+         "casasGuia": 1
+        },
+        {
+         "id": "spacex-si-receita",
+         "painel": "colunas",
+         "titulo": "SpaceX, SI: receita por linha de negócio",
+         "subtitulo": "Por trimestre, em US$ bilhões; 1º tri de 2026 = 9 meses − 2º tri − 3º tri",
+         "unidade": "usd-bi",
+         "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
+         "periodos": [
+          "3T25",
+          "4T25",
+          "1T26",
+          "2T26",
+          "3T26"
+         ],
+         "series": [
+          {
+           "nome": "Publicidade",
+           "cor": "#95A5A6",
+           "v": [
+            0.454,
+            null,
+            0.343,
+            0.367,
+            0.538
+           ]
+          },
+          {
+           "nome": "Soluções e infraestrutura de SI",
+           "cor": "#F79646",
+           "v": [
+            0.359,
+            null,
+            0.475,
+            2.194,
+            7.022
+           ]
+          }
+         ]
+        },
+        {
+         "id": "spacex-si-resultado",
+         "painel": "pilhas",
+         "titulo": "SpaceX, SI: da receita ao resultado operacional",
+         "subtitulo": "Por trimestre, em US$ bilhões; receita para cima, custos para baixo, e a linha é o resultado operacional",
+         "unidade": "usd-bi",
+         "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
+         "colunas": [
+          "3º tri 2025",
+          "1º tri 2026",
+          "2º tri 2026",
+          "3º tri 2026"
+         ],
+         "colunasCurtas": [
+          "3T25",
+          "1T26",
+          "2T26",
+          "3T26"
+         ],
+         "itens": [
+          {
+           "rot": "Receita",
+           "v": [
+            0.813,
+            0.818,
+            2.561,
+            7.56
+           ],
+           "cor": "#F79646"
+          },
+          {
+           "rot": "Custo da receita",
+           "v": [
+            -0.571,
+            -0.456,
+            -1.106,
+            -2.675
+           ],
+           "cor": "#C0504D"
+          },
+          {
+           "rot": "P&D",
+           "v": [
+            -1.301,
+            -2.379,
+            -2.178,
+            -3.183
+           ],
+           "cor": "#D99694"
+          },
+          {
+           "rot": "Vendas, gerais e administrativas",
+           "v": [
+            -0.385,
+            -0.463,
+            -0.532,
+            -1.268
+           ],
+           "cor": "#7F7F7F"
+          },
+          {
+           "rot": "Reestruturação",
+           "v": [
+            -0.278,
+            0.011,
+            -0.002,
+            -0.003
+           ],
+           "cor": "#E8C547"
+          }
+         ],
+         "marcos": [
+          {
+           "rot": "Resultado operacional",
+           "v": [
+            -1.722,
+            -2.469,
+            -1.257,
+            0.431
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
      "titulo": "Fluxo de caixa",
      "graficos": [
       {

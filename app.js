@@ -194,6 +194,10 @@
                     valor: function (v) {
                       return Math.abs(v) >= 1000 ? "US$ " + NF_ATE2.format(v / 1000) + " tri" : "US$ " + nf(0).format(v) + " bi";
                     } },
+    // contagem (lançamentos) e gigawatt (compute nominal)
+    n: { eixo: function (v) { return nf(0).format(v); }, valor: function (v) { return nf(0).format(v); } },
+    gw: { eixo: function (v, passo) { return nf(casasDoPasso(passo)).format(v); }, valor: function (v) { return nf(1).format(v) + " GW"; } },
+    "mi": { eixo: function (v, passo) { return nf(casasDoPasso(passo)).format(v); }, valor: function (v) { return nf(1).format(v) + " mi"; } },
     // múltiplo (P/L, P/V): "34,4x"
     x: { eixo: function (v) { return nf(0).format(v) + "x"; }, valor: function (v) { return nf(1).format(v) + "x"; } },
     // porcentagem sem casas, para razões grandes (capex sobre receita: 235%)
@@ -984,7 +988,8 @@
       var curtas = g.colunasCurtas || g.colunas;
       function txtV(v, aprox) {
         if (v === null || v === undefined) return "—";
-        return (aprox ? "≈ " : "") + (v < 0 ? "−" : "") + nf(1).format(Math.abs(v));
+        // o que arredonda para zero sai sem sinal ("0,0", não "−0,0")
+        return (aprox ? "≈ " : "") + (v < -0.05 ? "−" : "") + nf(1).format(Math.abs(v));
       }
       var linhasT = g.itens.map(function (it) { return { it: it, marco: false }; })
         .concat((g.marcos || []).map(function (m) { return { it: m, marco: true }; }));
@@ -1195,13 +1200,17 @@
           svg.appendChild(el("rect", { x: cx - bw / 2 + 1.5, y: Y(gk.hi), width: bw - 3, height: Y(0) - Y(gk.hi), fill: "none", stroke: cg, "stroke-width": 2.5, "stroke-dasharray": "10 7" }));
           svg.appendChild(el("rect", { x: cx - bw / 2 + 1.5, y: Y(gk.hi), width: bw - 3, height: Y(gk.lo) - Y(gk.hi), fill: cg, "fill-opacity": 0.35 }));
           topo = Y(gk.hi);
-          svg.appendChild(texto(nf(0).format(gk.lo) + "–" + nf(0).format(gk.hi), {
+          var cg2 = g.casasGuia || 0;
+          svg.appendChild(texto(nf(cg2).format(gk.lo) + "–" + nf(cg2).format(gk.hi), {
             x: cx, y: topo - fsT * 0.4, "font-size": corpoQueCabe("00–00", fsT, slot * 0.95, "bold"), "font-weight": "bold", fill: cg, "text-anchor": "middle"
           }));
         } else if (tot[k] === null) {
           svg.appendChild(texto("n.d.", { x: cx, y: Y(0) - fsT * 0.4, "font-size": fsT * 0.8, fill: pal.suave, "text-anchor": "middle" }));
         } else {
-          var tx = nf(1).format(tot[k]);
+          // "totais": o total publicado, quando ele não é a soma das partes
+          // arredondadas (massa em órbita: 119 + 358 = 477, publicado 476)
+          var totK = g.totais && g.totais[k] !== null && g.totais[k] !== undefined ? g.totais[k] : tot[k];
+          var tx = nf(g.casas === undefined ? 1 : g.casas).format(totK);
           svg.appendChild(texto(tx, { x: cx, y: Y(tot[k]) - fsT * 0.4, "font-size": corpoQueCabe(tx, fsT, slot * 0.95, "bold"), "font-weight": "bold", fill: pal.texto, "text-anchor": "middle" }));
         }
         svg.appendChild(texto(p, { x: cx, y: y1 + fsX * 1.25, "font-size": corpoQueCabe(p, fsX, slot * 0.95), fill: pal.texto, "text-anchor": "middle" }));
@@ -2625,9 +2634,12 @@
     // só faz o texto quebrar em três linhas na barra lateral. O mesmo vale
     // para o nome da seção de cima ("SpaceX: …" dentro de SpaceX)
     var t = g.titulo.replace(/^IPCA: /, "");
-    (acima || []).forEach(function (nome) {
-      if (t.indexOf(nome + ": ") === 0) t = t.slice(nome.length + 2);
-    });
+    // "SpaceX: …" dentro de SpaceX, "SpaceX, Espaço: …" dentro de Espaço:
+    // sai o prefixo quando cada parte dele é o nome de uma seção de cima
+    var pre = t.match(/^([^:]+): /);
+    if (pre && pre[1].split(", ").every(function (x) { return (acima || []).indexOf(x) >= 0; })) {
+      t = t.slice(pre[0].length);
+    }
     t = t.replace(/^([“"]?)(\S)/, function (_, aspa, letra) { return aspa + letra.toUpperCase(); });
     // dois gráficos com o mesmo título na mesma seção (contribuição em 12 e em
     // 3 meses) só se distinguem pelo fim do subtítulo ("... em 12 meses")
