@@ -1619,6 +1619,7 @@
       "aria-hidden": "true" }, [el("path", { d: d })]);
   }
   var ICO_ENTRAR = "M3 9V3h6M21 9V3h-6M3 15v6h6M21 15v6h-6";
+  var ICO_ZOOM = "M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14zM20 20l-4.2-4.2M11 8v6M8 11h6";
 
   // ---------- tela cheia (API do navegador, com o prefixo do Safari) ----------
   // requestFullscreen devolve Promise nos navegadores atuais e undefined nos
@@ -1651,8 +1652,23 @@
     btn.addEventListener("click", function () {
       if (elFullscreen()) sairFullscreen(); else entrarFullscreen(document.documentElement);
     });
+    // Tela cheia da página: só o botão sai dela. Nenhum site impede o Esc por
+    // completo, mas no Chrome e no Edge a Keyboard Lock API passa o Esc para a
+    // página (sair passa a exigir segurar o Esc por uns 2 s). Safari e Firefox
+    // não têm a API, e lá o Esc segue saindo.
+    function travarEsc() {
+      var k = navigator.keyboard;
+      if (!k || !k.lock) return;
+      if (elFullscreen() === document.documentElement) {
+        var p = k.lock(["Escape"]);
+        if (p && p.catch) p.catch(function () {});
+      } else if (!elFullscreen() && k.unlock) {
+        k.unlock();
+      }
+    }
     ["fullscreenchange", "webkitfullscreenchange"].forEach(function (t) {
       document.addEventListener(t, sincronizar);
+      document.addEventListener(t, travarEsc);
     });
     sincronizar();
   }
@@ -1735,9 +1751,7 @@
       btnDesenho.setAttribute("aria-pressed", String(desenhando));
       btnDesenho.textContent = desenhando ? "Parar de desenhar" : "Desenhar";
       itemDesenho.textContent = btnDesenho.textContent;
-      dica.textContent = desenhando
-        ? "Arraste sobre o gráfico para anotar"
-        : "Ligue “Desenhar” para anotar. Desligado, o gráfico mostra os valores do mês";
+      dica.textContent = desenhando ? "Arraste sobre o gráfico para anotar" : "";
     }
     var btnDesenho = html("button", { type: "button", "class": "visor-btn", "aria-pressed": "false", texto: "Desenhar" });
     btnDesenho.addEventListener("click", function () { alternarDesenho(); });
@@ -1854,8 +1868,14 @@
     }
     window.addEventListener("resize", posicionarChrome);
 
+    // "Tela cheia" e "Zoom" são dois modos do visor. Sair da tela cheia (pelo
+    // Esc ou pelo botão) volta à página, não ao Zoom: quem quis tela cheia não
+    // pediu o zoom. emTelaCheia lembra se o visor chegou a estar em tela cheia.
+    var emTelaCheia = false;
     function sincronizarFs() {
-      var ativo = !!elFullscreen();
+      var ativo = elFullscreen() === box;
+      if (!ativo && emTelaCheia && !box.hidden) { emTelaCheia = false; fecharVisor(); return; }
+      emTelaCheia = ativo;
       btnFs.textContent = ativo ? "Sair da tela cheia" : "Tela cheia";
       btnFs.setAttribute("aria-pressed", String(ativo));
       if (!ativo) fecharMenu();   // o hambúrguer nem aparece fora da tela cheia
@@ -1871,9 +1891,8 @@
     box.addEventListener("click", function (ev) { if (ev.target === box) fecharVisor(); });
     document.addEventListener("keydown", function (ev) {
       if (ev.key !== "Escape" || box.hidden) return;
-      // Em tela cheia, Escape quer dizer "sair da tela cheia" — fechar o visor
-      // junto tiraria o gráfico da tela num passo só.
-      if (elFullscreen()) { sairFullscreen(); return; }
+      // Esc fecha o visor nos dois modos e volta à página (de tela cheia, o
+      // navegador costuma sair sozinho e quem fecha é o sincronizarFs)
       fecharVisor();
     });
 
@@ -1985,8 +2004,9 @@
   function fecharVisor() {
     if (!visor || visor.box.hidden) return;
     // sem isto, fechar pelo ✕ estando em tela cheia deixaria o navegador em
-    // tela cheia exibindo um elemento já escondido — tela preta
-    sairFullscreen();
+    // tela cheia exibindo um elemento já escondido (tela preta). Só a tela
+    // cheia do visor: a da página inteira, se estiver ligada, continua.
+    if (elFullscreen() === visor.box) sairFullscreen();
     visor.mostrarChrome(false);
     visor.fecharMenu();
     visor.box.hidden = true;
@@ -2170,11 +2190,20 @@
     ferramentas.appendChild(esquerda);
 
     var acoes = html("div", { "class": "card-acoes" });
+    // Zoom: o gráfico ampliado dentro da janela. Tela cheia: ocupa a tela toda,
+    // e o Esc volta direto à página.
+    var btnZoom = html("button", { type: "button", "class": "btn", title: "Ampliar este gráfico na janela, com anotação à mão" });
+    btnZoom.appendChild(icone(ICO_ZOOM));
+    btnZoom.appendChild(html("span", { texto: "Zoom" }));
+    btnZoom.addEventListener("click", function () { cartao.botaoTelaCheia = btnZoom; abrirVisor(cartao, false); });
     var btnFs = html("button", { type: "button", "class": "btn", title: "Ver só este gráfico, em tela cheia, com anotação à mão" });
     btnFs.appendChild(icone(ICO_ENTRAR));
     btnFs.appendChild(html("span", { texto: "Tela cheia" }));
-    btnFs.addEventListener("click", function () { abrirVisor(cartao, true); });
+    btnFs.addEventListener("click", function () { cartao.botaoTelaCheia = btnFs; abrirVisor(cartao, true); });
     cartao.botaoTelaCheia = btnFs;
+    // sem a API (o Safari do iPhone, por exemplo), fica só o Zoom
+    if (!fullscreenSuportado(document.documentElement)) btnFs.hidden = true;
+    acoes.appendChild(btnZoom);
     acoes.appendChild(btnFs);
     acoes.appendChild(menuCompartilhar(cartao));
     acoes.appendChild(menuBaixar(cartao));

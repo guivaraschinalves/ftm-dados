@@ -675,3 +675,10 @@ button, summary, a, input, select { touch-action: manipulation; }
 @media (max-width: 520px) {
   .compartilhar > .btn span { display: none; }
 }
+
+/* Zoom, Tela cheia, Compartilhar e Baixar numa linha só no celular: o rótulo
+   não quebra, e o respiro lateral encolhe */
+@media (max-width: 520px) {
+  .card-acoes { gap: 6px; }
+  .card-acoes .btn { white-space: nowrap; padding: 0 9px; }
+}
