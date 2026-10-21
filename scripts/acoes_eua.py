@@ -49,6 +49,10 @@ rodada privada, a série H de maio/2026, foi a US$ 965 bi pós-money (Orrick).
 """
 import json
 import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import spacex  # noqa: E402  (as seções da SpaceX; ver o cabeçalho de spacex.py)
 
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 SAIDA = os.path.join(RAIZ, "dados", "acoes-eua.json")
@@ -206,11 +210,12 @@ def main():
     }
 
     doc = {
-        "atualizado": "2026-10-20",
-        "referencia": "2026-06",
-        "fonte": "The Wall Street Journal (rascunho do prospecto da Anthropic), Reuters e Orrick",
+        "atualizado": "2026-10-21",
+        "referencia": "2026-09",
+        "fonte": "The Wall Street Journal (rascunho do prospecto da Anthropic), Reuters, Orrick e SpaceX (release e teleconferência do 3º tri de 2026)",
         "categoria": "Ações EUA",
-        "secoes": [{"titulo": "Anthropic", "graficos": [receita, prejuizo, ipo, computacao, composicao, demonstrativo, riscos]}],
+        "secoes": [{"titulo": "Anthropic", "graficos": [receita, prejuizo, ipo, computacao, composicao, demonstrativo, riscos]}]
+                  + spacex.secoes(),
     }
     with open(SAIDA, "w", encoding="utf-8") as f:
         json.dump(doc, f, ensure_ascii=False, indent=1)

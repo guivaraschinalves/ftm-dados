@@ -445,7 +445,21 @@ caixa do mouse.
   Anthropic, as linhas sem número no texto do WSJ foram medidas em pixels no
   gráfico do jornal (o cabeçalho do `acoes_eua.py` tem a régua e a conferência).
 
-Unidade nova: `usd-bi-tri` (valor em bilhões; escreve "US$ 965 bi" e
+Para a SpaceX (`scripts/spacex.py`, chamado pelo `acoes_eua.py`; números do
+release do 3º tri de 2026 e da transcrição da teleconferência, os dois PDFs
+em `dados/`) entraram mais seis painéis, e todos aceitam `variantes`:
+
+- `pares`: métricas lado a lado, uma barra por período (`colunas`,
+  `metricas: [{rot, v: [a, b]}]`), com a variação % em cima quando os dois
+  têm o mesmo sinal e sempre a diferença em US$.
+- `colunas`: trimestres empilhados por série (`periodos`, `series`), "n.d."
+  onde não há número e `guia: [{p, lo, hi}]` para a faixa de guidance.
+- `cascata`: `inicio`, `passos` e `fim`, deitada, com o valor à direita.
+- `numeros`: quadros com `rot`, `valor` (já formatado) e `detalhe`.
+- `linhaTempo`: `itens: [{quando, t, guidance}]`; ponto cheio é guidance.
+- `fala`: `pergunta: {quem, texto}`, `citacao: {texto, autor}` e `pontos`.
+
+Unidades novas também: `x` (múltiplo) e `pct0`. Unidade nova: `usd-bi-tri` (valor em bilhões; escreve "US$ 965 bi" e
 "US$ 1,77 tri"). Para conferir um cartão em pé, o modo de prévia aceita o
 tamanho: `?imagem=ID&tam=ig-4x5`.
 

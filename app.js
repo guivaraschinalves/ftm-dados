@@ -182,6 +182,10 @@
                     valor: function (v) {
                       return Math.abs(v) >= 1000 ? "US$ " + NF_ATE2.format(v / 1000) + " tri" : "US$ " + nf(0).format(v) + " bi";
                     } },
+    // múltiplo (P/L, P/V): "34,4x"
+    x: { eixo: function (v) { return nf(0).format(v) + "x"; }, valor: function (v) { return nf(1).format(v) + "x"; } },
+    // porcentagem sem casas, para razões grandes (capex sobre receita: 235%)
+    "pct0": { eixo: function (v) { return nf(0).format(v) + "%"; }, valor: function (v) { return nf(0).format(v) + "%"; } },
     "usd-bi2": { eixo: function (v, passo) { return nf(casasDoPasso(passo)).format(v); },
                  valor: function (v) { return "US$ " + nf(2).format(v) + " bi"; } },
     // tonelada: a casa decimal só importa onde o número é pequeno (os −5,4 t
@@ -759,7 +763,7 @@
   }
 
   function construirPainel(cartao, L, nomeTema) {
-    var g = cartao.grafico, pal = PALETAS[nomeTema], F = unidade(g);
+    var g = comVariante(cartao), pal = PALETAS[nomeTema], F = unidade(g);
     var subLinhas = subtituloEmLinhas(g, L);
     var svg = el("svg", {
       xmlns: NS, viewBox: "0 0 " + L.W + " " + L.H, width: L.W, height: L.H,
@@ -1014,8 +1018,9 @@
         var bp = 0, bn = 0;
         g.itens.forEach(function (it, j) {
           var v = it.v[k2] || 0;
-          var a = v >= 0 ? bp : bn, b = a + v;
-          if (v >= 0) bp = b; else bn = b;
+          var pos = v ? v > 0 : !it.v.some(function (x) { return x < 0; });
+          var a = pos ? bp : bn, b = a + v;
+          if (pos) bp = b; else bn = b;
           if (k2 === ult) meio[j] = Y((a + b) / 2);
           if (!v) return;
           // 1px de folga em cada ponta: o fundo aparece entre uma faixa e outra
@@ -1066,6 +1071,249 @@
             fill: k === ult || b.l.marco ? pal.texto : pal.suave, "text-anchor": "end", "dominant-baseline": "central"
           }));
         });
+      });
+    },
+
+    // Métricas lado a lado, cada uma com uma barra por período (3T25 × 3T26)
+    // na mesma escala, e em cima a variação: % quando os dois têm o mesmo
+    // sinal, e sempre a diferença em US$.
+    pares: function (svg, g, c, ctx) {
+      var u = ctx.u, pal = ctx.pal, F = ctx.F, ms = g.metricas, nM = ms.length, cols = g.colunas;
+      var cores = g.cores || ["#95A5A6", "#4F81BD"], est = ctx.estreito;
+      var fsL = u * 0.95, xl = c.x0;
+      cols.forEach(function (rot, k) {
+        svg.appendChild(el("rect", { x: xl, y: c.y0, width: fsL * 0.85, height: fsL * 0.85, fill: corNoTema(cores[k], pal) }));
+        svg.appendChild(texto(rot, { x: xl + fsL * 1.2, y: c.y0 + fsL * 0.75, "font-size": fsL, fill: pal.texto }));
+        xl += fsL * 2.6 + largura(rot, fsL);
+      });
+      var slot = (c.x1 - c.x0) / nM, bw = Math.min(slot * (est ? 0.36 : 0.3), 150);
+      // em pé e com muitas métricas, o valor vai sem "US$ … bi" (o subtítulo diz a unidade)
+      var curto = est && nM > 3;
+      function rotV(v) { return curto ? (v < 0 ? "−" : "") + nf(1).format(Math.abs(v)) : valorPainel(F, { v: v }); }
+      function rotD(d) { return (d >= 0 ? "+" : "−") + (curto ? nf(1).format(Math.abs(d)) : F.valor(Math.abs(d))); }
+      function rotVar(m) {
+        var a = m.v[0], b = m.v[1];
+        return a !== 0 && (a > 0) === (b > 0) ? variacao(a, b) : rotD(b - a);
+      }
+      var maisLargo = ms.reduce(function (r, m) { return Math.max(r, largura(rotVar(m), 100, "bold")); }, 0);
+      var fsVar = Math.min(u * 1.35, slot * 0.9 / maisLargo * 100);
+      var fsV = Math.min(u * 0.95, ms.reduce(function (r, m) {
+        return Math.min(r, corpoQueCabe(rotV(m.v[0]), u * 0.95, bw + 6, "bold"), corpoQueCabe(rotV(m.v[1]), u * 0.95, bw + 6, "bold"));
+      }, u * 0.95) * (curto ? 1 : 1.25));
+      var fsM = u * (est ? 0.82 : 0.95);
+      var linhasM = ms.map(function (m) { return quebrar(m.rot, fsM, slot * 0.92); });
+      var hM = Math.max.apply(null, linhasM.map(function (l) { return l.length; })) * fsM * 1.2 + u * 0.4;
+      var yVar = c.y0 + fsL * 2.4, yPlot0 = yVar + fsVar * 1.2 + fsV * 1.6, yPlot1 = c.y1 - hM;
+      var mx = 0, mn = 0;
+      ms.forEach(function (m) { m.v.forEach(function (v) { mx = Math.max(mx, v); mn = Math.min(mn, v); }); });
+      var lab = fsV * 1.5, hUtil = yPlot1 - yPlot0 - (mx > 0 ? lab : 0) - (mn < 0 ? lab : 0);
+      var k1 = hUtil / (mx - mn || 1), yZero = yPlot0 + (mx > 0 ? lab : 0) + mx * k1;
+      svg.appendChild(el("line", { x1: c.x0, x2: c.x1, y1: yZero, y2: yZero, stroke: pal.zero, "stroke-width": 1.5 }));
+      ms.forEach(function (m, j) {
+        var cx = c.x0 + slot * (j + 0.5);
+        m.v.forEach(function (v, k) {
+          var x = cx + (k === 0 ? -bw - 4 : 4), h = Math.abs(v) * k1;
+          svg.appendChild(el("rect", { x: x, y: v >= 0 ? yZero - h : yZero, width: bw, height: Math.max(1, h), fill: corNoTema(cores[k], pal) }));
+          svg.appendChild(texto(rotV(v), {
+            x: x + bw / 2, y: v >= 0 ? yZero - h - fsV * 0.4 : yZero + h + fsV * 1.05, "font-size": fsV,
+            "font-weight": k === 1 ? "bold" : null, fill: k === 1 ? pal.texto : pal.suave, "text-anchor": "middle"
+          }));
+        });
+        var a = m.v[0], b = m.v[1], d = b - a;
+        var dif = rotD(d);
+        var mesmoSinal = a !== 0 && (a > 0) === (b > 0);
+        svg.appendChild(texto(rotVar(m), {
+          x: cx, y: yVar + fsVar * 0.9, "font-size": fsVar, "font-weight": "bold", fill: pal.texto, "text-anchor": "middle"
+        }));
+        if (mesmoSinal) {
+          svg.appendChild(texto(dif, { x: cx, y: yVar + fsVar * 0.9 + fsV * 1.25, "font-size": fsV * 0.9, fill: pal.suave, "text-anchor": "middle" }));
+        }
+        linhasDeTexto(svg, linhasM[j], cx, yPlot1 + u * 0.3, fsM, { fill: pal.texto, "text-anchor": "middle", "font-weight": "bold" }, 1.2);
+      });
+    },
+
+    // Colunas por trimestre, empilhadas por série, com o total em cima. Um
+    // período sem número fica vazio, com "n.d."; "guia" desenha a faixa de
+    // guidance da empresa (tracejada até o topo, preenchida entre o piso e o teto).
+    colunas: function (svg, g, c, ctx) {
+      var u = ctx.u, pal = ctx.pal, F = ctx.F, ps = g.periodos, nP = ps.length, est = ctx.estreito;
+      var guia = {};
+      (g.guia || []).forEach(function (x) { guia[x.p] = x; });
+      // legenda
+      var fsL = u * (est ? 0.82 : 0.92), xl = c.x0, yl = c.y0;
+      var itensL = g.series.map(function (s) { return { nome: s.nome, cor: s.cor }; });
+      if (g.guia) itensL.push({ nome: "Guidance", cor: g.corGuia || "#F79646", guia: true });
+      itensL.forEach(function (it) {
+        var w = fsL * 2 + largura(it.nome, fsL);
+        if (xl + w > c.x1) { xl = c.x0; yl += fsL * 1.6; }
+        var cor = corNoTema(it.cor, pal);
+        svg.appendChild(el("rect", it.guia
+          ? { x: xl + 1, y: yl + 1, width: fsL * 0.85 - 2, height: fsL * 0.85 - 2, fill: cor, "fill-opacity": 0.35, stroke: cor, "stroke-width": 2, "stroke-dasharray": "4 3" }
+          : { x: xl, y: yl, width: fsL * 0.85, height: fsL * 0.85, fill: cor }));
+        svg.appendChild(texto(it.nome, { x: xl + fsL * 1.2, y: yl + fsL * 0.75, "font-size": fsL, fill: pal.texto }));
+        xl += w + fsL * 1.2;
+      });
+      var tot = ps.map(function (p, k) {
+        var t = null;
+        g.series.forEach(function (s) { if (s.v[k] !== null && s.v[k] !== undefined) t = (t || 0) + s.v[k]; });
+        return t;
+      });
+      var mx = Math.max.apply(null, tot.map(function (t) { return t || 0; }).concat((g.guia || []).map(function (x) { return x.hi; })));
+      var esc = escalaY(0, mx, { alvo: 5 });
+      var fsX = u * (est ? 0.85 : 1), fsT = u * (est ? 0.9 : 1.05);
+      var y0 = yl + fsL * 1.6 + fsT * 1.8, y1 = c.y1 - fsX * 1.8;
+      var Y = function (v) { return y1 - (v - esc.min) / (esc.max - esc.min) * (y1 - y0); };
+      var tw = Math.max.apply(null, esc.ticks.map(function (t) { return largura(F.eixo(t, esc.passo), u * 0.9); }));
+      var xg0 = c.x0 + tw + u * 0.6, slot = (c.x1 - xg0) / nP, bw = slot * 0.62;
+      esc.ticks.forEach(function (t) {
+        svg.appendChild(el("line", { x1: xg0, x2: c.x1, y1: Y(t), y2: Y(t), stroke: t === 0 ? pal.zero : pal.grade, "stroke-width": t === 0 ? 1.5 : 1.2 }));
+        svg.appendChild(texto(F.eixo(t, esc.passo), { x: xg0 - u * 0.4, y: Y(t), "font-size": u * 0.9, fill: pal.eixo, "text-anchor": "end", "dominant-baseline": "central" }));
+      });
+      ps.forEach(function (p, k) {
+        var cx = xg0 + slot * (k + 0.5), base = 0;
+        g.series.forEach(function (s) {
+          var v = s.v[k];
+          if (!v) return;
+          svg.appendChild(el("rect", { x: cx - bw / 2, y: Y(base + v) + 0.5, width: bw, height: Math.max(1, Y(base) - Y(base + v) - 1), fill: corNoTema(s.cor, pal) }));
+          base += v;
+        });
+        var gk = guia[p], topo;
+        if (gk) {
+          var cg = corNoTema(g.corGuia || "#F79646", pal);
+          svg.appendChild(el("rect", { x: cx - bw / 2 + 1.5, y: Y(gk.hi), width: bw - 3, height: Y(0) - Y(gk.hi), fill: "none", stroke: cg, "stroke-width": 2.5, "stroke-dasharray": "10 7" }));
+          svg.appendChild(el("rect", { x: cx - bw / 2 + 1.5, y: Y(gk.hi), width: bw - 3, height: Y(gk.lo) - Y(gk.hi), fill: cg, "fill-opacity": 0.35 }));
+          topo = Y(gk.hi);
+          svg.appendChild(texto(nf(0).format(gk.lo) + "–" + nf(0).format(gk.hi), {
+            x: cx, y: topo - fsT * 0.4, "font-size": corpoQueCabe("00–00", fsT, slot * 0.95, "bold"), "font-weight": "bold", fill: cg, "text-anchor": "middle"
+          }));
+        } else if (tot[k] === null) {
+          svg.appendChild(texto("n.d.", { x: cx, y: Y(0) - fsT * 0.4, "font-size": fsT * 0.8, fill: pal.suave, "text-anchor": "middle" }));
+        } else {
+          var tx = nf(1).format(tot[k]);
+          svg.appendChild(texto(tx, { x: cx, y: Y(tot[k]) - fsT * 0.4, "font-size": corpoQueCabe(tx, fsT, slot * 0.95, "bold"), "font-weight": "bold", fill: pal.texto, "text-anchor": "middle" }));
+        }
+        svg.appendChild(texto(p, { x: cx, y: y1 + fsX * 1.25, "font-size": corpoQueCabe(p, fsX, slot * 0.95), fill: pal.texto, "text-anchor": "middle" }));
+      });
+    },
+
+    // Cascata deitada: o primeiro e o último são totais (saem do zero), os
+    // do meio andam a partir do acumulado. Valor numa coluna à direita.
+    cascata: function (svg, g, c, ctx) {
+      var u = ctx.u, pal = ctx.pal, F = ctx.F, est = ctx.estreito;
+      var linhas = [{ rot: g.inicio.rot, v: g.inicio.v, total: true }]
+        .concat(g.passos).concat([{ rot: g.fim.rot, v: g.fim.v, total: true }]);
+      var acum = 0, mn = 0, mx = 0;
+      linhas.forEach(function (l) {
+        if (l.total) { l.a = 0; l.b = l.v; acum = l.v; } else { l.a = acum; acum += l.v; l.b = acum; }
+        mn = Math.min(mn, l.a, l.b); mx = Math.max(mx, l.a, l.b);
+      });
+      var n = linhas.length, hRow = (c.y1 - c.y0) / n;
+      var fsN = Math.min(u * (est ? 0.82 : 0.95), hRow * 0.36), fsV = fsN * 1.05;
+      var wNome = (c.x1 - c.x0) * (est ? 0.36 : 0.3);
+      var wVal = Math.max.apply(null, linhas.map(function (l) { return largura(valorPainel(F, l), fsV, "bold"); })) + u;
+      var xb0 = c.x0 + wNome + u, xb1 = c.x1 - wVal;
+      var X = function (v) { return xb0 + (v - mn) / (mx - mn || 1) * (xb1 - xb0); };
+      var hb = Math.min(hRow * 0.62, 64);
+      svg.appendChild(el("line", { x1: X(0), x2: X(0), y1: c.y0, y2: c.y1, stroke: pal.zero, "stroke-width": 1.5 }));
+      linhas.forEach(function (l, k) {
+        var y = c.y0 + k * hRow, yb = y + (hRow - hb) / 2;
+        var cor = corNoTema(l.cor || (l.total ? (g.corTotal || "#4F81BD") : l.v >= 0 ? "#9BBB59" : "#C0504D"), pal);
+        var xa = X(Math.min(l.a, l.b)), xz = X(Math.max(l.a, l.b));
+        svg.appendChild(el("rect", { x: xa, y: yb, width: Math.max(2, xz - xa), height: hb, fill: cor }));
+        if (k < n - 1) {
+          // fio do acumulado até a linha de baixo
+          svg.appendChild(el("line", { x1: X(l.b), x2: X(l.b), y1: yb + hb, y2: yb + hRow, stroke: pal.suave, "stroke-width": 1.2, "stroke-dasharray": "4 4" }));
+        }
+        var nome = quebrar(l.rot, fsN, wNome, l.total ? "bold" : null);
+        linhasDeTexto(svg, nome, c.x0, y + hRow / 2 - nome.length * fsN * 1.15 / 2, fsN,
+          { fill: l.total ? pal.texto : pal.suave, "font-weight": l.total ? "bold" : null }, 1.15);
+        var txt = l.total ? valorPainel(F, l) : (l.v >= 0 ? "+" : "−") + F.valor(Math.abs(l.v));
+        svg.appendChild(texto(txt, { x: c.x1, y: y + hRow / 2, "font-size": fsV, "font-weight": "bold", fill: l.total ? pal.texto : cor,
+          "text-anchor": "end", "dominant-baseline": "central" }));
+      });
+    },
+
+    // Quadros de número grande: rótulo, valor e a conta que deu o valor.
+    numeros: function (svg, g, c, ctx) {
+      var u = ctx.u, pal = ctx.pal, est = ctx.estreito, qs = g.quadros;
+      var nc = est ? 2 : 3, nl = Math.ceil(qs.length / nc), gap = u * 0.8;
+      var w = (c.x1 - c.x0 - gap * (nc - 1)) / nc, h = (c.y1 - c.y0 - gap * (nl - 1)) / nl;
+      qs.forEach(function (q, k) {
+        var x = c.x0 + (k % nc) * (w + gap), y = c.y0 + Math.floor(k / nc) * (h + gap), p = u * 0.8;
+        svg.appendChild(el("rect", { x: x, y: y, width: w, height: h, rx: 10, fill: pal.texto, "fill-opacity": 0.05, stroke: pal.grade, "stroke-width": 1.5 }));
+        var fsR = u * 1.05, fsQ = Math.min(u * 3.4, h * 0.3), fsD = u * (est ? 0.85 : 0.95);
+        fsQ = corpoQueCabe(q.valor, fsQ, w - 2 * p, "bold");
+        var ld = quebrar(q.detalhe || "", fsD, w - 2 * p);
+        function altura() { return fsR * 1.5 + fsQ * 1.25 + ld.length * fsD * 1.25; }
+        while (altura() > h - 2 * p && fsD > u * 0.55) { fsD *= 0.94; fsR *= 0.97; ld = quebrar(q.detalhe, fsD, w - 2 * p); }
+        var yq = y + (h - altura()) / 2;
+        svg.appendChild(texto(q.rot, { x: x + p, y: yq + fsR * 0.85, "font-size": corpoQueCabe(q.rot, fsR, w - 2 * p), fill: pal.suave }));
+        svg.appendChild(texto(q.valor, { x: x + p, y: yq + fsR * 1.5 + fsQ * 0.9, "font-size": fsQ,
+          "font-weight": "bold", fill: corNoTema(q.cor || "#FFFFFF", pal) }));
+        linhasDeTexto(svg, ld, x + p, yq + fsR * 1.5 + fsQ * 1.25, fsD, { fill: pal.suave });
+      });
+    },
+
+    // Linha do tempo em pé: quando à esquerda, ponto no eixo (cheio para
+    // guidance, vazado para meta), o que à direita. O corpo encolhe até caber.
+    linhaTempo: function (svg, g, c, ctx) {
+      var u = ctx.u, pal = ctx.pal, est = ctx.estreito, its = g.itens, cor = corNoTema(g.cor || "#4BACC6", pal);
+      var wQ = (c.x1 - c.x0) * (est ? 0.26 : 0.17), xEixo = c.x0 + wQ + u * 0.9, xT = xEixo + u * 1.1;
+      var fsL = u * 0.85, legY = c.y0;
+      [["Guidance da empresa", true], ["Meta ou aspiração citada na teleconferência", false]].forEach(function (lg, k) {
+        var x = c.x0 + k * (largura("Guidance da empresa", fsL) + fsL * 4);
+        svg.appendChild(el("circle", { cx: x + fsL * 0.45, cy: legY + fsL * 0.45, r: fsL * 0.38, fill: lg[1] ? cor : "none", stroke: cor, "stroke-width": 2.5 }));
+        svg.appendChild(texto(lg[0], { x: x + fsL * 1.2, y: legY + fsL * 0.8, "font-size": fsL, fill: pal.suave }));
+      });
+      var y0 = c.y0 + fsL * 2.4, kk = 1.4, m;
+      function montar(k) {
+        var fsQ = u * 0.95 * k, fsT = u * 0.95 * k, wT = c.x1 - xT, total = 0;
+        var bl = its.map(function (it) {
+          var lq = quebrar(it.quando, fsQ, wQ, "bold"), lt = quebrar(it.t, fsT, wT);
+          var h = Math.max(lq.length * fsQ * 1.2, lt.length * fsT * 1.25);
+          total += h;
+          return { it: it, lq: lq, lt: lt, h: h };
+        });
+        return { fsQ: fsQ, fsT: fsT, bl: bl, vao: u * 0.75 * k, total: total + (its.length - 1) * u * 0.75 * k };
+      }
+      do { m = montar(kk); kk *= 0.97; } while (m.total > (c.y1 - y0) * 0.95 && kk > 0.45);
+      var y = y0 + Math.max(0, (c.y1 - y0 - m.total) / 2);
+      svg.appendChild(el("line", { x1: xEixo, x2: xEixo, y1: y, y2: y + m.total, stroke: pal.grade, "stroke-width": 3 }));
+      m.bl.forEach(function (b) {
+        linhasDeTexto(svg, b.lq, xEixo - u * 0.9, y, m.fsQ, { "font-weight": "bold", fill: pal.texto, "text-anchor": "end" }, 1.2);
+        svg.appendChild(el("circle", { cx: xEixo, cy: y + m.fsQ * 0.55, r: m.fsQ * 0.42, fill: b.it.guidance ? cor : pal.bg, stroke: cor, "stroke-width": 2.5 }));
+        linhasDeTexto(svg, b.lt, xT, y, m.fsT, { fill: pal.texto });
+        y += b.h + m.vao;
+      });
+    },
+
+    // Um trecho da teleconferência: a pergunta (se houver), a resposta em
+    // citação e os pontos que a acompanham.
+    fala: function (svg, g, c, ctx) {
+      var u = ctx.u, pal = ctx.pal, est = ctx.estreito, W = c.x1 - c.x0, kk = 1.6, partes;
+      function montar(k) {
+        var r = { k: k, fsP: u * 0.9 * k, fsQ: u * (est ? 1.12 : 1.3) * k, fsB: u * 0.95 * k };
+        r.lp = g.pergunta ? quebrar(g.pergunta.texto, r.fsP, W) : [];
+        r.hP = g.pergunta ? r.fsP * 1.3 + r.lp.length * r.fsP * 1.25 + u * 1.2 * k : 0;
+        r.hQ = citacao(svg, g.citacao, c.x0, 0, W, r.fsQ, ctx, true);
+        r.pts = (g.pontos || []).map(function (p) { return quebrar(p, r.fsB, W - r.fsB * 1.3); });
+        r.hB = r.pts.reduce(function (a, l) { return a + l.length * r.fsB * 1.25 + u * 0.55 * k; }, 0);
+        r.total = r.hP + r.hQ + (r.pts.length ? u * 1.4 * k + r.hB : 0);
+        return r;
+      }
+      do { partes = montar(kk); kk *= 0.97; } while (partes.total > (c.y1 - c.y0) * 0.92 && kk > 0.45);
+      var p = partes, y = c.y0 + Math.max(0, (c.y1 - c.y0 - p.total) / 2);
+      if (g.pergunta) {
+        svg.appendChild(texto("PERGUNTA · " + g.pergunta.quem, { x: c.x0, y: y + p.fsP, "font-size": p.fsP, "font-weight": "bold", fill: pal.suave, "letter-spacing": 1 }));
+        linhasDeTexto(svg, p.lp, c.x0, y + p.fsP * 1.3, p.fsP, { fill: pal.suave });
+        y += p.hP;
+      }
+      y += citacao(svg, g.citacao, c.x0, y, W, p.fsQ, ctx);
+      if (p.pts.length) y += u * 1.4 * p.k;
+      var corP = corNoTema(g.citacao.cor || "#F79646", pal);
+      p.pts.forEach(function (l) {
+        svg.appendChild(el("rect", { x: c.x0, y: y + p.fsB * 0.3, width: p.fsB * 0.55, height: p.fsB * 0.55, fill: corP }));
+        y += linhasDeTexto(svg, l, c.x0 + p.fsB * 1.3, y, p.fsB, { fill: pal.texto }) + u * 0.55 * p.k;
       });
     },
 
@@ -1152,6 +1400,23 @@
     }
     if (g.painel === "barras") return g.linhas.map(function (l) { return [l.rot, l.v]; });
     if (g.painel === "paginas") return g.itens.map(function (it) { return [it.t, it.d]; });
+    if (g.painel === "pares") {
+      return g.metricas.map(function (m) { return [m.rot].concat(m.v); });
+    }
+    if (g.painel === "colunas") {
+      var r2 = g.periodos.map(function (p, k) {
+        var gk = (g.guia || []).filter(function (x) { return x.p === p; })[0];
+        return [p].concat(g.series.map(function (s) { return s.v[k] === null ? "" : s.v[k]; }))
+          .concat(g.guia ? [gk ? gk.lo + " a " + gk.hi : ""] : []);
+      });
+      return [["período"].concat(g.series.map(function (s) { return s.nome; })).concat(g.guia ? ["guidance"] : [])].concat(r2);
+    }
+    if (g.painel === "cascata") {
+      return [[g.inicio.rot, g.inicio.v]].concat(g.passos.map(function (p) { return [p.rot, p.v]; })).concat([[g.fim.rot, g.fim.v]]);
+    }
+    if (g.painel === "numeros") return g.quadros.map(function (q) { return [q.rot, q.valor, q.detalhe || ""]; });
+    if (g.painel === "linhaTempo") return g.itens.map(function (it) { return [it.quando, it.t, it.guidance ? "guidance" : "meta"]; });
+    if (g.painel === "fala") return [[g.citacao.autor, g.citacao.texto]].concat((g.pontos || []).map(function (p) { return ["", p]; }));
     if (g.painel === "pilhas") {
       return g.itens.concat(g.marcos || []).map(function (it) {
         return [it.rot].concat(it.v.map(function (v) { return v === null ? "" : v; }));
@@ -2173,7 +2438,8 @@
     // fundo (legenda: false): na tela ela é contexto, no CSV é dado
     var g = graficoDe(cartao), cols = g.series;
     if (g.painel) {
-      var ls = [["item"].concat(g.painel === "pilhas" ? g.colunas : ["valor"])].concat(linhasDoPainel(g)).map(function (l) {
+      var cab = g.painel === "colunas" ? [] : [["item"].concat(g.painel === "pilhas" || g.painel === "pares" ? g.colunas : ["valor"])];
+      var ls = cab.concat(linhasDoPainel(g)).map(function (l) {
         return l.map(function (x) { return String(x).replace(/;/g, ",").replace(/^(-?\d+)\.(\d+)$/, "$1,$2"); }).join(";");
       });
       salvar(new Blob(["\ufeff" + ls.join("\r\n")], { type: "text/csv;charset=utf-8" }), nomeArquivo(cartao, "csv"));
