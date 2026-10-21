@@ -416,11 +416,12 @@ def secoes():
                       "v": round(cx / r * 100), "cor": CINZA} for n, cx, r in PARES_CAPEX],
     }
 
-    return [
-        {"titulo": "SpaceX: resultado", "graficos": [pares_resultado, receita_tri, ponte, da_tri]},
-        {"titulo": "SpaceX: fluxo de caixa", "graficos": [cascata_caixa, capex_tri, fcl]},
-        {"titulo": "SpaceX: balanço", "graficos": [balanco, liquidez]},
-        {"titulo": "SpaceX: valuation", "graficos": [quadros, ps]},
-        {"titulo": "SpaceX: destaques da teleconferência do 3º tri",
+    # uma seção só, a empresa, com os assuntos dentro (como a Anthropic no menu)
+    return [{"titulo": "SpaceX", "subsecoes": [
+        {"titulo": "Resultado", "graficos": [pares_resultado, receita_tri, ponte, da_tri]},
+        {"titulo": "Fluxo de caixa", "graficos": [cascata_caixa, capex_tri, fcl]},
+        {"titulo": "Balanço", "graficos": [balanco, liquidez]},
+        {"titulo": "Valuation", "graficos": [quadros, ps]},
+        {"titulo": "Destaques da teleconferência do 3º tri",
          "graficos": [linha_tempo, compute, tesla, eficiencia, intensidade]},
-    ]
+    ]}]

@@ -311,155 +311,521 @@
    ]
   },
   {
-   "titulo": "SpaceX: resultado",
-   "graficos": [
+   "titulo": "SpaceX",
+   "subsecoes": [
     {
-     "id": "spacex-3t-comparacao",
-     "painel": "pares",
-     "titulo": "SpaceX: receita, EBITDA, resultado e capex no 3º trimestre",
-     "subtitulo": "3º tri de 2025 × 3º tri de 2026, em US$ bilhões; em cima, a variação %, e a diferença em US$",
-     "unidade": "usd-bi",
-     "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
-     "colunas": [
-      "3º tri 2025",
-      "3º tri 2026"
-     ],
-     "variantes": [
+     "titulo": "Resultado",
+     "graficos": [
       {
-       "rot": "Consolidado",
-       "metricas": [
+       "id": "spacex-3t-comparacao",
+       "painel": "pares",
+       "titulo": "SpaceX: receita, EBITDA, resultado e capex no 3º trimestre",
+       "subtitulo": "3º tri de 2025 × 3º tri de 2026, em US$ bilhões; em cima, a variação %, e a diferença em US$",
+       "unidade": "usd-bi",
+       "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
+       "colunas": [
+        "3º tri 2025",
+        "3º tri 2026"
+       ],
+       "variantes": [
         {
-         "rot": "Receita",
-         "v": [
-          5.576,
-          14.575
+         "rot": "Consolidado",
+         "metricas": [
+          {
+           "rot": "Receita",
+           "v": [
+            5.576,
+            14.575
+           ]
+          },
+          {
+           "rot": "EBITDA ajustado",
+           "v": [
+            2.169,
+            8.809
+           ]
+          },
+          {
+           "rot": "Resultado operacional",
+           "v": [
+            -0.273,
+            2.791
+           ]
+          },
+          {
+           "rot": "Lucro líquido",
+           "v": [
+            -1.054,
+            4.404
+           ]
+          },
+          {
+           "rot": "Capex",
+           "v": [
+            6.88,
+            19.593
+           ]
+          }
          ]
         },
         {
-         "rot": "EBITDA ajustado",
-         "v": [
-          2.169,
-          8.809
+         "rot": "SI",
+         "metricas": [
+          {
+           "rot": "Receita",
+           "v": [
+            0.813,
+            7.56
+           ]
+          },
+          {
+           "rot": "EBITDA ajustado",
+           "v": [
+            -0.428,
+            4.953
+           ]
+          },
+          {
+           "rot": "Resultado operacional",
+           "v": [
+            -1.722,
+            0.431
+           ]
+          },
+          {
+           "rot": "Capex",
+           "v": [
+            4.76,
+            16.444
+           ]
+          }
          ]
         },
         {
-         "rot": "Resultado operacional",
-         "v": [
-          -0.273,
-          2.791
+         "rot": "Conectividade",
+         "metricas": [
+          {
+           "rot": "Receita",
+           "v": [
+            3.097,
+            5.248
+           ]
+          },
+          {
+           "rot": "EBITDA ajustado",
+           "v": [
+            1.923,
+            3.499
+           ]
+          },
+          {
+           "rot": "Resultado operacional",
+           "v": [
+            1.19,
+            2.367
+           ]
+          },
+          {
+           "rot": "Capex",
+           "v": [
+            1.007,
+            1.543
+           ]
+          }
          ]
         },
         {
-         "rot": "Lucro líquido",
-         "v": [
-          -1.054,
-          4.404
-         ]
-        },
-        {
-         "rot": "Capex",
-         "v": [
-          6.88,
-          19.593
+         "rot": "Espaço",
+         "metricas": [
+          {
+           "rot": "Receita",
+           "v": [
+            1.666,
+            1.767
+           ]
+          },
+          {
+           "rot": "EBITDA ajustado",
+           "v": [
+            0.674,
+            0.357
+           ]
+          },
+          {
+           "rot": "Resultado operacional",
+           "v": [
+            0.259,
+            -0.007
+           ]
+          },
+          {
+           "rot": "Capex",
+           "v": [
+            1.113,
+            1.606
+           ]
+          }
          ]
         }
        ]
       },
       {
-       "rot": "SI",
-       "metricas": [
+       "id": "spacex-receita-trimestral",
+       "painel": "colunas",
+       "titulo": "SpaceX: receita por trimestre e o guidance do 1º tri de 2027",
+       "subtitulo": "Receita por segmento, em US$ bilhões; 1º tri de 2026 = 9 meses − 2º tri − 3º tri, e o guidance é de US$ 33 a 37 bi",
+       "unidade": "usd-bi",
+       "fonte": "SpaceX, release de resultados do 3º trimestre de 2026; guidance da teleconferência",
+       "periodos": [
+        "3T25",
+        "4T25",
+        "1T26",
+        "2T26",
+        "3T26",
+        "4T26",
+        "1T27"
+       ],
+       "series": [
         {
-         "rot": "Receita",
-         "v": [
-          0.813,
-          7.56
-         ]
-        },
-        {
-         "rot": "EBITDA ajustado",
-         "v": [
-          -0.428,
-          4.953
-         ]
-        },
-        {
-         "rot": "Resultado operacional",
-         "v": [
-          -1.722,
-          0.431
-         ]
-        },
-        {
-         "rot": "Capex",
-         "v": [
-          4.76,
-          16.444
-         ]
-        }
-       ]
-      },
-      {
-       "rot": "Conectividade",
-       "metricas": [
-        {
-         "rot": "Receita",
-         "v": [
-          3.097,
-          5.248
-         ]
-        },
-        {
-         "rot": "EBITDA ajustado",
-         "v": [
-          1.923,
-          3.499
-         ]
-        },
-        {
-         "rot": "Resultado operacional",
-         "v": [
-          1.19,
-          2.367
-         ]
-        },
-        {
-         "rot": "Capex",
-         "v": [
-          1.007,
-          1.543
-         ]
-        }
-       ]
-      },
-      {
-       "rot": "Espaço",
-       "metricas": [
-        {
-         "rot": "Receita",
+         "nome": "Espaço",
+         "cor": "#8064A2",
          "v": [
           1.666,
-          1.767
+          null,
+          0.619,
+          0.962,
+          1.767,
+          null,
+          null
          ]
         },
         {
-         "rot": "EBITDA ajustado",
+         "nome": "Conectividade",
+         "cor": "#4BACC6",
          "v": [
-          0.674,
-          0.357
+          3.097,
+          null,
+          3.257,
+          4.291,
+          5.248,
+          null,
+          null
          ]
         },
         {
-         "rot": "Resultado operacional",
+         "nome": "SI",
+         "cor": "#F79646",
          "v": [
-          0.259,
-          -0.007
+          0.813,
+          null,
+          0.818,
+          2.561,
+          7.56,
+          null,
+          null
+         ]
+        }
+       ],
+       "guia": [
+        {
+         "p": "1T27",
+         "lo": 33,
+         "hi": 37
+        }
+       ]
+      },
+      {
+       "id": "spacex-ponte-ebitda",
+       "painel": "cascata",
+       "titulo": "SpaceX: do resultado ao EBITDA ajustado no 3º trimestre",
+       "subtitulo": "3º tri de 2026, em US$ bilhões; o EBITDA ajustado soma de volta o que não é caixa e o que não é operação",
+       "unidade": "usd-bi",
+       "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
+       "corTotal": "#4F81BD",
+       "inicio": {
+        "rot": "",
+        "v": 0
+       },
+       "passos": [],
+       "fim": {
+        "rot": "",
+        "v": 0
+       },
+       "variantes": [
+        {
+         "rot": "SI",
+         "inicio": {
+          "rot": "Resultado operacional do SI",
+          "v": 0.431
+         },
+         "passos": [
+          {
+           "rot": "Depreciação e amortização",
+           "v": 2.473
+          },
+          {
+           "rot": "Remuneração em ações",
+           "v": 0.821
+          },
+          {
+           "rot": "Remuneração em ações da compra do Cursor",
+           "v": 1.217
+          },
+          {
+           "rot": "Custos de aquisição e reestruturação",
+           "v": 0.011
+          }
+         ],
+         "fim": {
+          "rot": "EBITDA ajustado do SI",
+          "v": 4.953
+         }
+        },
+        {
+         "rot": "Consolidado",
+         "inicio": {
+          "rot": "Lucro líquido",
+          "v": 4.404
+         },
+         "passos": [
+          {
+           "rot": "Depreciação e amortização",
+           "v": 3.644
+          },
+          {
+           "rot": "Remuneração em ações",
+           "v": 1.146
+          },
+          {
+           "rot": "Remuneração em ações da compra do Cursor",
+           "v": 1.217
+          },
+          {
+           "rot": "Custos de aquisição e reestruturação",
+           "v": 0.011
+          },
+          {
+           "rot": "Juros pagos",
+           "v": 0.675
+          },
+          {
+           "rot": "Juros recebidos",
+           "v": -0.873
+          },
+          {
+           "rot": "Outras receitas, líquidas",
+           "v": -1.025
+          },
+          {
+           "rot": "Benefício de imposto de renda",
+           "v": -0.39
+          }
+         ],
+         "fim": {
+          "rot": "EBITDA ajustado",
+          "v": 8.809
+         }
+        }
+       ]
+      },
+      {
+       "id": "spacex-depreciacao",
+       "painel": "colunas",
+       "titulo": "SpaceX: depreciação e amortização por trimestre",
+       "subtitulo": "D&A por segmento, em US$ bilhões; o imobilizado líquido foi de US$ 42,6 bi em dez/25 a US$ 89,5 bi em set/26",
+       "unidade": "usd-bi",
+       "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
+       "periodos": [
+        "3T25",
+        "4T25",
+        "1T26",
+        "2T26",
+        "3T26"
+       ],
+       "series": [
+        {
+         "nome": "Espaço",
+         "cor": "#8064A2",
+         "v": [
+          0.264,
+          null,
+          0.166,
+          0.158,
+          0.185
+         ]
+        },
+        {
+         "nome": "Conectividade",
+         "cor": "#4BACC6",
+         "v": [
+          0.628,
+          null,
+          0.783,
+          0.805,
+          0.986
+         ]
+        },
+        {
+         "nome": "SI",
+         "cor": "#F79646",
+         "v": [
+          0.922,
+          null,
+          1.493,
+          1.885,
+          2.473
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "titulo": "Fluxo de caixa",
+     "graficos": [
+      {
+       "id": "spacex-caixa-9m",
+       "painel": "cascata",
+       "titulo": "SpaceX: de onde veio e para onde foi o caixa em 2026",
+       "subtitulo": "Nove meses até setembro de 2026, em US$ bilhões; caixa, equivalentes e caixa restrito",
+       "unidade": "usd-bi",
+       "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
+       "corTotal": "#4F81BD",
+       "inicio": {
+        "rot": "Caixa em dezembro de 2025",
+        "v": 25.124
+       },
+       "passos": [
+        {
+         "rot": "Geração de caixa operacional",
+         "v": 13.097
+        },
+        {
+         "rot": "Capex",
+         "v": -48.069
+        },
+        {
+         "rot": "Títulos negociáveis: compras de 46,8 menos vencimentos e vendas",
+         "v": -37.599
+        },
+        {
+         "rot": "Outros investimentos (abatimentos, intangíveis, aquisições)",
+         "v": 1.057
+        },
+        {
+         "rot": "IPO, líquido de custos",
+         "v": 85.675
+        },
+        {
+         "rot": "Dívida: captações menos amortizações",
+         "v": 10.442
+        },
+        {
+         "rot": "Ações: emissões menos recompras",
+         "v": 3.702
+        },
+        {
+         "rot": "Câmbio",
+         "v": -0.043
+        }
+       ],
+       "fim": {
+        "rot": "Caixa em setembro de 2026",
+        "v": 53.386
+       }
+      },
+      {
+       "id": "spacex-capex-trimestral",
+       "painel": "colunas",
+       "titulo": "SpaceX: capex por trimestre e o guidance do 4º tri",
+       "subtitulo": "Capex por segmento, em US$ bilhões; o guidance do 4º tri de 2026 é de US$ 35 a 40 bi",
+       "unidade": "usd-bi",
+       "fonte": "SpaceX, release de resultados do 3º trimestre de 2026; guidance da teleconferência",
+       "periodos": [
+        "3T25",
+        "4T25",
+        "1T26",
+        "2T26",
+        "3T26",
+        "4T26"
+       ],
+       "series": [
+        {
+         "nome": "Espaço",
+         "cor": "#8064A2",
+         "v": [
+          1.113,
+          null,
+          1.052,
+          1.174,
+          1.606,
+          null
+         ]
+        },
+        {
+         "nome": "Conectividade",
+         "cor": "#4BACC6",
+         "v": [
+          1.007,
+          null,
+          1.332,
+          1.367,
+          1.543,
+          null
+         ]
+        },
+        {
+         "nome": "SI",
+         "cor": "#F79646",
+         "v": [
+          4.76,
+          null,
+          7.723,
+          15.828,
+          16.444,
+          null
+         ]
+        }
+       ],
+       "guia": [
+        {
+         "p": "4T26",
+         "lo": 35,
+         "hi": 40
+        }
+       ]
+      },
+      {
+       "id": "spacex-fluxo-livre",
+       "painel": "pares",
+       "titulo": "SpaceX: geração de caixa, capex e fluxo de caixa livre",
+       "subtitulo": "Nove meses até setembro, em US$ bilhões; fluxo livre = caixa operacional − capex",
+       "unidade": "usd-bi",
+       "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
+       "colunas": [
+        "9 meses 2025",
+        "9 meses 2026"
+       ],
+       "metricas": [
+        {
+         "rot": "Caixa operacional",
+         "v": [
+          4.12,
+          13.097
          ]
         },
         {
          "rot": "Capex",
          "v": [
-          1.113,
-          1.606
+          -13.846,
+          -48.069
+         ]
+        },
+        {
+         "rot": "Fluxo de caixa livre",
+         "v": [
+          -9.726,
+          -34.972
          ]
         }
        ]
@@ -467,764 +833,403 @@
      ]
     },
     {
-     "id": "spacex-receita-trimestral",
-     "painel": "colunas",
-     "titulo": "SpaceX: receita por trimestre e o guidance do 1º tri de 2027",
-     "subtitulo": "Receita por segmento, em US$ bilhões; 1º tri de 2026 = 9 meses − 2º tri − 3º tri, e o guidance é de US$ 33 a 37 bi",
-     "unidade": "usd-bi",
-     "fonte": "SpaceX, release de resultados do 3º trimestre de 2026; guidance da teleconferência",
-     "periodos": [
-      "3T25",
-      "4T25",
-      "1T26",
-      "2T26",
-      "3T26",
-      "4T26",
-      "1T27"
-     ],
-     "series": [
+     "titulo": "Balanço",
+     "graficos": [
       {
-       "nome": "Espaço",
-       "cor": "#8064A2",
-       "v": [
-        1.666,
-        null,
-        0.619,
-        0.962,
-        1.767,
-        null,
-        null
-       ]
-      },
-      {
-       "nome": "Conectividade",
-       "cor": "#4BACC6",
-       "v": [
-        3.097,
-        null,
-        3.257,
-        4.291,
-        5.248,
-        null,
-        null
-       ]
-      },
-      {
-       "nome": "SI",
-       "cor": "#F79646",
-       "v": [
-        0.813,
-        null,
-        0.818,
-        2.561,
-        7.56,
-        null,
-        null
-       ]
-      }
-     ],
-     "guia": [
-      {
-       "p": "1T27",
-       "lo": 33,
-       "hi": 37
-      }
-     ]
-    },
-    {
-     "id": "spacex-ponte-ebitda",
-     "painel": "cascata",
-     "titulo": "SpaceX: do resultado ao EBITDA ajustado no 3º trimestre",
-     "subtitulo": "3º tri de 2026, em US$ bilhões; o EBITDA ajustado soma de volta o que não é caixa e o que não é operação",
-     "unidade": "usd-bi",
-     "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
-     "corTotal": "#4F81BD",
-     "inicio": {
-      "rot": "",
-      "v": 0
-     },
-     "passos": [],
-     "fim": {
-      "rot": "",
-      "v": 0
-     },
-     "variantes": [
-      {
-       "rot": "SI",
-       "inicio": {
-        "rot": "Resultado operacional do SI",
-        "v": 0.431
-       },
-       "passos": [
+       "id": "spacex-balanco",
+       "painel": "pilhas",
+       "titulo": "SpaceX: o balanço antes e depois do IPO",
+       "subtitulo": "Em US$ bilhões; acima do zero o que a empresa tem, abaixo como isso é financiado",
+       "unidade": "usd-bi",
+       "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
+       "colunas": [
+        "Dezembro de 2025",
+        "Setembro de 2026"
+       ],
+       "colunasCurtas": [
+        "dez/25",
+        "set/26"
+       ],
+       "itens": [
         {
-         "rot": "Depreciação e amortização",
-         "v": 2.473
+         "rot": "Caixa e equivalentes",
+         "v": [
+          24.747,
+          51.294
+         ],
+         "cor": "#4F81BD"
         },
         {
-         "rot": "Remuneração em ações",
-         "v": 0.821
+         "rot": "Títulos negociáveis",
+         "v": [
+          null,
+          38.561
+         ],
+         "cor": "#4BACC6"
         },
         {
-         "rot": "Remuneração em ações da compra do Cursor",
-         "v": 1.217
+         "rot": "Imobilizado",
+         "v": [
+          42.602,
+          89.483
+         ],
+         "cor": "#F79646"
         },
         {
-         "rot": "Custos de aquisição e reestruturação",
-         "v": 0.011
+         "rot": "Goodwill",
+         "v": [
+          11.809,
+          48.423
+         ],
+         "cor": "#8064A2"
+        },
+        {
+         "rot": "Intangíveis",
+         "v": [
+          1.548,
+          6.354
+         ],
+         "cor": "#B39DDB"
+        },
+        {
+         "rot": "Outros ativos",
+         "v": [
+          11.373,
+          19.93
+         ],
+         "cor": "#95A5A6"
+        },
+        {
+         "rot": "Dívida e arrendamentos",
+         "v": [
+          -22.896,
+          -38.844
+         ],
+         "cor": "#C0504D"
+        },
+        {
+         "rot": "Receita diferida",
+         "v": [
+          -12.116,
+          -17.52
+         ],
+         "cor": "#D99694"
+        },
+        {
+         "rot": "Outros passivos",
+         "v": [
+          -15.742,
+          -20.913
+         ],
+         "cor": "#7F7F7F"
+        },
+        {
+         "rot": "Preferenciais conversíveis",
+         "v": [
+          -38.752,
+          null
+         ],
+         "cor": "#E8C547"
+        },
+        {
+         "rot": "Patrimônio líquido",
+         "v": [
+          -2.573,
+          -176.768
+         ],
+         "cor": "#9BBB59"
         }
-       ],
-       "fim": {
-        "rot": "EBITDA ajustado do SI",
-        "v": 4.953
-       }
+       ]
       },
       {
-       "rot": "Consolidado",
-       "inicio": {
-        "rot": "Lucro líquido",
-        "v": 4.404
-       },
-       "passos": [
+       "id": "spacex-liquidez",
+       "painel": "pares",
+       "titulo": "SpaceX: caixa, títulos e dívida",
+       "subtitulo": "Em US$ bilhões; caixa líquido = caixa e títulos negociáveis − dívida e arrendamentos",
+       "unidade": "usd-bi",
+       "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
+       "colunas": [
+        "dez/25",
+        "set/26"
+       ],
+       "metricas": [
         {
-         "rot": "Depreciação e amortização",
-         "v": 3.644
+         "rot": "Caixa e títulos",
+         "v": [
+          24.747,
+          89.855
+         ]
         },
         {
-         "rot": "Remuneração em ações",
-         "v": 1.146
+         "rot": "Dívida e arrendamentos",
+         "v": [
+          22.896,
+          38.844
+         ]
         },
         {
-         "rot": "Remuneração em ações da compra do Cursor",
-         "v": 1.217
-        },
-        {
-         "rot": "Custos de aquisição e reestruturação",
-         "v": 0.011
-        },
-        {
-         "rot": "Juros pagos",
-         "v": 0.675
-        },
-        {
-         "rot": "Juros recebidos",
-         "v": -0.873
-        },
-        {
-         "rot": "Outras receitas, líquidas",
-         "v": -1.025
-        },
-        {
-         "rot": "Benefício de imposto de renda",
-         "v": -0.39
+         "rot": "Caixa líquido",
+         "v": [
+          1.851,
+          51.011
+         ]
         }
-       ],
-       "fim": {
-        "rot": "EBITDA ajustado",
-        "v": 8.809
-       }
+       ]
       }
      ]
     },
     {
-     "id": "spacex-depreciacao",
-     "painel": "colunas",
-     "titulo": "SpaceX: depreciação e amortização por trimestre",
-     "subtitulo": "D&A por segmento, em US$ bilhões; o imobilizado líquido foi de US$ 42,6 bi em dez/25 a US$ 89,5 bi em set/26",
-     "unidade": "usd-bi",
-     "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
-     "periodos": [
-      "3T25",
-      "4T25",
-      "1T26",
-      "2T26",
-      "3T26"
-     ],
-     "series": [
+     "titulo": "Valuation",
+     "graficos": [
       {
-       "nome": "Espaço",
-       "cor": "#8064A2",
-       "v": [
-        0.264,
-        null,
-        0.166,
-        0.158,
-        0.185
+       "id": "spacex-valuation",
+       "painel": "numeros",
+       "titulo": "SpaceX: valuation",
+       "subtitulo": "Preço de US$ 147,79 (21/10/2026); múltiplos sobre o 3º tri de 2026 anualizado (× 4)",
+       "fonte": "SpaceX, release de resultados do 3º trimestre de 2026; preço do Motley Fool",
+       "quadros": [
+        {
+         "rot": "Valor de mercado",
+         "valor": "US$ 2,01 tri",
+         "detalhe": "US$ 147,79 × 13,58 bi de ações (classes A e B, 30/9)"
+        },
+        {
+         "rot": "Lucro por ação, 3º tri",
+         "valor": "US$ 0,35",
+         "detalhe": "Diluído; era −US$ 0,36 no 3º tri de 2025 e é −US$ 0,15 em 9 meses de 2026"
+        },
+        {
+         "rot": "Preço / lucro",
+         "valor": "106x",
+         "detalhe": "Sobre US$ 1,40 (LPA do 3º tri × 4); o lucro do tri tem US$ 1,0 bi de outras receitas e US$ 0,4 bi de benefício fiscal"
+        },
+        {
+         "rot": "Preço / vendas",
+         "valor": "34x",
+         "detalhe": "Sobre US$ 58,3 bi (receita do 3º tri × 4)"
+        },
+        {
+         "rot": "EV / EBITDA ajustado",
+         "valor": "56x",
+         "detalhe": "EV de US$ 1,96 tri (valor de mercado − caixa líquido) sobre US$ 35,2 bi (3º tri × 4)"
+        },
+        {
+         "rot": "Caixa líquido",
+         "valor": "US$ 51,0 bi",
+         "detalhe": "Caixa e títulos negociáveis menos dívida e arrendamentos, em 30/9"
+        }
        ]
       },
       {
-       "nome": "Conectividade",
+       "id": "spacex-preco-vendas",
+       "painel": "barras",
+       "titulo": "SpaceX: preço / vendas conforme a receita que se usa",
+       "subtitulo": "Valor de mercado de US$ 2,01 tri ÷ receita anual; tracejado, o que depende de guidance ou meta",
+       "unidade": "x",
+       "fonte": "SpaceX, release de resultados do 3º trimestre de 2026 e teleconferência; preço do Motley Fool",
+       "linhas": [
+        {
+         "rot": "3º tri de 2026 × 4",
+         "detalhe": "US$ 58,3 bi, o último trimestre",
+         "v": 34.4,
+         "cor": "#4F81BD"
+        },
+        {
+         "rot": "ARR de dezembro de 2026",
+         "detalhe": "US$ 100 bi, receita de dezembro × 12 (meta do CFO)",
+         "v": 20.1,
+         "cor": "#F79646",
+         "contorno": true
+        },
+        {
+         "rot": "Guidance do 1º tri de 2027 × 4",
+         "detalhe": "US$ 140 bi, o meio da faixa de 33 a 37",
+         "v": 14.3,
+         "cor": "#F79646",
+         "contorno": true
+        },
+        {
+         "rot": "ARR do fim de 2027",
+         "detalhe": "US$ 500 bi a 1 tri (Musk); a barra é a ponta de 500 bi",
+         "v": 4.0,
+         "cor": "#F79646",
+         "contorno": true,
+         "prefixo": "2,0 a "
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "titulo": "Destaques da teleconferência do 3º tri",
+     "graficos": [
+      {
+       "id": "spacex-guidance-metas",
+       "painel": "linhaTempo",
+       "titulo": "SpaceX: guidance e metas da teleconferência",
+       "subtitulo": "O que a empresa disse esperar, por data",
+       "fonte": "SpaceX, teleconferência do 3º trimestre de 2026 (transcrição do Motley Fool)",
        "cor": "#4BACC6",
-       "v": [
-        0.628,
-        null,
-        0.783,
-        0.805,
-        0.986
+       "itens": [
+        {
+         "quando": "Out/2026",
+         "t": "Quase 2,2 GW de compute nominal no fim do mês",
+         "guidance": true
+        },
+        {
+         "quando": "Nov/2026",
+         "t": "Voo 15 do Starship: tentativa de pegar booster e nave na torre"
+        },
+        {
+         "quando": "4º tri 2026",
+         "t": "Capex de US$ 35 a 40 bi; margem bruta de volta ao nível do 2º tri",
+         "guidance": true
+        },
+        {
+         "quando": "Fim de 2026",
+         "t": "2,5 a 3 GW de compute; ARR de US$ 100 bi (receita de dezembro × 12)",
+         "guidance": true
+        },
+        {
+         "quando": "1º tri 2027",
+         "t": "Receita de US$ 33 a 37 bi",
+         "guidance": true
+        },
+        {
+         "quando": "1º sem. 2027",
+         "t": "Starship semanal; reabastecimento em órbita; centenas de satélites V3; fecha a compra do espectro de 800 MHz"
+        },
+        {
+         "quando": "Mai–jun/2027",
+         "t": "Primeiro chip de teste (SRAM), na fábrica de pesquisa em Austin"
+        },
+        {
+         "quando": "Fim do 2º tri 2027",
+         "t": "Maior cluster de treino: 440 mil Vera Rubin"
+        },
+        {
+         "quando": "Fim de 2027",
+         "t": "13 GW de compute (+10 GW no ano, com plano para +20 GW de energia); ARR de US$ 500 bi a 1 tri; Starship duas vezes por semana"
+        },
+        {
+         "quando": "Início de 2028",
+         "t": "Starlink Mobile com o espectro novo no ar"
+        },
+        {
+         "quando": "2028",
+         "t": "Primeiro lançamento em Louisiana (meta interna; 2029, “muito provável”)"
+        },
+        {
+         "quando": "3º tri 2028",
+         "t": "Produção em volume na Terafab, em Gibbons Creek"
+        }
        ]
       },
       {
-       "nome": "SI",
-       "cor": "#F79646",
-       "v": [
-        0.922,
-        null,
-        1.493,
-        1.885,
-        2.473
-       ]
-      }
-     ]
-    }
-   ]
-  },
-  {
-   "titulo": "SpaceX: fluxo de caixa",
-   "graficos": [
-    {
-     "id": "spacex-caixa-9m",
-     "painel": "cascata",
-     "titulo": "SpaceX: de onde veio e para onde foi o caixa em 2026",
-     "subtitulo": "Nove meses até setembro de 2026, em US$ bilhões; caixa, equivalentes e caixa restrito",
-     "unidade": "usd-bi",
-     "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
-     "corTotal": "#4F81BD",
-     "inicio": {
-      "rot": "Caixa em dezembro de 2025",
-      "v": 25.124
-     },
-     "passos": [
-      {
-       "rot": "Geração de caixa operacional",
-       "v": 13.097
-      },
-      {
-       "rot": "Capex",
-       "v": -48.069
-      },
-      {
-       "rot": "Títulos negociáveis: compras de 46,8 menos vencimentos e vendas",
-       "v": -37.599
-      },
-      {
-       "rot": "Outros investimentos (abatimentos, intangíveis, aquisições)",
-       "v": 1.057
-      },
-      {
-       "rot": "IPO, líquido de custos",
-       "v": 85.675
-      },
-      {
-       "rot": "Dívida: captações menos amortizações",
-       "v": 10.442
-      },
-      {
-       "rot": "Ações: emissões menos recompras",
-       "v": 3.702
-      },
-      {
-       "rot": "Câmbio",
-       "v": -0.043
-      }
-     ],
-     "fim": {
-      "rot": "Caixa em setembro de 2026",
-      "v": 53.386
-     }
-    },
-    {
-     "id": "spacex-capex-trimestral",
-     "painel": "colunas",
-     "titulo": "SpaceX: capex por trimestre e o guidance do 4º tri",
-     "subtitulo": "Capex por segmento, em US$ bilhões; o guidance do 4º tri de 2026 é de US$ 35 a 40 bi",
-     "unidade": "usd-bi",
-     "fonte": "SpaceX, release de resultados do 3º trimestre de 2026; guidance da teleconferência",
-     "periodos": [
-      "3T25",
-      "4T25",
-      "1T26",
-      "2T26",
-      "3T26",
-      "4T26"
-     ],
-     "series": [
-      {
-       "nome": "Espaço",
-       "cor": "#8064A2",
-       "v": [
-        1.113,
-        null,
-        1.052,
-        1.174,
-        1.606,
-        null
+       "id": "spacex-compute-por-watt",
+       "painel": "fala",
+       "titulo": "SpaceX: por que alugar compute a preço spot",
+       "subtitulo": "Elon Musk, respondendo a Eric Sheridan (Goldman Sachs); tradução livre",
+       "fonte": "SpaceX, teleconferência do 3º trimestre de 2026 (transcrição do Motley Fool)",
+       "citacao": {
+        "texto": "Nossa abordagem é alugar, na prática, a preço de mercado spot, em vez de assinar contratos longos. Acreditamos que o valor da computação por watt vai aumentar com o tempo, não diminuir.",
+        "autor": "Elon Musk",
+        "cor": "#F79646"
+       },
+       "pontos": [
+        "Modelos melhores tiram mais “inteligência útil” de cada watt, e o valor do compute acompanha isso: H100s antigos alugam por mais do que quando eram novos",
+        "Os contratos curtos estão sendo renovados a mais dólares por watt, não menos",
+        "Preço atual, segundo o CFO: um pouco acima do topo da faixa de US$ 30 a 50 por watt; instalações novas se pagam em menos de um ano",
+        "Divisão do compute: cerca de metade para uso próprio e metade alugada, podendo ir a 60/40 para qualquer lado"
        ]
       },
       {
-       "nome": "Conectividade",
-       "cor": "#4BACC6",
-       "v": [
-        1.007,
-        null,
-        1.332,
-        1.367,
-        1.543,
-        null
+       "id": "spacex-fusao-tesla",
+       "painel": "fala",
+       "titulo": "SpaceX: a fusão com a Tesla",
+       "subtitulo": "Pergunta de Edison Yu (Deutsche Bank) e resposta de Elon Musk; tradução livre",
+       "fonte": "SpaceX, teleconferência do 3º trimestre de 2026 (transcrição do Motley Fool)",
+       "pergunta": {
+        "quem": "Edison Yu, Deutsche Bank",
+        "texto": "Quais os prós e contras de uma combinação com a Tesla, e há obstáculos a resolver antes?"
+       },
+       "citacao": {
+        "texto": "Algumas pessoas assumem que uma fusão entre SpaceX e Tesla é certa, e acho que isso seria exagero. Se acho que seria uma boa ideia? Sim. Mas, no fim, os acionistas têm de apoiar.",
+        "autor": "Elon Musk",
+        "cor": "#F79646"
+       },
+       "pontos": [
+        "As duas empresas formaram comitês especiais de conselheiros independentes, a pedido de acionistas; Musk, como parte conflitada, fica fora das conversas",
+        "Na Tesla, a fusão precisa do voto de 50% de todas as ações, não só das que votam",
+        "Os comitês não chegaram a acordo sobre os termos, e não há garantia de que cheguem",
+        "Ganhos que ele vê: software de superinteligência, design de chips, Terafab, robótica, a constelação Starmind e conectividade"
        ]
       },
       {
-       "nome": "SI",
-       "cor": "#F79646",
-       "v": [
-        4.76,
-        null,
-        7.723,
-        15.828,
-        16.444,
-        null
-       ]
-      }
-     ],
-     "guia": [
-      {
-       "p": "4T26",
-       "lo": 35,
-       "hi": 40
-      }
-     ]
-    },
-    {
-     "id": "spacex-fluxo-livre",
-     "painel": "pares",
-     "titulo": "SpaceX: geração de caixa, capex e fluxo de caixa livre",
-     "subtitulo": "Nove meses até setembro, em US$ bilhões; fluxo livre = caixa operacional − capex",
-     "unidade": "usd-bi",
-     "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
-     "colunas": [
-      "9 meses 2025",
-      "9 meses 2026"
-     ],
-     "metricas": [
-      {
-       "rot": "Caixa operacional",
-       "v": [
-        4.12,
-        13.097
+       "id": "spacex-eficiencia-capital",
+       "painel": "fala",
+       "titulo": "SpaceX: “eficiência de capital”",
+       "subtitulo": "Elon Musk, depois da pergunta de Doug Anmuth (JPMorgan) sobre como financiar 13 GW; tradução livre",
+       "fonte": "SpaceX, teleconferência do 3º trimestre de 2026 (transcrição do Motley Fool)",
+       "pergunta": {
+        "quem": "Doug Anmuth, JPMorgan",
+        "texto": "O que dá conforto com os 13 GW no fim de 2027, e como pensar a necessidade de financiamento?"
+       },
+       "citacao": {
+        "texto": "Se você olhar nosso histórico de eficiência de capital, no Starship e em todos os outros projetos, vai ter dificuldade de achar qualquer empresa no mundo tão boa em eficiência de capital quanto a SpaceX.",
+        "autor": "Elon Musk",
+        "cor": "#F79646"
+       },
+       "pontos": [
+        "O CFO citou o grau de investimento, várias fontes de dívida em negociação e o retorno rápido do compute, que passa a se financiar sozinho",
+        "Capex dos 9 meses: US$ 48,1 bi, contra US$ 13,1 bi de caixa operacional; fluxo de caixa livre de −US$ 35,0 bi"
        ]
       },
       {
-       "rot": "Capex",
-       "v": [
-        -13.846,
-        -48.069
+       "id": "spacex-capex-receita",
+       "painel": "barras",
+       "titulo": "Capex em % da receita: SpaceX × hyperscalers",
+       "subtitulo": "Capex ÷ receita do trimestre; mede quanto se investe por dólar vendido, não o retorno do investimento",
+       "unidade": "pct0",
+       "fonte": "SpaceX (release do 3º tri); Alphabet, Meta e Microsoft (resultados do 2º tri de 2026); Amazon (imprensa)",
+       "linhas": [
+        {
+         "rot": "SpaceX",
+         "detalhe": "2º tri de 2026",
+         "v": 235,
+         "cor": "#F79646"
+        },
+        {
+         "rot": "SpaceX",
+         "detalhe": "3º tri de 2026",
+         "v": 134,
+         "cor": "#F79646"
+        },
+        {
+         "rot": "Meta",
+         "detalhe": "2º tri de 2026",
+         "v": 51,
+         "cor": "#95A5A6"
+        },
+        {
+         "rot": "Microsoft",
+         "detalhe": "2º tri de 2026, ano fiscal até junho",
+         "v": 46,
+         "cor": "#95A5A6"
+        },
+        {
+         "rot": "Alphabet",
+         "detalhe": "2º tri de 2026",
+         "v": 37,
+         "cor": "#95A5A6"
+        },
+        {
+         "rot": "Amazon",
+         "detalhe": "2º tri de 2026",
+         "v": 26,
+         "cor": "#95A5A6"
+        }
        ]
-      },
-      {
-       "rot": "Fluxo de caixa livre",
-       "v": [
-        -9.726,
-        -34.972
-       ]
-      }
-     ]
-    }
-   ]
-  },
-  {
-   "titulo": "SpaceX: balanço",
-   "graficos": [
-    {
-     "id": "spacex-balanco",
-     "painel": "pilhas",
-     "titulo": "SpaceX: o balanço antes e depois do IPO",
-     "subtitulo": "Em US$ bilhões; acima do zero o que a empresa tem, abaixo como isso é financiado",
-     "unidade": "usd-bi",
-     "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
-     "colunas": [
-      "Dezembro de 2025",
-      "Setembro de 2026"
-     ],
-     "colunasCurtas": [
-      "dez/25",
-      "set/26"
-     ],
-     "itens": [
-      {
-       "rot": "Caixa e equivalentes",
-       "v": [
-        24.747,
-        51.294
-       ],
-       "cor": "#4F81BD"
-      },
-      {
-       "rot": "Títulos negociáveis",
-       "v": [
-        null,
-        38.561
-       ],
-       "cor": "#4BACC6"
-      },
-      {
-       "rot": "Imobilizado",
-       "v": [
-        42.602,
-        89.483
-       ],
-       "cor": "#F79646"
-      },
-      {
-       "rot": "Goodwill",
-       "v": [
-        11.809,
-        48.423
-       ],
-       "cor": "#8064A2"
-      },
-      {
-       "rot": "Intangíveis",
-       "v": [
-        1.548,
-        6.354
-       ],
-       "cor": "#B39DDB"
-      },
-      {
-       "rot": "Outros ativos",
-       "v": [
-        11.373,
-        19.93
-       ],
-       "cor": "#95A5A6"
-      },
-      {
-       "rot": "Dívida e arrendamentos",
-       "v": [
-        -22.896,
-        -38.844
-       ],
-       "cor": "#C0504D"
-      },
-      {
-       "rot": "Receita diferida",
-       "v": [
-        -12.116,
-        -17.52
-       ],
-       "cor": "#D99694"
-      },
-      {
-       "rot": "Outros passivos",
-       "v": [
-        -15.742,
-        -20.913
-       ],
-       "cor": "#7F7F7F"
-      },
-      {
-       "rot": "Preferenciais conversíveis",
-       "v": [
-        -38.752,
-        null
-       ],
-       "cor": "#E8C547"
-      },
-      {
-       "rot": "Patrimônio líquido",
-       "v": [
-        -2.573,
-        -176.768
-       ],
-       "cor": "#9BBB59"
-      }
-     ]
-    },
-    {
-     "id": "spacex-liquidez",
-     "painel": "pares",
-     "titulo": "SpaceX: caixa, títulos e dívida",
-     "subtitulo": "Em US$ bilhões; caixa líquido = caixa e títulos negociáveis − dívida e arrendamentos",
-     "unidade": "usd-bi",
-     "fonte": "SpaceX, release de resultados do 3º trimestre de 2026",
-     "colunas": [
-      "dez/25",
-      "set/26"
-     ],
-     "metricas": [
-      {
-       "rot": "Caixa e títulos",
-       "v": [
-        24.747,
-        89.855
-       ]
-      },
-      {
-       "rot": "Dívida e arrendamentos",
-       "v": [
-        22.896,
-        38.844
-       ]
-      },
-      {
-       "rot": "Caixa líquido",
-       "v": [
-        1.851,
-        51.011
-       ]
-      }
-     ]
-    }
-   ]
-  },
-  {
-   "titulo": "SpaceX: valuation",
-   "graficos": [
-    {
-     "id": "spacex-valuation",
-     "painel": "numeros",
-     "titulo": "SpaceX: valuation",
-     "subtitulo": "Preço de US$ 147,79 (21/10/2026); múltiplos sobre o 3º tri de 2026 anualizado (× 4)",
-     "fonte": "SpaceX, release de resultados do 3º trimestre de 2026; preço do Motley Fool",
-     "quadros": [
-      {
-       "rot": "Valor de mercado",
-       "valor": "US$ 2,01 tri",
-       "detalhe": "US$ 147,79 × 13,58 bi de ações (classes A e B, 30/9)"
-      },
-      {
-       "rot": "Lucro por ação, 3º tri",
-       "valor": "US$ 0,35",
-       "detalhe": "Diluído; era −US$ 0,36 no 3º tri de 2025 e é −US$ 0,15 em 9 meses de 2026"
-      },
-      {
-       "rot": "Preço / lucro",
-       "valor": "106x",
-       "detalhe": "Sobre US$ 1,40 (LPA do 3º tri × 4); o lucro do tri tem US$ 1,0 bi de outras receitas e US$ 0,4 bi de benefício fiscal"
-      },
-      {
-       "rot": "Preço / vendas",
-       "valor": "34x",
-       "detalhe": "Sobre US$ 58,3 bi (receita do 3º tri × 4)"
-      },
-      {
-       "rot": "EV / EBITDA ajustado",
-       "valor": "56x",
-       "detalhe": "EV de US$ 1,96 tri (valor de mercado − caixa líquido) sobre US$ 35,2 bi (3º tri × 4)"
-      },
-      {
-       "rot": "Caixa líquido",
-       "valor": "US$ 51,0 bi",
-       "detalhe": "Caixa e títulos negociáveis menos dívida e arrendamentos, em 30/9"
-      }
-     ]
-    },
-    {
-     "id": "spacex-preco-vendas",
-     "painel": "barras",
-     "titulo": "SpaceX: preço / vendas conforme a receita que se usa",
-     "subtitulo": "Valor de mercado de US$ 2,01 tri ÷ receita anual; tracejado, o que depende de guidance ou meta",
-     "unidade": "x",
-     "fonte": "SpaceX, release de resultados do 3º trimestre de 2026 e teleconferência; preço do Motley Fool",
-     "linhas": [
-      {
-       "rot": "3º tri de 2026 × 4",
-       "detalhe": "US$ 58,3 bi, o último trimestre",
-       "v": 34.4,
-       "cor": "#4F81BD"
-      },
-      {
-       "rot": "ARR de dezembro de 2026",
-       "detalhe": "US$ 100 bi, receita de dezembro × 12 (meta do CFO)",
-       "v": 20.1,
-       "cor": "#F79646",
-       "contorno": true
-      },
-      {
-       "rot": "Guidance do 1º tri de 2027 × 4",
-       "detalhe": "US$ 140 bi, o meio da faixa de 33 a 37",
-       "v": 14.3,
-       "cor": "#F79646",
-       "contorno": true
-      },
-      {
-       "rot": "ARR do fim de 2027",
-       "detalhe": "US$ 500 bi a 1 tri (Musk); a barra é a ponta de 500 bi",
-       "v": 4.0,
-       "cor": "#F79646",
-       "contorno": true,
-       "prefixo": "2,0 a "
-      }
-     ]
-    }
-   ]
-  },
-  {
-   "titulo": "SpaceX: destaques da teleconferência do 3º tri",
-   "graficos": [
-    {
-     "id": "spacex-guidance-metas",
-     "painel": "linhaTempo",
-     "titulo": "SpaceX: guidance e metas da teleconferência",
-     "subtitulo": "O que a empresa disse esperar, por data",
-     "fonte": "SpaceX, teleconferência do 3º trimestre de 2026 (transcrição do Motley Fool)",
-     "cor": "#4BACC6",
-     "itens": [
-      {
-       "quando": "Out/2026",
-       "t": "Quase 2,2 GW de compute nominal no fim do mês",
-       "guidance": true
-      },
-      {
-       "quando": "Nov/2026",
-       "t": "Voo 15 do Starship: tentativa de pegar booster e nave na torre"
-      },
-      {
-       "quando": "4º tri 2026",
-       "t": "Capex de US$ 35 a 40 bi; margem bruta de volta ao nível do 2º tri",
-       "guidance": true
-      },
-      {
-       "quando": "Fim de 2026",
-       "t": "2,5 a 3 GW de compute; ARR de US$ 100 bi (receita de dezembro × 12)",
-       "guidance": true
-      },
-      {
-       "quando": "1º tri 2027",
-       "t": "Receita de US$ 33 a 37 bi",
-       "guidance": true
-      },
-      {
-       "quando": "1º sem. 2027",
-       "t": "Starship semanal; reabastecimento em órbita; centenas de satélites V3; fecha a compra do espectro de 800 MHz"
-      },
-      {
-       "quando": "Mai–jun/2027",
-       "t": "Primeiro chip de teste (SRAM), na fábrica de pesquisa em Austin"
-      },
-      {
-       "quando": "Fim do 2º tri 2027",
-       "t": "Maior cluster de treino: 440 mil Vera Rubin"
-      },
-      {
-       "quando": "Fim de 2027",
-       "t": "13 GW de compute (+10 GW no ano, com plano para +20 GW de energia); ARR de US$ 500 bi a 1 tri; Starship duas vezes por semana"
-      },
-      {
-       "quando": "Início de 2028",
-       "t": "Starlink Mobile com o espectro novo no ar"
-      },
-      {
-       "quando": "2028",
-       "t": "Primeiro lançamento em Louisiana (meta interna; 2029, “muito provável”)"
-      },
-      {
-       "quando": "3º tri 2028",
-       "t": "Produção em volume na Terafab, em Gibbons Creek"
-      }
-     ]
-    },
-    {
-     "id": "spacex-compute-por-watt",
-     "painel": "fala",
-     "titulo": "SpaceX: por que alugar compute a preço spot",
-     "subtitulo": "Elon Musk, respondendo a Eric Sheridan (Goldman Sachs); tradução livre",
-     "fonte": "SpaceX, teleconferência do 3º trimestre de 2026 (transcrição do Motley Fool)",
-     "citacao": {
-      "texto": "Nossa abordagem é alugar, na prática, a preço de mercado spot, em vez de assinar contratos longos. Acreditamos que o valor da computação por watt vai aumentar com o tempo, não diminuir.",
-      "autor": "Elon Musk",
-      "cor": "#F79646"
-     },
-     "pontos": [
-      "Modelos melhores tiram mais “inteligência útil” de cada watt, e o valor do compute acompanha isso: H100s antigos alugam por mais do que quando eram novos",
-      "Os contratos curtos estão sendo renovados a mais dólares por watt, não menos",
-      "Preço atual, segundo o CFO: um pouco acima do topo da faixa de US$ 30 a 50 por watt; instalações novas se pagam em menos de um ano",
-      "Divisão do compute: cerca de metade para uso próprio e metade alugada, podendo ir a 60/40 para qualquer lado"
-     ]
-    },
-    {
-     "id": "spacex-fusao-tesla",
-     "painel": "fala",
-     "titulo": "SpaceX: a fusão com a Tesla",
-     "subtitulo": "Pergunta de Edison Yu (Deutsche Bank) e resposta de Elon Musk; tradução livre",
-     "fonte": "SpaceX, teleconferência do 3º trimestre de 2026 (transcrição do Motley Fool)",
-     "pergunta": {
-      "quem": "Edison Yu, Deutsche Bank",
-      "texto": "Quais os prós e contras de uma combinação com a Tesla, e há obstáculos a resolver antes?"
-     },
-     "citacao": {
-      "texto": "Algumas pessoas assumem que uma fusão entre SpaceX e Tesla é certa, e acho que isso seria exagero. Se acho que seria uma boa ideia? Sim. Mas, no fim, os acionistas têm de apoiar.",
-      "autor": "Elon Musk",
-      "cor": "#F79646"
-     },
-     "pontos": [
-      "As duas empresas formaram comitês especiais de conselheiros independentes, a pedido de acionistas; Musk, como parte conflitada, fica fora das conversas",
-      "Na Tesla, a fusão precisa do voto de 50% de todas as ações, não só das que votam",
-      "Os comitês não chegaram a acordo sobre os termos, e não há garantia de que cheguem",
-      "Ganhos que ele vê: software de superinteligência, design de chips, Terafab, robótica, a constelação Starmind e conectividade"
-     ]
-    },
-    {
-     "id": "spacex-eficiencia-capital",
-     "painel": "fala",
-     "titulo": "SpaceX: “eficiência de capital”",
-     "subtitulo": "Elon Musk, depois da pergunta de Doug Anmuth (JPMorgan) sobre como financiar 13 GW; tradução livre",
-     "fonte": "SpaceX, teleconferência do 3º trimestre de 2026 (transcrição do Motley Fool)",
-     "pergunta": {
-      "quem": "Doug Anmuth, JPMorgan",
-      "texto": "O que dá conforto com os 13 GW no fim de 2027, e como pensar a necessidade de financiamento?"
-     },
-     "citacao": {
-      "texto": "Se você olhar nosso histórico de eficiência de capital, no Starship e em todos os outros projetos, vai ter dificuldade de achar qualquer empresa no mundo tão boa em eficiência de capital quanto a SpaceX.",
-      "autor": "Elon Musk",
-      "cor": "#F79646"
-     },
-     "pontos": [
-      "O CFO citou o grau de investimento, várias fontes de dívida em negociação e o retorno rápido do compute, que passa a se financiar sozinho",
-      "Capex dos 9 meses: US$ 48,1 bi, contra US$ 13,1 bi de caixa operacional; fluxo de caixa livre de −US$ 35,0 bi"
-     ]
-    },
-    {
-     "id": "spacex-capex-receita",
-     "painel": "barras",
-     "titulo": "Capex em % da receita: SpaceX × hyperscalers",
-     "subtitulo": "Capex ÷ receita do trimestre; mede quanto se investe por dólar vendido, não o retorno do investimento",
-     "unidade": "pct0",
-     "fonte": "SpaceX (release do 3º tri); Alphabet, Meta e Microsoft (resultados do 2º tri de 2026); Amazon (imprensa)",
-     "linhas": [
-      {
-       "rot": "SpaceX",
-       "detalhe": "2º tri de 2026",
-       "v": 235,
-       "cor": "#F79646"
-      },
-      {
-       "rot": "SpaceX",
-       "detalhe": "3º tri de 2026",
-       "v": 134,
-       "cor": "#F79646"
-      },
-      {
-       "rot": "Meta",
-       "detalhe": "2º tri de 2026",
-       "v": 51,
-       "cor": "#95A5A6"
-      },
-      {
-       "rot": "Microsoft",
-       "detalhe": "2º tri de 2026, ano fiscal até junho",
-       "v": 46,
-       "cor": "#95A5A6"
-      },
-      {
-       "rot": "Alphabet",
-       "detalhe": "2º tri de 2026",
-       "v": 37,
-       "cor": "#95A5A6"
-      },
-      {
-       "rot": "Amazon",
-       "detalhe": "2º tri de 2026",
-       "v": 26,
-       "cor": "#95A5A6"
       }
      ]
     }

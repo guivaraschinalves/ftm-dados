@@ -74,7 +74,10 @@ def graficos():
         if not os.path.exists(caminho):
             continue
         doc = json.load(open(caminho, encoding="utf-8"))
-        for sec in doc.get("secoes", []):
+        pilha = list(doc.get("secoes", []))
+        while pilha:                      # seção pode ter "subsecoes" (empresa > assunto)
+            sec = pilha.pop(0)
+            pilha[:0] = sec.get("subsecoes", [])
             for g in sec.get("graficos", []):
                 fora.append((g["id"], g, doc))
     return fora

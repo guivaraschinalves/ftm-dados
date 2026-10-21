@@ -118,6 +118,9 @@ body {
 .nav-rotulo::-webkit-details-marker, .nav-sub-rotulo::-webkit-details-marker { display: none; }
 .nav-rotulo { font-size: 14.5px; font-weight: 600; letter-spacing: -.005em; }
 .nav-sub-rotulo { font-size: 13.5px; color: var(--ink-2); padding-left: 20px; }
+/* terceiro nível (empresa > assunto > gráfico): um degrau a mais de recuo */
+.nav-sub .nav-sub > .nav-sub-rotulo { padding-left: 34px; }
+.nav-sub .nav-sub > a { margin-left: 41px; }
 .nav-rotulo:hover, .nav-sub-rotulo:hover { background: var(--hover); color: var(--ink); }
 /* a categoria que está na tela acende no menu: traço azul à esquerda */
 .nav-grupo[data-atual="true"] > .nav-rotulo::before {

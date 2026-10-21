@@ -2504,7 +2504,7 @@
     var caminhos = {};
     docs.forEach(function (d) {
       (d.secoes || []).forEach(function (sec) {
-        (sec.graficos || []).forEach(function (g) {
+        graficosDaSecao(sec).forEach(function (g) {
           (g.variantes || [{ series: g.series }]).forEach(function (v) {
             (v.series || []).forEach(function (s) { if (s.imagem) caminhos[s.imagem] = 1; });
           });
@@ -2526,10 +2526,15 @@
     }));
   }
 
-  function rotuloNav(sec, g) {
+  function rotuloNav(sec, g, acima) {
     // o menu inteiro já está dentro de "IPCA": repetir o prefixo em cada linha
-    // só faz o texto quebrar em três linhas na barra lateral
+    // só faz o texto quebrar em três linhas na barra lateral. O mesmo vale
+    // para o nome da seção de cima ("SpaceX: …" dentro de SpaceX)
     var t = g.titulo.replace(/^IPCA: /, "");
+    (acima || []).forEach(function (nome) {
+      if (t.indexOf(nome + ": ") === 0) t = t.slice(nome.length + 2);
+    });
+    t = t.replace(/^([“"]?)(\S)/, function (_, aspa, letra) { return aspa + letra.toUpperCase(); });
     // dois gráficos com o mesmo título na mesma seção (contribuição em 12 e em
     // 3 meses) só se distinguem pelo fim do subtítulo ("... em 12 meses")
     var repetido = sec.graficos.filter(function (o) { return o.titulo === g.titulo; }).length > 1;
@@ -2537,8 +2542,14 @@
     return t + " (" + g.subtitulo.split(";")[0].trim().split(" ").slice(-2).join(" ") + ")";
   }
 
+  // Uma seção tem gráficos ou "subsecoes" (a empresa com resultado, fluxo de
+  // caixa, balanço…), cada uma com os seus gráficos. Aqui sai tudo numa lista.
+  function graficosDaSecao(sec) {
+    if (!sec.subsecoes) return sec.graficos || [];
+    return sec.subsecoes.reduce(function (l, sub) { return l.concat(graficosDaSecao(sub)); }, []);
+  }
   function contarGraficos(dados) {
-    return dados.secoes.reduce(function (n, sec) { return n + sec.graficos.length; }, 0);
+    return dados.secoes.reduce(function (n, sec) { return n + graficosDaSecao(sec).length; }, 0);
   }
 
   function montarNav(dados, host) {
@@ -2550,14 +2561,16 @@
     rotulo.appendChild(html("span", { "class": "nav-conta", texto: total + " gráficos" }));
     grupo.appendChild(rotulo);
 
-    dados.secoes.forEach(function (sec, k) {
+    function navSecao(sec, onde, acima) {
+      acima = (acima || []).concat([sec.titulo]);
       var sub = html("details", { "class": "nav-sub" });
       var subRotulo = html("summary", { "class": "nav-sub-rotulo" });
       subRotulo.appendChild(seta());
       subRotulo.appendChild(html("span", { texto: sec.titulo }));
       sub.appendChild(subRotulo);
-      sec.graficos.forEach(function (g) {
-        var a = html("a", { href: "#" + g.id, texto: rotuloNav(sec, g) });
+      if (sec.subsecoes) sec.subsecoes.forEach(function (s2) { navSecao(s2, sub, acima); });
+      (sec.subsecoes ? [] : sec.graficos).forEach(function (g) {
+        var a = html("a", { href: "#" + g.id, texto: rotuloNav(sec, g, acima) });
         a.addEventListener("click", function (ev) {
           // Cmd/Ctrl/Shift/clique do meio: deixa o navegador abrir em outra aba
           if (ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
@@ -2566,8 +2579,9 @@
         });
         sub.appendChild(a);
       });
-      grupo.appendChild(sub);
-    });
+      onde.appendChild(sub);
+    }
+    dados.secoes.forEach(function (sec) { navSecao(sec, grupo); });
     host.appendChild(grupo);
   }
 
@@ -2713,13 +2727,18 @@
     rotulo.appendChild(html("span", { "class": "categoria-conta", texto: contarGraficos(dados) + " gráficos" }));
     cat.appendChild(rotulo);
 
-    dados.secoes.forEach(function (sec, k) {
-      var secao = html("details", { "class": "secao", id: "secao-" + slug(dados.categoria) + "-" + k });
+    // seção com "subsecoes" vira uma seção dentro da outra, do mesmo jeito
+    function montarSecao(sec, id, onde) {
+      var secao = html("details", { "class": "secao", id: id });
       var rotuloSecao = html("summary", { "class": "secao-rotulo" });
       rotuloSecao.appendChild(seta());
       rotuloSecao.appendChild(html("span", { texto: sec.titulo }));
       secao.appendChild(rotuloSecao);
-
+      if (sec.subsecoes) {
+        sec.subsecoes.forEach(function (sub, j) { montarSecao(sub, id + "-" + j, secao); });
+        onde.appendChild(secao);
+        return;
+      }
       var listaGraficos = html("div", { "class": "secao-graficos" });
       var daSecao = [];
       sec.graficos.forEach(function (g) {
@@ -2733,8 +2752,9 @@
       secao.addEventListener("toggle", function () {
         if (secao.open) daSecao.forEach(function (c) { desenhar(c, true); });
       });
-      cat.appendChild(secao);
-    });
+      onde.appendChild(secao);
+    }
+    dados.secoes.forEach(function (sec, k) { montarSecao(sec, "secao-" + slug(dados.categoria) + "-" + k, cat); });
     host.appendChild(cat);
   }
 
