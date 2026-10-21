@@ -53,6 +53,11 @@ import http.server
 # (dist/interno/dados), onde os números moram em protegido/.
 RAIZ = os.path.abspath(os.environ.get("SITE") or os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 PASTA_DADOS = os.environ.get("PASTA_DADOS", "dados")
+# SERVIR é a pasta que o servidor local publica e CAMINHO, onde o site fica
+# dentro dela. No lps-ftm o index.html usa caminhos absolutos (/interno/dados/),
+# então o deploy serve a raiz do build e abre /interno/dados/.
+SERVIR = os.path.abspath(os.environ.get("SERVIR") or RAIZ)
+CAMINHO = os.environ.get("CAMINHO", "/")
 SAIDA = os.path.abspath(os.environ.get("SAIDA") or os.path.join(RAIZ, "c"))
 MANIFESTO = os.path.join(SAIDA, "manifesto.json")
 
@@ -111,7 +116,7 @@ def servir():
     """Serve a pasta do repositório num thread, para o Chrome abrir o app."""
     class Calado(http.server.SimpleHTTPRequestHandler):
         def __init__(self, *a, **k):
-            super().__init__(*a, directory=RAIZ, **k)
+            super().__init__(*a, directory=SERVIR, **k)
 
         def log_message(self, *a):
             pass
@@ -122,7 +127,7 @@ def servir():
 
 
 def imagem(chrome, id_, tentativas=3):
-    url = "http://127.0.0.1:%d/?imagem=%s" % (PORTA, id_)
+    url = "http://127.0.0.1:%d%s?imagem=%s" % (PORTA, CAMINHO, id_)
     for _ in range(tentativas):
         # --disable-dev-shm-usage: com vários Chrome juntos a memória
         # compartilhada (/dev/shm) acaba e eles travam sem dar erro
