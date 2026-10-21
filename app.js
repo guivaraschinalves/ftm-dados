@@ -68,9 +68,21 @@
   var cartoes = [];
   // Um arquivo por categoria (IPCA, Dívida Pública…). Cada um traz categoria,
   // fonte, mês de referência e as suas seções; um que faltar é só ignorado.
-  var FONTES = ["dados/moedas.json", "dados/bp.json", "dados/ipca.json", "dados/fiscal.json",
-                "dados/divida.json", "dados/tesouro-direto.json", "dados/juros.json",
-                "dados/reservas.json", "dados/acoes-eua.json"];
+  // A pasta do site, tirada do endereço deste próprio script: o mesmo app.js
+  // roda em guivaraschinalves.github.io/ftm-dados/ e em ftm.app.br/interno/dados/,
+  // e tem de achar assets e dados nos dois, com ou sem a barra no fim do endereço.
+  var RAIZ_SITE = (function () {
+    var s = document.currentScript && document.currentScript.src;
+    return s ? s.replace(/[^/]*$/, "") : "";
+  })();
+  function noSite(caminho) { return /^(https?:|data:|\/)/.test(caminho) ? caminho : RAIZ_SITE + caminho; }
+  // No ftm.app.br os números moram em protegido/, que o Caddy só entrega a
+  // assinante (forward_auth no news-access). No github.io, em dados/.
+  var NO_DOMINIO = location.hostname === "ftm.app.br";
+  var PASTA_DADOS = NO_DOMINIO ? "protegido/" : "dados/";
+  var FONTES = ["moedas.json", "bp.json", "ipca.json", "fiscal.json",
+                "divida.json", "tesouro-direto.json", "juros.json",
+                "reservas.json", "acoes-eua.json"].map(function (f) { return noSite(PASTA_DADOS + f); });
   // ---------- gate de assinante ----------
   // O site roda em dois lugares: ftm.app.br/interno/dados, onde é para
   // assinante, e guivaraschinalves.github.io/ftm-dados, que segue aberto
@@ -2237,7 +2249,10 @@
   //    clica vai para o gráfico no site do assinante;
   //  - Instagram não tem post pela web: no celular vai a imagem 4:5 pelo menu
   //    do aparelho; no computador, baixa a imagem 4:5.
-  var LINK_PREVIA = "https://guivaraschinalves.github.io/ftm-dados/c/";
+  // as páginas de prévia ficam ao lado do site, fora de protegido/: o X precisa
+  // ler sem login
+  var LINK_PREVIA = NO_DOMINIO ? "https://ftm.app.br/interno/dados/c/"
+                               : "https://guivaraschinalves.github.io/ftm-dados/c/";
   var REDES = [
     { id: "x", nome: "X",
       svg: '<path fill="currentColor" stroke="none" d="M18.24 2.25h3.31l-7.23 8.26 8.5 11.24h-6.66l-5.21-6.82-5.97 6.82H1.68l7.73-8.84L1.25 2.25h6.83l4.71 6.23zm-1.16 17.52h1.83L7.08 4.13H5.12z"/>' },
@@ -2388,7 +2403,7 @@
     d.svg.setAttribute("width", W); d.svg.setAttribute("height", H);
     return Promise.all([
       carregarImagem("data:image/svg+xml;charset=utf-8," + encodeURIComponent(serializar(d.svg))),
-      d.pal.fundo ? carregarImagem(d.pal.fundo) : Promise.resolve(null)
+      d.pal.fundo ? carregarImagem(noSite(d.pal.fundo)) : Promise.resolve(null)
     ]).then(function (r) {
       var c = document.createElement("canvas");
       c.width = W; c.height = H;
@@ -2499,7 +2514,7 @@
 
   // ---------- carga ----------
   function carregarLogo() {
-    return fetch("assets/logo-ftm.svg").then(function (r) { return r.text(); }).then(function (txt) {
+    return fetch(noSite("assets/logo-ftm.svg")).then(function (r) { return r.text(); }).then(function (txt) {
       var raiz = new DOMParser().parseFromString(txt, "image/svg+xml").documentElement;
       var vb = raiz.getAttribute("viewBox").split(/\s+/).map(Number);
       var nos = [];
@@ -2537,7 +2552,7 @@
       });
     });
     return Promise.all(Object.keys(caminhos).map(function (url) {
-      return fetch(url).then(function (r) {
+      return fetch(noSite(url)).then(function (r) {
         if (!r.ok) throw new Error(r.status);
         return r.blob();
       }).then(function (b) {
@@ -2876,7 +2891,7 @@
     d.svg.setAttribute("width", w); d.svg.setAttribute("height", h);
     return Promise.all([
       carregarImagem("data:image/svg+xml;charset=utf-8," + encodeURIComponent(serializar(d.svg))),
-      d.pal.fundo ? carregarImagem(d.pal.fundo) : Promise.resolve(null)
+      d.pal.fundo ? carregarImagem(noSite(d.pal.fundo)) : Promise.resolve(null)
     ]).then(function (r) {
       var c = document.createElement("canvas");
       c.width = PREVIA.W; c.height = PREVIA.H;

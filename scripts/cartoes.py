@@ -48,8 +48,12 @@ import threading
 import functools
 import http.server
 
-RAIZ = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-SAIDA = os.path.join(RAIZ, "c")
+# SITE é a pasta servida (a que tem app.js, index.html e a pasta de dados);
+# por padrão a raiz deste repositório. No lps-ftm o deploy aponta para o build
+# (dist/interno/dados), onde os números moram em protegido/.
+RAIZ = os.path.abspath(os.environ.get("SITE") or os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+PASTA_DADOS = os.environ.get("PASTA_DADOS", "dados")
+SAIDA = os.path.abspath(os.environ.get("SAIDA") or os.path.join(RAIZ, "c"))
 MANIFESTO = os.path.join(SAIDA, "manifesto.json")
 
 # Onde as páginas de prévia ficam publicadas (o X precisa alcançá-las sem
@@ -63,7 +67,7 @@ def fontes():
     """Os arquivos de dados, na ordem do app.js (a lista FONTES)."""
     js = open(os.path.join(RAIZ, "app.js"), encoding="utf-8").read()
     bloco = re.search(r"var FONTES = \[(.*?)\];", js, re.S).group(1)
-    return re.findall(r'"(dados/[^"]+\.json)"', bloco)
+    return [os.path.join(PASTA_DADOS, os.path.basename(n)) for n in re.findall(r'"([^"]+\.json)"', bloco)]
 
 
 def graficos():
