@@ -136,6 +136,136 @@
      "nota": "A Anthropic captou parte do dinheiro com **notas conversíveis** e outros instrumentos que viram ações. Eles ficam no balanço como passivo, medido a **valor justo**: quando a empresa passa a valer mais, o direito de converter vale mais, o passivo cresce e a diferença entra no resultado como despesa. Foram US$ 72 bi no 1º semestre de 2026.\n\nÉ uma despesa **não caixa** — nenhum dinheiro saiu da empresa. Ela é o reflexo contábil da valorização da Anthropic, que foi de US$ 380 bi na série G (fevereiro) a US$ 965 bi na série H (maio) e mira até US$ 2 tri no IPO. Quando os papéis viram ações, o passivo deixa de existir."
     },
     {
+     "id": "anthropic-resultado",
+     "painel": "pilhas",
+     "titulo": "Anthropic: a demonstração de resultado do semestre",
+     "subtitulo": "1º semestre, em US$ bilhões; ≈ é medido no gráfico do WSJ, e em 2025 pessoal e vendas estão em outras operacionais",
+     "unidade": "usd-bi",
+     "fonte": "Anthropic, rascunho do prospecto (S-1), via The Wall Street Journal (20/10/2026); valores com ≈ medidos no gráfico do WSJ",
+     "colunas": [
+      "1º sem. 2025",
+      "1º sem. 2026"
+     ],
+     "colunasCurtas": [
+      "2025",
+      "2026"
+     ],
+     "itens": [
+      {
+       "rot": "Receita",
+       "v": [
+        1.1,
+        16.3
+       ],
+       "cor": "#4BACC6"
+      },
+      {
+       "rot": "Juros recebidos",
+       "v": [
+        null,
+        1.1
+       ],
+       "cor": "#9DD3E2",
+       "medido": [
+        false,
+        true
+       ]
+      },
+      {
+       "rot": "Computação e infraestrutura",
+       "v": [
+        -2.3,
+        -9.0
+       ],
+       "cor": "#E46C0A",
+       "medido": [
+        false,
+        true
+       ]
+      },
+      {
+       "rot": "Pessoal",
+       "v": [
+        null,
+        -3.1
+       ],
+       "cor": "#F79646",
+       "medido": [
+        false,
+        true
+       ]
+      },
+      {
+       "rot": "Vendas e marketing",
+       "v": [
+        null,
+        -3.1
+       ],
+       "cor": "#F79646",
+       "medido": [
+        false,
+        true
+       ]
+      },
+      {
+       "rot": "Outras despesas operacionais",
+       "v": [
+        -0.7,
+        -1.8
+       ],
+       "cor": "#F79646",
+       "medido": [
+        true,
+        true
+       ]
+      },
+      {
+       "rot": "Valor justo dos conversíveis e outros instrumentos",
+       "v": [
+        -11.1,
+        -72.0
+       ],
+       "cor": "#C0504D",
+       "medido": [
+        true,
+        false
+       ]
+      },
+      {
+       "rot": "Outras despesas",
+       "v": [
+        null,
+        -9.1
+       ],
+       "cor": "#D99694",
+       "medido": [
+        false,
+        true
+       ]
+      }
+     ],
+     "marcos": [
+      {
+       "rot": "Resultado operacional",
+       "v": [
+        -1.9,
+        -0.7
+       ],
+       "medido": [
+        true,
+        true
+       ]
+      },
+      {
+       "rot": "Prejuízo líquido",
+       "v": [
+        -13.0,
+        -80.7
+       ]
+      }
+     ]
+    },
+    {
      "id": "anthropic-riscos",
      "painel": "paginas",
      "titulo": "Anthropic: um terço do prospecto são fatores de risco",

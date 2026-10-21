@@ -954,6 +954,121 @@
       });
     },
 
+    // Demonstração de resultado em colunas empilhadas, uma por período, como
+    // no WSJ: o que entra sobe do zero (na ordem da lista), o que sai desce.
+    // "marcos" são as linhas de subtotal (resultado operacional, prejuízo)
+    // riscadas sobre as colunas. À direita, uma tabela com uma linha por
+    // faixa, na altura dela na última coluna, e um valor por período;
+    // "medido" põe "≈" no valor, null vira "—".
+    pilhas: function (svg, g, c, ctx) {
+      var u = ctx.u, pal = ctx.pal, F = ctx.F, nC = g.colunas.length, ult = nC - 1;
+      // a tabela: nome + uma coluna de valor por período
+      var fsN = u * (ctx.estreito ? 0.82 : 0.95), fsV = fsN;
+      // na tabela e no celular, o período curto ("2026")
+      var curtas = g.colunasCurtas || g.colunas;
+      function txtV(v, aprox) {
+        if (v === null || v === undefined) return "—";
+        return (aprox ? "≈ " : "") + (v < 0 ? "−" : "") + nf(1).format(Math.abs(v));
+      }
+      var linhasT = g.itens.map(function (it) { return { it: it, marco: false }; })
+        .concat((g.marcos || []).map(function (m) { return { it: m, marco: true }; }));
+      var wValor = Math.max.apply(null, linhasT.map(function (l) {
+        return Math.max.apply(null, l.it.v.map(function (v, k) {
+          return largura(txtV(v, l.it.medido && l.it.medido[k]), fsV, "bold");
+        }));
+      }).concat([largura(curtas[0], fsV * 0.85, "bold")])) + u * 1.2;
+      // a tabela tem a largura do texto dela: nome mais longo (até um teto) e valores
+      var pad = fsN * 0.8 + u * 0.3;
+      var nomeMax = Math.max.apply(null, linhasT.map(function (l) { return largura(l.it.rot, fsN, l.marco ? "bold" : null); }));
+      var wNome = Math.min(nomeMax, (ctx.estreito ? (c.x1 - c.x0) * 0.62 : 700) - wValor * nC - pad - u);
+      var xT = c.x1 - (pad + wNome + u + wValor * nC), xV0 = c.x1 - wValor * nC;
+
+      // escala: do maior empilhado para cima ao maior para baixo
+      var topo = 0, fundo = 0;
+      for (var k = 0; k < nC; k++) {
+        var p = 0, n = 0;
+        g.itens.forEach(function (it) { var v = it.v[k] || 0; if (v > 0) p += v; else n += v; });
+        topo = Math.max(topo, p); fundo = Math.min(fundo, n);
+      }
+      var esc = escalaY(fundo, topo, { alvo: 6 });
+      var y0 = c.y0 + u * 2.6, y1 = c.y1;   // cabeçalho das colunas em cima
+      var Y = function (v) { return y1 - (v - esc.min) / (esc.max - esc.min) * (y1 - y0); };
+      var tw = Math.max.apply(null, esc.ticks.map(function (t) { return largura(F.eixo(t, esc.passo), u); }));
+      var xg0 = c.x0 + tw + u * 0.6, xg1 = xT - u * (ctx.estreito ? 2.2 : 5);
+      var slot = (xg1 - xg0) / nC, bw = Math.min(slot * 0.62, 260);
+      function cx(k) { return xg0 + slot * (k + 0.5); }
+
+      esc.ticks.forEach(function (t) {
+        var y = Y(t), zero = Math.abs(t) < 1e-9;
+        svg.appendChild(el("line", { x1: xg0, x2: xg1, y1: y, y2: y, stroke: zero ? pal.zero : pal.grade, "stroke-width": zero ? 1.5 : 1.2 }));
+        svg.appendChild(texto(F.eixo(t, esc.passo), { x: xg0 - u * 0.5, y: y, "font-size": u, fill: pal.eixo, "text-anchor": "end", "dominant-baseline": "central" }));
+      });
+      (ctx.estreito ? curtas : g.colunas).forEach(function (rot, k) {
+        svg.appendChild(texto(rot, { x: cx(k), y: c.y0 + u, "font-size": corpoQueCabe(rot, u * 1.05, slot * 0.92, "bold"),
+          "font-weight": "bold", fill: pal.texto, "text-anchor": "middle" }));
+      });
+
+      // as faixas; guarda o meio de cada uma na última coluna, para a tabela
+      var meio = [];
+      for (var k2 = 0; k2 < nC; k2++) {
+        var bp = 0, bn = 0;
+        g.itens.forEach(function (it, j) {
+          var v = it.v[k2] || 0;
+          var a = v >= 0 ? bp : bn, b = a + v;
+          if (v >= 0) bp = b; else bn = b;
+          if (k2 === ult) meio[j] = Y((a + b) / 2);
+          if (!v) return;
+          // 1px de folga em cada ponta: o fundo aparece entre uma faixa e outra
+          var ya = Y(Math.max(a, b)), yb = Y(Math.min(a, b));
+          svg.appendChild(el("rect", { x: cx(k2) - bw / 2, y: ya + 1, width: bw, height: Math.max(1, yb - ya - 2), fill: corNoTema(it.cor, pal) }));
+        });
+      }
+      (g.marcos || []).forEach(function (m) {
+        m.v.forEach(function (v, k) {
+          if (v === null) return;
+          svg.appendChild(el("line", { x1: cx(k) - bw / 2 - u * 0.5, x2: cx(k) + bw / 2 + u * 0.5, y1: Y(v), y2: Y(v), stroke: pal.texto, "stroke-width": 3.5 }));
+        });
+      });
+
+      // a tabela, afastando as linhas que se encostam (como os rótulos da ponta)
+      svg.appendChild(texto("US$ bi", { x: xT, y: c.y0 + u, "font-size": fsV * 0.85, fill: pal.suave }));
+      curtas.forEach(function (rot, k) {
+        svg.appendChild(texto(rot, { x: xV0 + wValor * (k + 1), y: c.y0 + u, "font-size": fsV * 0.85, "font-weight": "bold", fill: pal.suave, "text-anchor": "end" }));
+      });
+      var blocos = linhasT.map(function (l, j) {
+        var nome = quebrar(l.it.rot, fsN, wNome, l.marco ? "bold" : null);
+        return { l: l, nome: nome, h: nome.length * fsN * 1.18 + u * 0.55,
+                 alvo: l.marco ? Y(l.it.v[ult]) : meio[j] };
+      }).sort(function (a, b) { return a.alvo - b.alvo; });
+      blocos.forEach(function (b, j) {
+        b.y = Math.max(b.alvo - b.h / 2, c.y0 + u * 1.5);   // abaixo do cabeçalho
+        if (j && b.y < blocos[j - 1].y + blocos[j - 1].h) b.y = blocos[j - 1].y + blocos[j - 1].h;
+      });
+      for (var j = blocos.length - 1; j >= 0; j--) {
+        var teto = j === blocos.length - 1 ? c.y1 + u : blocos[j + 1].y;
+        if (blocos[j].y + blocos[j].h > teto) blocos[j].y = teto - blocos[j].h;
+      }
+      blocos.forEach(function (b) {
+        var it = b.l.it, cor = b.l.marco ? pal.texto : corNoTema(it.cor, pal);
+        var yc = b.y + b.h / 2, xc = cx(ult) + bw / 2;
+        // fio da faixa (ou do marco) até a linha da tabela
+        svg.appendChild(el("polyline", {
+          points: (xc + (b.l.marco ? u * 0.5 : 0)) + "," + b.alvo + " " + (xT - u * 1.6) + "," + b.alvo + " " + (xT - u * 0.4) + "," + yc,
+          fill: "none", stroke: cor, "stroke-width": 1.5, opacity: 0.8
+        }));
+        if (!b.l.marco) svg.appendChild(el("rect", { x: xT - u * 0.4, y: yc - fsN * 0.4, width: fsN * 0.8, height: fsN * 0.8, fill: cor }));
+        var xNome = xT + (b.l.marco ? 0 : pad);
+        var yN = yc - b.nome.length * fsN * 1.18 / 2;
+        linhasDeTexto(svg, b.nome, xNome, yN, fsN, { fill: pal.texto, "font-weight": b.l.marco ? "bold" : null }, 1.18);
+        it.v.forEach(function (v, k) {
+          svg.appendChild(texto(txtV(v, it.medido && it.medido[k]), {
+            x: xV0 + wValor * (k + 1), y: yc, "font-size": fsV, "font-weight": k === ult || b.l.marco ? "bold" : null,
+            fill: k === ult || b.l.marco ? pal.texto : pal.suave, "text-anchor": "end", "dominant-baseline": "central"
+          }));
+        });
+      });
+    },
+
     // As páginas de um documento, com a fração que interessa pintada, e a
     // lista do que há nela.
     paginas: function (svg, g, c, ctx) {
@@ -1037,6 +1152,11 @@
     }
     if (g.painel === "barras") return g.linhas.map(function (l) { return [l.rot, l.v]; });
     if (g.painel === "paginas") return g.itens.map(function (it) { return [it.t, it.d]; });
+    if (g.painel === "pilhas") {
+      return g.itens.concat(g.marcos || []).map(function (it) {
+        return [it.rot].concat(it.v.map(function (v) { return v === null ? "" : v; }));
+      });
+    }
     return [];
   }
 
@@ -2053,7 +2173,7 @@
     // fundo (legenda: false): na tela ela é contexto, no CSV é dado
     var g = graficoDe(cartao), cols = g.series;
     if (g.painel) {
-      var ls = [["item", "valor"]].concat(linhasDoPainel(g)).map(function (l) {
+      var ls = [["item"].concat(g.painel === "pilhas" ? g.colunas : ["valor"])].concat(linhasDoPainel(g)).map(function (l) {
         return l.map(function (x) { return String(x).replace(/;/g, ",").replace(/^(-?\d+)\.(\d+)$/, "$1,$2"); }).join(";");
       });
       salvar(new Blob(["\ufeff" + ls.join("\r\n")], { type: "text/csv;charset=utf-8" }), nomeArquivo(cartao, "csv"));

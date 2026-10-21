@@ -24,6 +24,24 @@ todo número abaixo é o que a reportagem cita.
 - Computação e infraestrutura: US$ 2,3 bi e "quase US$ 9 bi" — entra 9,0
   marcado como aproximado.
 
+DEMONSTRAÇÃO DE RESULTADO (o cartão em colunas, como o gráfico do WSJ)
+
+O texto da reportagem só traz receita, computação, valor justo de 2026 e
+prejuízo. Juros, pessoal, vendas, a quarta faixa das despesas operacionais
+(sem nome no WSJ), outras despesas e o valor justo de 2025 existem só como
+altura de barra no gráfico do jornal, e foram MEDIDOS nele, em pixels, em
+21/10/2026: grade de 25 em 25 bi a 111,4 px, ou 4,46 px por bilhão, zero em
+y = 249,75. A conferência bate com o texto: receita de 2026 mede 16,2 (16,3),
+valor justo 72,4 (72) e a linha do prejuízo cai em −80,7. Erro de ±0,3 bi.
+
+- 2026: juros +1,1; pessoal −3,1; vendas −3,1; outras operacionais −1,8; a
+  linha do resultado operacional mede −0,7 e a conta dá 16,3 − 17,0 = −0,7.
+  Outras despesas fecham a conta no prejuízo de 80,7 (−9,1; medido −8,9).
+- 2025: as despesas operacionais medem 3,0 no total, sem divisão visível; a
+  computação é 2,3 (texto), e o resto, −0,7, vai para "outras operacionais".
+  O valor justo fecha no prejuízo de 13 (−11,1; medido −11,2). Juros e
+  outras despesas não aparecem.
+
 IPO: a SpaceX abriu capital na Nasdaq em 12/06/2026 a US$ 135 por ação, o que
 dá US$ 1,77 tri; captou US$ 85,7 bi com o lote suplementar (Reuters). A
 Anthropic pode chegar a US$ 2 tri no IPO (WSJ), ainda sem preço; a última
@@ -130,6 +148,38 @@ def main():
         ),
     }
 
+    # US$ bi; None = não aparece; medido = lido no gráfico do WSJ (ver o cabeçalho)
+    juros = (None, 1.1)
+    pessoal, vendas, outras_op = (None, -3.1), (None, -3.1), (-0.7, -1.8)
+    op = [round(RECEITA[k] - COMPUTACAO[k] - sum(-(x[k] or 0) for x in (pessoal, vendas, outras_op)), 1) for k in (0, 1)]
+    outras = (None, round(-PREJUIZO[1] - op[1] - juros[1] + VALOR_JUSTO, 1))
+    vj25 = round(-PREJUIZO[0] - op[0], 1)
+    assert op == [-1.9, -0.7] and outras[1] == -9.1 and vj25 == -11.1, (op, outras, vj25)
+    LARANJA_ESCURO = "#E46C0A"
+    demonstrativo = {
+        "id": "anthropic-resultado", "painel": "pilhas",
+        "titulo": "Anthropic: a demonstração de resultado do semestre",
+        "subtitulo": "1º semestre, em US$ bilhões; ≈ é medido no gráfico do WSJ, e em 2025 pessoal e vendas estão em outras operacionais",
+        "unidade": "usd-bi",
+        "fonte": S1 + "; valores com ≈ medidos no gráfico do WSJ",
+        "colunas": ["1º sem. 2025", "1º sem. 2026"],
+        "colunasCurtas": ["2025", "2026"],
+        "itens": [
+            {"rot": "Receita", "v": list(RECEITA), "cor": AZUL_CLARO},
+            {"rot": "Juros recebidos", "v": list(juros), "cor": "#9DD3E2", "medido": [False, True]},
+            {"rot": "Computação e infraestrutura", "v": [-COMPUTACAO[0], -COMPUTACAO[1]], "cor": LARANJA_ESCURO, "medido": [False, True]},
+            {"rot": "Pessoal", "v": list(pessoal), "cor": LARANJA, "medido": [False, True]},
+            {"rot": "Vendas e marketing", "v": list(vendas), "cor": LARANJA, "medido": [False, True]},
+            {"rot": "Outras despesas operacionais", "v": list(outras_op), "cor": LARANJA, "medido": [True, True]},
+            {"rot": "Valor justo dos conversíveis e outros instrumentos", "v": [vj25, -VALOR_JUSTO], "cor": VERMELHO, "medido": [True, False]},
+            {"rot": "Outras despesas", "v": list(outras), "cor": "#D99694", "medido": [False, True]},
+        ],
+        "marcos": [
+            {"rot": "Resultado operacional", "v": op, "medido": [True, True]},
+            {"rot": "Prejuízo líquido", "v": [-PREJUIZO[0], -PREJUIZO[1]]},
+        ],
+    }
+
     riscos = {
         "id": "anthropic-riscos", "painel": "paginas",
         "titulo": "Anthropic: um terço do prospecto são fatores de risco",
@@ -160,7 +210,7 @@ def main():
         "referencia": "2026-06",
         "fonte": "The Wall Street Journal (rascunho do prospecto da Anthropic), Reuters e Orrick",
         "categoria": "Ações EUA",
-        "secoes": [{"titulo": "Anthropic", "graficos": [receita, prejuizo, ipo, computacao, composicao, riscos]}],
+        "secoes": [{"titulo": "Anthropic", "graficos": [receita, prejuizo, ipo, computacao, composicao, demonstrativo, riscos]}],
     }
     with open(SAIDA, "w", encoding="utf-8") as f:
         json.dump(doc, f, ensure_ascii=False, indent=1)

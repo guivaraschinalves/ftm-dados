@@ -437,6 +437,13 @@ caixa do mouse.
   `contorno: true` deixa a barra tracejada (o que ainda é intenção) e
   `prefixo` vai antes do valor ("até ").
 - `paginas`: `paginas: {total, marcadas, cor, legenda}` e a lista `itens: [{t, d}]`.
+- `pilhas`: demonstração de resultado em colunas empilhadas, como no WSJ.
+  `colunas` (e `colunasCurtas`, para a tabela e o celular), `itens: [{rot, v:
+  [um por coluna], cor, medido}]` — positivo sobe, negativo desce, na ordem
+  da lista — e `marcos` (subtotais riscados sobre as colunas). À direita,
+  uma tabela com os valores; `medido` põe "≈", `null` vira "—". No cartão da
+  Anthropic, as linhas sem número no texto do WSJ foram medidas em pixels no
+  gráfico do jornal (o cabeçalho do `acoes_eua.py` tem a régua e a conferência).
 
 Unidade nova: `usd-bi-tri` (valor em bilhões; escreve "US$ 965 bi" e
 "US$ 1,77 tri"). Para conferir um cartão em pé, o modo de prévia aceita o
