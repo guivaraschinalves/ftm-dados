@@ -44,6 +44,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import functools
 import http.server
@@ -131,13 +132,20 @@ def imagem(chrome, id_, tentativas=3):
     for _ in range(tentativas):
         # --disable-dev-shm-usage: com vários Chrome juntos a memória
         # compartilhada (/dev/shm) acaba e eles travam sem dar erro
+        # cache próprio, apagado no fim: sem ele cada imagem deixa um
+        # scoped_dir em ~/.cache que o Chrome nunca apaga. (--user-data-dir
+        # não serve: com ele o --dump-dom trava.)
+        cache = tempfile.mkdtemp(prefix="cartoes-chrome-")
         try:
             r = subprocess.run([chrome, "--headless=new", "--no-sandbox", "--disable-gpu", "--hide-scrollbars",
                                 "--disable-dev-shm-usage", "--virtual-time-budget=25000", "--dump-dom", url],
-                               capture_output=True, text=True, timeout=120)
+                               capture_output=True, text=True, timeout=120,
+                               env=dict(os.environ, XDG_CACHE_HOME=cache))
         except subprocess.TimeoutExpired:
             m = None
             continue
+        finally:
+            shutil.rmtree(cache, ignore_errors=True)
         m = re.search(r'<pre id="imagem-pronta">([^<]*)</pre>', r.stdout)
         if m and m.group(1).startswith("data:image/jpeg;base64,"):
             return base64.b64decode(m.group(1).split(",", 1)[1])
