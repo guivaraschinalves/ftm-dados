@@ -532,10 +532,12 @@ def divida_externa(bruta, liquida, publica, privada, reservas, credores, pib12):
                 [serie("Dívida externa pública", AZUL, pct(publica, devedores), rotulo=True)],
                 unidade="%", trimestral=True),
         grafico("bp-divida-externa-pib", "Dívida Externa em % do PIB",
-                "% do PIB acumulado em 12 meses, em US$, fim de trimestre",
-                [serie("Dívida externa bruta", VERMELHO, pct(bruta, pib), rotulo=True),
-                 serie("Dívida externa líquida", BRANCO, pct(liquida, pib), rotulo=True)],
-                unidade="%", trimestral=True),
+                "% do PIB acumulado em 12 meses, em US$, fim de trimestre", [],
+                unidade="%", trimestral=True, variantes=[
+                    dict(rot="Bruta", series=[serie("Dívida externa bruta", VERMELHO, pct(bruta, pib), rotulo=True)]),
+                    dict(rot="Líquida", series=[
+                        barra("Dívida externa líquida", VERMELHO, pct(liquida, pib), rotulo=True)]),
+                ]),
         grafico("bp-divida-externa-credores", "Dívida Externa Bruta por Credor", "Fim de trimestre", [],
                 trimestral=True, barra=1, variantes=[
                     dict(rot="US$ bilhões", series=[barra(n, c, so(d, tri_cred)) for n, c, d in credores]),
