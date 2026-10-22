@@ -125,6 +125,7 @@ ESPECIAIS = "https://www.bcb.gov.br/content/estatisticas/Documents/Tabelas_espec
 URL_TABELA = ESPECIAIS + "BalPagM.xlsx"
 URL_DIVEXT = ESPECIAIS + "DivExt_T.xls"       # só sai em .xls
 URL_DIVGGP = ESPECIAIS + "Divggp.xlsx"
+URL_PII = ESPECIAIS + "PII_T.xlsx"                 # posição internacional de investimento, trimestral
 URL_RESERVAS = ESPECIAIS + "qsreservasp.xlsx"   # template de reservas (FMI/SDDS), mensal
 
 # Onde cada gráfico começa, como no slide.
@@ -607,6 +608,76 @@ def divida_externa(bruta, liquida, publica, privada, reservas, reservas_mes, cre
     ])
 
 
+def pii(conteudo, pib12):
+    """Posição internacional de investimento, da tabela especial PII_T.xlsx.
+
+    Duas abas, PII_Ativo_T e PII_Passivo_T, US$ milhões, posição de fim de
+    trimestre (dez/2001 e, de 2002 em diante, todo trimestre). A linha 5 traz o
+    ano na primeira coluna de cada ano e a linha 7, o mês (Mar, Jun, Set, Dez).
+    As linhas são achadas pelo nome das grandes contas, não pela posição. O
+    script confere que as contas somam o ativo e o passivo totais e que ativo
+    menos passivo dá a linha "Posição de investimento internacional (A-B)".
+    """
+    MES = {"Mar": 1, "Jun": 2, "Set": 3, "Dez": 4}
+
+    def aba(nome):
+        cel = celulas_xlsx(conteudo, nome)
+        anos, cols, ano = cel.get(5, {}), {}, None
+        for c in sorted(cel.get(7, {})):
+            if c in anos:
+                ano = int(float(anos[c]))
+            m = MES.get(str(cel[7][c]).strip())
+            if ano and m:
+                cols[c] = "%d-Q%d" % (ano, m)
+        linhas = {}
+        for r in sorted(cel):
+            rot = str(cel[r].get(1, "")).strip()
+            if rot and rot not in linhas:      # a primeira ocorrência é a grande conta
+                linhas[rot] = {cols[c]: float(v) for c, v in cel[r].items() if c in cols}
+        return linhas
+
+    at, pa = aba("PII_Ativo_T"), aba("PII_Passivo_T")
+    ATIVO = ["Investimento direto no exterior", "Investimentos em carteira",
+             "Derivativos financeiros (exceto reservas)", "Outros investimentos", "Ativos de reservas"]
+    PASSIVO = ["Investimento direto no país", "Investimentos em carteira",
+               "Derivativos financeiros (exceto reservas)", "Outros investimentos"]
+    falta = [n for n in ATIVO + ["Ativo (A)", "Posição de investimento internacional (A-B)"] if n not in at] + \
+            [n for n in PASSIVO + ["Passivo (B)"] if n not in pa]
+    if falta:
+        raise RuntimeError("a PII_T não tem: %s" % ", ".join(falta))
+    total_a, total_p = at["Ativo (A)"], pa["Passivo (B)"]
+    liquida = at["Posição de investimento internacional (A-B)"]
+    tris = sorted(t for t in liquida if t in total_a and t in total_p)
+    for t in tris:
+        sa, sp = sum(at[n].get(t, 0) for n in ATIVO), sum(pa[n].get(t, 0) for n in PASSIVO)
+        if abs(sa - total_a[t]) > 1 or abs(sp - total_p[t]) > 1 or abs(total_a[t] - total_p[t] - liquida[t]) > 1:
+            raise RuntimeError("PII não fecha em %s: ativo %.0f × %.0f, passivo %.0f × %.0f, líquida %.0f × %.0f"
+                               % (t, sa, total_a[t], sp, total_p[t], total_a[t] - total_p[t], liquida[t]))
+    print("  PII: %d trimestres (%s a %s), as contas fecham com os totais" % (len(tris), tris[0], tris[-1]))
+
+    so = lambda d, k=1: {t: k * d[t] / 1000 for t in tris if t in d}   # noqa: E731
+    pib = fim_de_trimestre(pib12)
+    ativos = [("ID no exterior", AZUL, at[ATIVO[0]]), ("Carteira no exterior", CIANO, at[ATIVO[1]]),
+              ("Derivativos: ativo", AMARELO, at[ATIVO[2]]), ("Outros: ativo", VERDE, at[ATIVO[3]]),
+              ("Ativos de reservas", LARANJA, at[ATIVO[4]])]
+    passivos = [("ID no país", AZUL_ESCURO, pa[PASSIVO[0]]), ("Carteira no país", ROXO, pa[PASSIVO[1]]),
+                ("Derivativos: passivo", "#C9A227", pa[PASSIVO[2]]), ("Outros: passivo", "#77933C", pa[PASSIVO[3]])]
+    SUB = "US$ bilhões, fim de trimestre"
+    return dict(titulo="Posição internacional de investimento", graficos=[
+        grafico("bp-pii-ativos-passivos", "Posição Internacional de Investimento: ativos e passivos",
+                SUB + "; ID é investimento direto; ativos acima de zero, passivos abaixo, e a linha é a PII líquida",
+                [barra(n, c, so(d)) for n, c, d in ativos] + [barra(n, c, so(d, -1)) for n, c, d in passivos]
+                + [serie("PII líquida", BRANCO, so(liquida), rotulo=True)],
+                trimestral=True, barra=1, selecao=True),
+        grafico("bp-pii-liquida-pib", "Posição Internacional de Investimento Líquida em % do PIB",
+                "% do PIB acumulado em 12 meses, em US$, fim de trimestre; abaixo de zero, os passivos externos"
+                " superam os ativos",
+                [serie("PII líquida", VERMELHO, {t: 100 * liquida[t] / pib[t] for t in tris if t in pib},
+                       corNegativa=VERMELHO, rotulo=True)],
+                unidade="%", trimestral=True),
+    ])
+
+
 def achar(linhas, prefixo, depois=0):
     """Número da 1ª linha, depois de `depois`, cujo rótulo começa com `prefixo`."""
     for r in sorted(linhas):
@@ -777,6 +848,8 @@ def main():
     pib12, pib_mes = sgs(PIB_12, "1990-01"), sgs(PIB_MES, "1990-01")
 
     secoes = graficos(s, dolar, pib12, pib_mes)
+    print("Baixando a PII_T…")
+    secoes.append(pii(baixar(URL_PII), pib12))
     print("Baixando a dívida externa do SGS…")
     d = lambda c: sgs(c, "1970-01")                                  # noqa: E731
     secoes.append(divida_externa(d(DIVIDA_BRUTA), d(DIVIDA_LIQUIDA), d(DIVIDA_PUBLICA), d(DIVIDA_PRIVADA),
