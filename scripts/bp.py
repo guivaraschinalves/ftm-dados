@@ -510,8 +510,11 @@ def divida_externa(bruta, liquida, publica, privada, reservas, credores, pib12):
     passivos = [barra(PUB, AZUL, so(publica)), barra(PRI, CIANO, so(privada))]
     return dict(titulo="Dívida externa", graficos=[
         grafico("bp-divida-externa-liquida", "Dívida Externa Líquida do Brasil",
-                SUB + "; abaixo de zero, os ativos externos superam a dívida bruta",
-                [barra("Dívida externa líquida", VERMELHO, so(liquida), rotulo=True)],
+                SUB + "; acima de zero, o Brasil é devedor externo líquido",
+                [barra("Devedor externo líquido", VERMELHO, {t: max(v, 0) for t, v in so(liquida).items()},
+                       rotulo=liquida[tri[-1]] >= 0),
+                 barra("Credor externo líquido", AZUL, {t: min(v, 0) for t, v in so(liquida).items()},
+                       rotulo=liquida[tri[-1]] < 0)],
                 trimestral=True),
         grafico("bp-divida-externa-ativos-passivos", "Ativos e Passivos da Dívida Externa",
                 SUB + "; a pública inclui a privada com garantia pública; outros ativos são haveres de"
