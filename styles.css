@@ -260,6 +260,67 @@ details[open] > summary > .seta, details[open] > .nav-rotulo > .seta, details[op
 .secao-rotulo:hover { color: var(--accent); }
 .secao-graficos { display: grid; gap: 20px; padding: 8px 0 24px; }
 
+/* ---------- favoritos ---------- */
+/* estrela do cabeçalho, com a contagem num selo, e o painel com a lista: o
+   mesmo desenho da gaveta de temas, pendurado embaixo do cabeçalho */
+#favoritos { position: relative; }
+.favoritos-conta {
+  position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 9px; background: var(--accent-fill); color: #fff;
+  font-size: 11px; font-weight: 700; line-height: 18px; text-align: center;
+}
+.favoritos-conta[hidden] { display: none; }
+#favoritos[aria-expanded="true"] { background: var(--hover); border-color: var(--control-border); }
+.favoritos-painel {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 41;
+  display: flex; flex-direction: column; gap: 10px;
+  max-height: calc(100dvh - 64px); overflow-y: auto; overscroll-behavior: contain;
+  padding: 16px 16px 20px; background: var(--bg); border-bottom: 1px solid var(--border);
+  box-shadow: 0 24px 40px rgba(0, 0, 0, .45);
+}
+.favoritos-painel[hidden] { display: none; }
+.lateral[data-fav="true"] {
+  background: rgba(0, 0, 0, .85); border-bottom-color: var(--border);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+}
+:root[data-theme="light"] .lateral[data-fav="true"] { background: rgba(244, 245, 247, .9); }
+@media (min-width: 861px) {
+  .favoritos-painel {
+    left: auto; right: 24px; top: calc(100% + 6px); width: 380px; max-height: calc(100vh - 80px);
+    border: 1px solid var(--border); border-radius: var(--raio-md);
+  }
+}
+.favoritos-lista { display: flex; flex-direction: column; gap: 2px; }
+.favoritos-vazio { margin: 0; padding: 4px 8px; font-size: 13.5px; font-weight: 300; color: var(--ink-2); line-height: 1.45; }
+.fav-item { display: flex; align-items: center; gap: 4px; }
+.fav-link {
+  flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px;
+  padding: 8px; border-radius: var(--raio-md); color: var(--ink); text-decoration: none;
+  transition: background-color .15s;
+}
+.fav-link:hover { background: var(--hover); }
+.fav-titulo { font-size: 14px; font-weight: 500; line-height: 1.3; }
+.fav-cat { font-size: 12px; color: var(--ink-2); }
+.fav-tirar {
+  flex: none; width: 30px; height: 30px; border-radius: 50%; border: 0; background: transparent;
+  color: var(--ink-2); font-size: 13px; cursor: pointer;
+}
+.fav-tirar:hover { background: var(--hover); color: var(--ink); }
+
+/* estrela do cartão: na ponta direita da linha do título */
+.card-titulos { flex: 1 1 auto; min-width: 0; }
+.card-fav {
+  flex: none; align-self: flex-start; display: grid; place-items: center;
+  width: 36px; height: 36px; margin: -6px -6px 0 0; border-radius: 50%;
+  border: 0; background: transparent; color: var(--ink-2); cursor: pointer;
+  transition: background-color .15s, color .15s, transform .15s;
+}
+.card-fav:hover { background: var(--hover); color: var(--ink); }
+.card-fav:active { transform: scale(.9); }
+.card-fav[aria-pressed="true"] { color: #F5B301; }
+.card-fav[aria-pressed="true"] svg path { fill: currentColor; }
+:root[data-theme="light"] .card-fav[aria-pressed="true"] { color: #D99A00; }
+
 /* ---------- cartão do gráfico (retrátil) ---------- */
 /* Sem overflow: hidden aqui. Ele existia só para o desenho não vazar dos
    cantos arredondados, mas também cortava o menu de baixar quando ele caía

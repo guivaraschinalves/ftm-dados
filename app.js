@@ -2128,7 +2128,19 @@
     cabecalho.appendChild(seta());
     var titulos = html("div", {}, [html("h3", { "class": "card-titulo", texto: g.titulo })]);
     if (g.subtitulo) titulos.appendChild(html("p", { "class": "card-sub", texto: g.subtitulo }));
+    titulos.className = "card-titulos";
     cabecalho.appendChild(titulos);
+    // estrela de favorito, na ponta direita da linha do título. Fica dentro
+    // do <summary>: o clique nela não pode abrir nem fechar o cartão.
+    var fav = html("button", { type: "button", "class": "card-fav" });
+    fav.appendChild(estrela(18));
+    fav.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      alternarFavorito(g.id);
+    });
+    cartao.botaoFav = fav;
+    cabecalho.appendChild(fav);
     raiz.appendChild(cabecalho);
 
     var ferramentas = html("div", { "class": "card-tools" });
@@ -2804,6 +2816,100 @@
 
   // Link do menu para um gráfico dentro de categoria, seção ou cartão fechado:
   // abre tudo que estiver no caminho antes de rolar até lá.
+  // ---------- favoritos ----------
+  // A lista mora no navegador (localStorage), por aparelho, como o tema: uma
+  // lista de ids de gráfico na ordem em que foram marcados. Id que deixou de
+  // existir (gráfico removido) some da lista na primeira vez que ela é lida.
+  var CHAVE_FAV = "ftm_dados_favoritos";
+  var ESTRELA_D = "M12 2.8l2.83 5.73 6.32.92-4.57 4.46 1.08 6.3L12 17.24l-5.66 2.97 1.08-6.3-4.57-4.46 6.32-.92z";
+  function estrela(tam) {
+    return el("svg", { viewBox: "0 0 24 24", width: tam, height: tam, fill: "none", stroke: "currentColor",
+      "stroke-width": 2, "stroke-linejoin": "round", "aria-hidden": "true" }, [el("path", { d: ESTRELA_D })]);
+  }
+  function lerFavoritos() {
+    try {
+      var l = JSON.parse(localStorage.getItem(CHAVE_FAV) || "[]");
+      return Array.isArray(l) ? l.filter(function (x) { return typeof x === "string"; }) : [];
+    } catch (e) { return []; }
+  }
+  function gravarFavoritos(l) {
+    try { localStorage.setItem(CHAVE_FAV, JSON.stringify(l)); } catch (e) {}
+  }
+  function cartaoPorId(id) {
+    return cartoes.filter(function (c) { return c.grafico.id === id; })[0] || null;
+  }
+  function alternarFavorito(id) {
+    var l = lerFavoritos(), i = l.indexOf(id);
+    if (i >= 0) l.splice(i, 1); else l.push(id);
+    gravarFavoritos(l);
+    atualizarFavoritos();
+  }
+  // estrelas dos cartões, contador do cabeçalho e a lista do painel
+  function atualizarFavoritos() {
+    var l = lerFavoritos();
+    if (cartoes.length) {
+      var vivos = l.filter(cartaoPorId);
+      if (vivos.length !== l.length) { l = vivos; gravarFavoritos(l); }
+    }
+    cartoes.forEach(function (c) {
+      if (!c.botaoFav) return;
+      var marcado = l.indexOf(c.grafico.id) >= 0;
+      c.botaoFav.setAttribute("aria-pressed", String(marcado));
+      var rot = marcado ? "Tirar dos favoritos" : "Adicionar aos favoritos";
+      c.botaoFav.setAttribute("aria-label", rot + ": " + c.grafico.titulo);
+      c.botaoFav.title = rot;
+    });
+    var conta = document.getElementById("favoritos-conta");
+    if (conta) { conta.textContent = String(l.length); conta.hidden = !l.length; }
+    var lista = document.getElementById("favoritos-lista");
+    if (!lista) return;
+    lista.innerHTML = "";
+    if (!l.length) {
+      lista.appendChild(html("p", { "class": "favoritos-vazio",
+        texto: "Nenhum favorito ainda. Toque na estrela de um gráfico para guardá-lo aqui." }));
+      return;
+    }
+    l.forEach(function (id) {
+      var c = cartaoPorId(id);
+      if (!c) return;
+      var item = html("div", { "class": "fav-item" });
+      var a = html("a", { href: "#" + id, "class": "fav-link" });
+      a.appendChild(html("span", { "class": "fav-titulo", texto: c.grafico.titulo }));
+      if (c.categoria) a.appendChild(html("span", { "class": "fav-cat", texto: c.categoria }));
+      a.addEventListener("click", function (ev) {
+        if (ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+        ev.preventDefault();
+        abrirFavoritos(false);
+        irPara(id);
+      });
+      var tirar = html("button", { type: "button", "class": "fav-tirar", "aria-label": "Tirar dos favoritos: " + c.grafico.titulo, title: "Tirar dos favoritos", texto: "✕" });
+      tirar.addEventListener("click", function (ev) { ev.stopPropagation(); alternarFavorito(id); });
+      item.appendChild(a);
+      item.appendChild(tirar);
+      lista.appendChild(item);
+    });
+  }
+  function abrirFavoritos(abrir) {
+    var btn = document.getElementById("favoritos"), painel = document.getElementById("favoritos-painel");
+    if (!btn || !painel) return;
+    if (abrir) abrirTemas(false);
+    painel.hidden = !abrir;
+    btn.setAttribute("aria-expanded", String(abrir));
+    lateral().setAttribute("data-fav", String(abrir));
+  }
+  function ligarFavoritos() {
+    var btn = document.getElementById("favoritos");
+    if (!btn) return;
+    btn.addEventListener("click", function () { abrirFavoritos(btn.getAttribute("aria-expanded") !== "true"); });
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape" && btn.getAttribute("aria-expanded") === "true") { abrirFavoritos(false); btn.focus(); }
+    });
+    document.addEventListener("click", function (ev) {
+      if (btn.getAttribute("aria-expanded") === "true" && !lateral().contains(ev.target)) abrirFavoritos(false);
+    });
+    atualizarFavoritos();
+  }
+
   function irPara(id) {
     var alvo = document.getElementById(id);
     if (!alvo) return;
@@ -2876,6 +2982,7 @@
   function abrirTemas(abrir) {
     var btn = document.getElementById("menu-temas");
     if (!btn) return;
+    if (abrir) abrirFavoritos(false);
     lateral().setAttribute("data-aberto", String(abrir));
     btn.setAttribute("aria-expanded", String(abrir));
     btn.setAttribute("aria-label", abrir ? "Fechar a lista de temas" : "Abrir a lista de temas");
@@ -2949,14 +3056,17 @@
     cat.appendChild(rotulo);
 
     // seção com "subsecoes" vira uma seção dentro da outra, do mesmo jeito
-    function montarSecao(sec, id, onde) {
+    // caminho: categoria e seções acima ("Ações EUA › SpaceX"), que a lista de
+    // favoritos mostra embaixo do título
+    function montarSecao(sec, id, onde, caminho) {
+      caminho = (caminho || [dados.categoria]).concat([sec.titulo]);
       var secao = html("details", { "class": "secao", id: id });
       var rotuloSecao = html("summary", { "class": "secao-rotulo" });
       rotuloSecao.appendChild(seta());
       rotuloSecao.appendChild(html("span", { texto: sec.titulo }));
       secao.appendChild(rotuloSecao);
       if (sec.subsecoes) {
-        sec.subsecoes.forEach(function (sub, j) { montarSecao(sub, id + "-" + j, secao); });
+        sec.subsecoes.forEach(function (sub, j) { montarSecao(sub, id + "-" + j, secao, caminho); });
         onde.appendChild(secao);
         return;
       }
@@ -2965,6 +3075,7 @@
       sec.graficos.forEach(function (g) {
         g.fonte = g.fonte || dados.fonte;
         var c = criarCartao(g);
+        c.categoria = caminho.join(" › ");
         cartoes.push(c);
         daSecao.push(c);
         listaGraficos.appendChild(c.raiz);
@@ -3106,6 +3217,7 @@
     document.getElementById("tema").addEventListener("click", alternarTema);
     telaCheiaDaPagina();
     ligarMenuTemas();
+    ligarFavoritos();
     var espera;
     window.addEventListener("resize", function () {
       clearTimeout(espera);
@@ -3142,6 +3254,7 @@
       });
       montarRodape(docs);
       montarResumo(docs);
+      atualizarFavoritos();
       observarCategorias();
       cartoes.forEach(function (c) { desenhar(c, true); });
       if (MODO_IMAGEM) return gerarImagemDaPrevia(MODO_IMAGEM);
