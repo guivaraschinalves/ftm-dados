@@ -83,6 +83,30 @@
   var FONTES = ["moedas.json", "bp.json", "ipca.json", "fiscal.json",
                 "divida.json", "tesouro-direto.json", "juros.json",
                 "reservas.json", "acoes-eua.json"].map(function (f) { return noSite(PASTA_DADOS + f); });
+  // Abas e temas. Os arquivos são um por fonte (bp.json, reservas.json…), mas
+  // a página se organiza em abas, e cada tema é um arquivo inteiro ou só
+  // algumas seções dele, com outro nome. A ordem aqui é a da página e a do
+  // menu. Seção que nenhum tema pegar vai para o primeiro tema do arquivo, e
+  // arquivo que nenhuma aba citar vai para a última: se um script renomear
+  // uma seção ou ganhar um arquivo novo, nada some calado.
+  var ABAS = [
+    { nome: "Setor Externo", temas: [
+      { arquivo: "bp.json", secoes: ["Visão geral", "Conta corrente", "Conta financeira", "Conta capital",
+                                     "Indicadores complementares"] },
+      { arquivo: "reservas.json", nome: "Ouro nas reservas internacionais", secoes: ["Composição por moeda", "Reservas de ouro"] },
+      { arquivo: "moedas.json" },
+      { arquivo: "bp.json", nome: "Dívida Externa", secoes: ["Dívida externa"] },
+      { arquivo: "bp.json", nome: "Posição de Investimento Internacional", secoes: ["Posição de investimento internacional"] },
+      { arquivo: "bp.json", nome: "Reservas Internacionais", secoes: ["Reservas internacionais"] }
+    ] },
+    { nome: "Setor Interno", temas: [
+      { arquivo: "fiscal.json" }, { arquivo: "divida.json" }, { arquivo: "ipca.json" }
+    ] },
+    { nome: "Mercado Financeiro", temas: [
+      { arquivo: "juros.json" }, { arquivo: "tesouro-direto.json" }, { arquivo: "acoes-eua.json" },
+      { arquivo: "reservas.json", nome: "Ouro", secoes: ["Oferta e demanda", "Produção e estoque", "Comércio de ouro"] }
+    ] }
+  ];
   // ---------- gate de assinante ----------
   // O site roda em dois lugares: ftm.app.br/interno/dados, onde é para
   // assinante, e guivaraschinalves.github.io/ftm-dados, que segue aberto
@@ -2781,6 +2805,96 @@
     return dados.secoes.reduce(function (n, sec) { return n + graficosDaSecao(sec).length; }, 0);
   }
 
+  // ---------- abas ----------
+  // Cada tema vira um documento como os de dados/ (categoria, fonte,
+  // referência, seções), só que com as seções escolhidas em ABAS.
+  function montarTemas(porArquivo) {
+    var pegas = {}, citados = {}, primeiro = {};
+    ABAS.forEach(function (aba) {
+      aba.temas.forEach(function (t) {
+        citados[t.arquivo] = true;
+        (t.secoes || []).forEach(function (s) { (pegas[t.arquivo] = pegas[t.arquivo] || {})[s] = true; });
+      });
+    });
+    var abas = ABAS.map(function (aba) {
+      var temas = [];
+      aba.temas.forEach(function (t) {
+        var doc = porArquivo[t.arquivo];
+        if (!doc) return;
+        var secoes = t.secoes ? doc.secoes.filter(function (s) { return t.secoes.indexOf(s.titulo) >= 0; })
+                              : doc.secoes.slice();
+        if (!primeiro[t.arquivo]) {
+          primeiro[t.arquivo] = true;
+          if (t.secoes) doc.secoes.forEach(function (s) {
+            if ((pegas[t.arquivo] || {})[s.titulo]) return;
+            if (window.console) console.warn("seção sem tema em ABAS, foi para o primeiro tema de " + t.arquivo + ": " + s.titulo);
+            secoes.push(s);
+          });
+        }
+        if (!secoes.length) return;
+        var tema = {};
+        for (var k in doc) tema[k] = doc[k];
+        tema.categoria = t.nome || doc.categoria;
+        tema.secoes = secoes;
+        temas.push(tema);
+      });
+      return { nome: aba.nome, temas: temas };
+    });
+    Object.keys(porArquivo).forEach(function (arq) {
+      if (!citados[arq]) abas[abas.length - 1].temas.push(porArquivo[arq]);
+    });
+    return abas.filter(function (a) { return a.temas.length; });
+  }
+
+  function idAba(nome) { return "aba-" + slug(nome); }
+  function montarAbas(abas, host, nav) {
+    var barra = html("div", { "class": "abas", role: "tablist", "aria-label": "Abas" });
+    host.appendChild(barra);
+    abas.forEach(function (aba) {
+      var id = idAba(aba.nome);
+      var total = aba.temas.reduce(function (n, t) { return n + contarGraficos(t); }, 0);
+      var b = html("button", { type: "button", role: "tab", "class": "aba-botao", id: id + "-botao",
+        "aria-controls": id, "aria-selected": "false" });
+      b.appendChild(html("span", { texto: aba.nome }));
+      b.appendChild(html("span", { "class": "aba-conta", texto: total + " gráficos" }));
+      b.addEventListener("click", function () { mostrarAba(id); });
+      barra.appendChild(b);
+      var painel = html("div", { "class": "aba", role: "tabpanel", id: id, "aria-labelledby": id + "-botao" });
+      aba.temas.forEach(function (t) { montarCategoria(t, painel); });
+      host.appendChild(painel);
+      nav.appendChild(html("p", { "class": "nav-aba", texto: aba.nome }));
+      aba.temas.forEach(function (t) { montarNav(t, nav); });
+    });
+    // ← e → trocam de aba com o foco na barra, como numa lista de abas
+    barra.addEventListener("keydown", function (ev) {
+      if (ev.key !== "ArrowLeft" && ev.key !== "ArrowRight") return;
+      var bs = Array.prototype.slice.call(barra.children), i = bs.indexOf(document.activeElement);
+      if (i < 0) return;
+      var j = (i + (ev.key === "ArrowRight" ? 1 : -1) + bs.length) % bs.length;
+      bs[j].focus();
+      mostrarAba(bs[j].getAttribute("aria-controls"));
+      ev.stopPropagation();
+    });
+    var salva = null;
+    try { salva = localStorage.getItem("ftm_dados_aba"); } catch (e) {}
+    mostrarAba(salva && document.getElementById(salva) ? salva : idAba(abas[0].nome), true);
+  }
+  // mostra uma aba e esconde as outras; a escolha fica guardada no navegador
+  function mostrarAba(id, semGuardar) {
+    Array.prototype.forEach.call(document.querySelectorAll(".aba"), function (p) { p.hidden = p.id !== id; });
+    Array.prototype.forEach.call(document.querySelectorAll(".aba-botao"), function (b) {
+      var ativa = b.getAttribute("aria-controls") === id;
+      b.setAttribute("aria-selected", String(ativa));
+      b.tabIndex = ativa ? 0 : -1;
+    });
+    if (!semGuardar) { try { localStorage.setItem("ftm_dados_aba", id); } catch (e) {} }
+    cartoes.forEach(function (c) { desenhar(c, false); });
+  }
+
+  // tema feito de uma seção só (Dívida Externa, Reservas Internacionais…):
+  // a seção seria o tema repetido, então os gráficos ficam direto nele
+  function umaSecaoSo(dados) { return dados.secoes.length === 1 && !dados.secoes[0].subsecoes; }
+
   function montarNav(dados, host) {
     var total = contarGraficos(dados);
     var grupo = html("details", { "class": "nav-grupo", "data-cat": idCategoria(dados) });
@@ -2810,7 +2924,14 @@
       });
       onde.appendChild(sub);
     }
-    dados.secoes.forEach(function (sec) { navSecao(sec, grupo); });
+    if (umaSecaoSo(dados)) {
+      var sec0 = dados.secoes[0], tmp = html("div");
+      navSecao(sec0, tmp);
+      // os links saem da subpasta e ficam direto no tema
+      Array.prototype.slice.call(tmp.firstChild.querySelectorAll("a")).forEach(function (a) { grupo.appendChild(a); });
+    } else {
+      dados.secoes.forEach(function (sec) { navSecao(sec, grupo); });
+    }
     host.appendChild(grupo);
   }
 
@@ -2914,6 +3035,8 @@
     var alvo = document.getElementById(id);
     if (!alvo) return;
     abrirTemas(false);
+    var aba = alvo.closest ? alvo.closest(".aba") : null;
+    if (aba && aba.hidden) mostrarAba(aba.id);
     for (var n = alvo; n; n = n.parentElement) if (n.tagName === "DETAILS") n.open = true;
     cartoes.forEach(function (c) { desenhar(c, false); });
     alvo.scrollIntoView({ block: "start" });
@@ -2968,7 +3091,7 @@
   function acenderCategoriaAtual() {
     var linha = window.innerHeight / 3, atual = null;
     document.querySelectorAll(".categoria").forEach(function (c) {
-      if (c.open && c.getBoundingClientRect().top <= linha) atual = c.id;
+      if (c.open && c.offsetParent !== null && c.getBoundingClientRect().top <= linha) atual = c.id;
     });
     document.querySelectorAll(".nav-grupo").forEach(function (g) {
       var acesa = g.getAttribute("data-cat") === atual;
@@ -3058,13 +3181,16 @@
     // seção com "subsecoes" vira uma seção dentro da outra, do mesmo jeito
     // caminho: categoria e seções acima ("Ações EUA › SpaceX"), que a lista de
     // favoritos mostra embaixo do título
-    function montarSecao(sec, id, onde, caminho) {
-      caminho = (caminho || [dados.categoria]).concat([sec.titulo]);
-      var secao = html("details", { "class": "secao", id: id });
-      var rotuloSecao = html("summary", { "class": "secao-rotulo" });
-      rotuloSecao.appendChild(seta());
-      rotuloSecao.appendChild(html("span", { texto: sec.titulo }));
-      secao.appendChild(rotuloSecao);
+    function montarSecao(sec, id, onde, caminho, direto) {
+      caminho = (caminho || [dados.categoria]).concat(direto ? [] : [sec.titulo]);
+      // "direto": sem a pasta da seção, os gráficos ficam no próprio tema
+      var secao = direto ? onde : html("details", { "class": "secao", id: id });
+      if (!direto) {
+        var rotuloSecao = html("summary", { "class": "secao-rotulo" });
+        rotuloSecao.appendChild(seta());
+        rotuloSecao.appendChild(html("span", { texto: sec.titulo }));
+        secao.appendChild(rotuloSecao);
+      }
       if (sec.subsecoes) {
         sec.subsecoes.forEach(function (sub, j) { montarSecao(sub, id + "-" + j, secao, caminho); });
         onde.appendChild(secao);
@@ -3080,13 +3206,18 @@
         daSecao.push(c);
         listaGraficos.appendChild(c.raiz);
       });
+      if (direto) listaGraficos.classList.add("tema-graficos");
       secao.appendChild(listaGraficos);
       secao.addEventListener("toggle", function () {
         if (secao.open) daSecao.forEach(function (c) { desenhar(c, true); });
       });
-      onde.appendChild(secao);
+      if (!direto) onde.appendChild(secao);
     }
-    dados.secoes.forEach(function (sec, k) { montarSecao(sec, "secao-" + slug(dados.categoria) + "-" + k, cat); });
+    if (umaSecaoSo(dados)) {
+      montarSecao(dados.secoes[0], "secao-" + slug(dados.categoria) + "-0", cat, null, true);
+    } else {
+      dados.secoes.forEach(function (sec, k) { montarSecao(sec, "secao-" + slug(dados.categoria) + "-" + k, cat); });
+    }
     host.appendChild(cat);
   }
 
@@ -3245,15 +3376,18 @@
     });
     Promise.all(buscas.concat([carregarLogo()])).then(function (r) {
       if (expirou) { esquecerToken(); return mostrarGate(); }
+      var porArquivo = {};
+      r.slice(0, FONTES.length).forEach(function (d, k) {
+        if (d) porArquivo[FONTES[k].split("/").pop().split("?")[0]] = d;
+      });
       docs = r.slice(0, FONTES.length).filter(Boolean);
       if (!docs.length) throw new Error("nenhum arquivo de dados foi carregado");
       host.innerHTML = "";
-      docs.forEach(function (dados) {
-        montarCategoria(dados, host);
-        montarNav(dados, nav);
-      });
-      montarRodape(docs);
-      montarResumo(docs);
+      var abas = montarTemas(porArquivo);
+      montarAbas(abas, host, nav);
+      var temas = abas.reduce(function (l, a) { return l.concat(a.temas); }, []);
+      montarRodape(temas);
+      montarResumo(temas);
       atualizarFavoritos();
       observarCategorias();
       cartoes.forEach(function (c) { desenhar(c, true); });

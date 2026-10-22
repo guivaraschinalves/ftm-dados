@@ -260,6 +260,41 @@ details[open] > summary > .seta, details[open] > .nav-rotulo > .seta, details[op
 .secao-rotulo:hover { color: var(--accent); }
 .secao-graficos { display: grid; gap: 20px; padding: 8px 0 24px; }
 
+/* ---------- abas (Setor Externo, Setor Interno, Mercado Financeiro) ---------- */
+.abas {
+  display: flex; gap: 8px; margin: 0 0 18px; padding: 2px 0 8px;
+  overflow-x: auto; scrollbar-width: none;
+}
+.abas::-webkit-scrollbar { display: none; }
+.aba-botao {
+  flex: none; display: inline-flex; align-items: baseline; gap: 8px;
+  padding: 10px 16px; border-radius: 999px; border: 1px solid var(--border);
+  background: transparent; color: var(--ink-2); font: inherit; font-size: 15px; font-weight: 600;
+  cursor: pointer; transition: background-color .15s, border-color .15s, color .15s;
+}
+.aba-botao:hover { color: var(--ink); border-color: var(--control-border); }
+.aba-botao[aria-selected="true"] { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; }
+.aba-conta { font-size: 12px; font-weight: 400; opacity: .8; }
+.aba[hidden] { display: none; }
+/* tema de uma seção só: os gráficos ficam direto no tema, com o mesmo recuo das seções */
+.tema-graficos { margin: 0 0 8px 6px; padding-left: 22px; }
+/* no menu, o nome da aba em cima dos seus temas */
+.nav-aba {
+  margin: 18px 0 4px; padding: 0 8px; color: var(--accent);
+  font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+}
+.nav > .nav-aba:first-child { margin-top: 4px; }
+@media (max-width: 860px) { .tema-graficos { margin-left: 2px; padding-left: 14px; } }
+/* celular: as três abas cabem sem rolar, sem a contagem */
+@media (max-width: 520px) {
+  .abas { gap: 6px; overflow: visible; }
+  .aba-botao {
+    flex: 1 1 0; min-width: 0; justify-content: center; align-items: center; text-align: center;
+    padding: 8px 10px; border-radius: 14px; font-size: 14px; line-height: 1.2;
+  }
+  .aba-conta { display: none; }
+}
+
 /* ---------- favoritos ---------- */
 /* estrela do cabeçalho, com a contagem num selo, e o painel com a lista: o
    mesmo desenho da gaveta de temas, pendurado embaixo do cabeçalho */
