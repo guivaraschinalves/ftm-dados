@@ -599,11 +599,19 @@
     // e a pilha fica com cara de área empilhada
     var fBarra = g.barra || 0.86;
     var baseP = {}, baseN = {}, bw = Math.max(2, pxMes * fBarra + (fBarra >= 1 ? 1 : 0));
+    // com "buracoMax" (série que antes era anual), a barra de um ponto
+    // isolado se alarga até o ponto anterior: o estoque de dezembro cobre o
+    // ano, e o gráfico não fica com colunas soltas
+    var ateAnterior = !!g.buracoMax && !g.diario;
     g.series.forEach(function (s, k) {
       if (s.tipo !== "barra") return;
-      var cor = corNoTema(s.cor, pal);
+      var cor = corNoTema(s.cor, pal), ant = null;
       vis[k].forEach(function (p) {
+        var salto = ant === null ? 1 : Math.min(p.i - ant, g.buracoMax || 1);
+        ant = p.i;
         if (!p.v) return;
+        var bwP = ateAnterior && salto > 1 ? pxMes * salto + (fBarra >= 1 ? 1 : 0) : bw;
+        var xP = ateAnterior && salto > 1 ? X(p.i + 1) - bwP : X(p.i + 0.5) - bw / 2;
         var b = p.v >= 0 ? baseP : baseN, antes = b[p.i] || 0, depois = antes + p.v;
         b[p.i] = depois;
         var ya = yDe(s)(antes), yb = yDe(s)(depois);
@@ -612,10 +620,10 @@
         // para não invadir a coluna vizinha.
         var h = Math.max(0.6, Math.abs(yb - ya));
         area.appendChild(el("rect", s.contorno ? {
-          x: X(p.i + 0.5) - bw / 2 + 0.6, y: Math.min(ya, yb) + 0.6, width: Math.max(0.6, bw - 1.2),
+          x: xP + 0.6, y: Math.min(ya, yb) + 0.6, width: Math.max(0.6, bwP - 1.2),
           height: Math.max(0.6, h - 1.2), fill: "none", stroke: cor, "stroke-width": 1.2
         } : {
-          x: X(p.i + 0.5) - bw / 2, y: Math.min(ya, yb), width: bw, height: h, fill: cor
+          x: xP, y: Math.min(ya, yb), width: bwP, height: h, fill: cor
         }));
       });
     });

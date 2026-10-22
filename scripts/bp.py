@@ -170,7 +170,7 @@ PAISES = {"Brazil": ("Brasil", AMARELO), "China, People's Republic of": ("China"
           "United States": ("Estados Unidos", BRANCO), "Japan": ("Japão", "#D99694"),
           "Euro Area (EA)": ("Zona do Euro", AZUL), "United Kingdom": ("Reino Unido", "#B3A2C7"),
           "Australia": ("Austrália", "#C3D69B")}
-INICIO_REAL = "1994-07"       # o que passa por reais (M2, base, PIB) começa no Plano Real
+INICIO_REAL = "1994-07"       # o que passa por reais (M2 e base) começa no Plano Real
 EVENTOS_RESERVAS = [
     dict(x="2008-09", texto="Falência do\nLehman Brothers"),
     dict(x="2010-05", texto="1º auxílio do FMI\nà Grécia"),
@@ -178,7 +178,6 @@ EVENTOS_RESERVAS = [
 ]
 CREDORES = [(21530, "Organismos multilaterais", AZUL), (21531, "Agências governamentais", VERDE),
             (21532, "Bancos", LARANJA), (21533, "Detentores de títulos", CIANO), (21534, "Outros credores", ROXO)]
-INICIO_DIVIDA = "2000-Q1"     # antes disso o BC só compilou alguns trimestres
 
 
 MESES = {"jan": 1, "fev": 2, "mar": 3, "abr": 4, "mai": 5, "jun": 6,
@@ -526,8 +525,10 @@ def fim_de_trimestre(mensal):
     return {"%s-Q%d" % (m[:4], int(m[5:]) // 3): v for m, v in mensal.items() if int(m[5:]) % 3 == 0}
 
 
-def divida_externa(bruta, liquida, publica, privada, reservas, credores, pib12):
+def divida_externa(bruta, liquida, publica, privada, reservas, reservas_mes, credores, pib12):
     bruta, liquida, publica, privada, reservas = map(trimestre, (bruta, liquida, publica, privada, reservas))
+    # antes de 2002 (onde a 24039 começa), as reservas da 3546 no fim do trimestre: as duas são iguais
+    reservas = dict(fim_de_trimestre(reservas_mes), **reservas)
     credores = [(nome, cor, trimestre(d)) for nome, cor, d in credores]
     pib = fim_de_trimestre(pib12)
     # as quebras somam a 3684, salvo entre o 3º tri/2017 e o 4º tri/2018, em
@@ -541,49 +542,55 @@ def divida_externa(bruta, liquida, publica, privada, reservas, credores, pib12):
     devedores = avisa("devedor", [publica, privada])
     total_cred = avisa("credor", [d for _, _, d in credores])
 
-    tri = [t for t in sorted(bruta) if t >= INICIO_DIVIDA and t in liquida and t in publica and t in privada]
-    tri_at = [t for t in tri if t in reservas]
-    tri_cred = [t for t in tri if all(t in d for _, _, d in credores)]
-    so = lambda d, ts=tri, k=1: {t: k * d[t] / 1000 for t in ts}         # noqa: E731
-    pct = lambda d, base, ts=tri: {t: 100 * d[t] / base[t] for t in ts}  # noqa: E731
+    # toda a história de cada série: até 1999 a maioria é anual (ou de poucos
+    # trimestres), e as linhas atravessam esses buracos (buracoMax)
+    tri_liq = [t for t in sorted(liquida) if t in bruta]
+    tri_dev = [t for t in sorted(publica) if t in privada]
+    tri_at = [t for t in tri_liq if t in reservas]
+    tri_ap = [t for t in tri_at if t in publica and t in privada]
+    tri_cred = [t for t in sorted(bruta) if all(t in d for _, _, d in credores)]
+    so = lambda d, ts, k=1: {t: k * d[t] / 1000 for t in ts}             # noqa: E731
+    pct = lambda d, base, ts: {t: 100 * d[t] / base[t] for t in ts if t in d and t in base}  # noqa: E731
     outros = {t: bruta[t] - liquida[t] - reservas[t] for t in tri_at}
     ativos = {t: bruta[t] - liquida[t] for t in tri_at}
 
     SUB = "US$ bilhões, fim de trimestre"
     PUB, PRI, RES, OUT = "Dívida pública", "Dívida privada", "Reservas internacionais", "Outros ativos"
-    passivos = [barra(PUB, AZUL, so(publica)), barra(PRI, CIANO, so(privada))]
+    passivos = [barra(PUB, AZUL, so(publica, tri_dev)), barra(PRI, CIANO, so(privada, tri_dev))]
+    liq = so(liquida, tri_liq)
     return dict(titulo="Dívida externa", graficos=[
         grafico("bp-divida-externa-liquida", "Dívida Externa Líquida do Brasil",
                 SUB + "; acima de zero, o Brasil é devedor externo líquido",
-                [barra("Devedor externo líquido", VERMELHO, {t: max(v, 0) for t, v in so(liquida).items()},
-                       rotulo=liquida[tri[-1]] >= 0),
-                 barra("Credor externo líquido", AZUL, {t: min(v, 0) for t, v in so(liquida).items()},
-                       rotulo=liquida[tri[-1]] < 0)],
-                trimestral=True),
+                [barra("Devedor externo líquido", VERMELHO, {t: max(v, 0) for t, v in liq.items()},
+                       rotulo=liquida[tri_liq[-1]] >= 0),
+                 barra("Credor externo líquido", AZUL, {t: min(v, 0) for t, v in liq.items()},
+                       rotulo=liquida[tri_liq[-1]] < 0)],
+                trimestral=True, buracoMax=4),
         grafico("bp-divida-externa-ativos-passivos", "Ativos e Passivos da Dívida Externa",
                 SUB + "; a pública inclui a privada com garantia pública; outros ativos são haveres de"
                 " bancos e créditos no exterior", [],
                 trimestral=True, barra=1, variantes=[
                     dict(rot="Passivos", series=passivos + [
-                        serie("Dívida externa bruta", BRANCO, so(bruta), rotulo=True)]),
+                        serie("Dívida externa bruta", BRANCO, so(bruta, sorted(bruta)), rotulo=True)]),
                     dict(rot="Ativos", series=[
                         barra(RES, LARANJA, so(reservas, tri_at)), barra(OUT, VERDE, so(outros, tri_at)),
                         serie("Ativos totais", BRANCO, so(ativos, tri_at), rotulo=True)]),
                     dict(rot="Ativos e passivos", series=[
                         barra(RES, LARANJA, so(reservas, tri_at)), barra(OUT, VERDE, so(outros, tri_at)),
-                        barra(PUB, AZUL, so(publica, tri_at, -1)), barra(PRI, CIANO, so(privada, tri_at, -1)),
+                        barra(PUB, AZUL, so(publica, tri_ap, -1)), barra(PRI, CIANO, so(privada, tri_ap, -1)),
                         serie("Ativos menos passivos", BRANCO, so(liquida, tri_at, -1), rotulo=True)]),
-                ]),
+                ], buracoMax=4),
         grafico("bp-divida-externa-publica-pct", "Dívida Externa Pública",
                 "% da dívida externa bruta; inclui a dívida privada com garantia do setor público",
-                [serie("Dívida externa pública", AZUL, pct(publica, devedores), rotulo=True)],
-                unidade="%", trimestral=True),
+                [serie("Dívida externa pública", AZUL, pct(publica, devedores, tri_dev), rotulo=True)],
+                unidade="%", trimestral=True, buracoMax=4),
         grafico("bp-divida-externa-pib", "Dívida Externa em % do PIB",
                 "% do PIB acumulado em 12 meses, em US$, fim de trimestre", [],
-                unidade="%", trimestral=True, variantes=[
-                    dict(rot="Bruta", series=[serie("Dívida externa bruta", VERMELHO, pct(bruta, pib), rotulo=True)]),
+                unidade="%", trimestral=True, buracoMax=4, variantes=[
+                    dict(rot="Bruta", series=[serie("Dívida externa bruta", VERMELHO, pct(bruta, pib, sorted(bruta)),
+                                                    rotulo=True)]),
                     dict(rot="Líquida", series=[
-                        barra("Dívida externa líquida", VERMELHO, pct(liquida, pib), rotulo=True)]),
+                        barra("Dívida externa líquida", VERMELHO, pct(liquida, pib, tri_liq), rotulo=True)]),
                 ]),
         grafico("bp-divida-externa-credores", "Dívida Externa Bruta por Credor", "Fim de trimestre", [],
                 trimestral=True, barra=1, variantes=[
@@ -663,9 +670,11 @@ def composicao_reservas(conteudo):
     return partes, linha_numerica(linhas[r_total], meses)
 
 
-def meses_de_importacao():
+def meses_de_importacao(reservas_brasil):
     """Reservas sobre a importação média mensal de bens e serviços dos últimos
-    quatro trimestres, por país. None se as planilhas do FMI não estão em dados/."""
+    quatro trimestres, por país. None se as planilhas do FMI não estão em dados/.
+    O IRFCL só começa em 2000; para o Brasil, as reservas vêm da 3546 (iguais
+    às do IRFCL), e a série volta até onde vai a importação do FMI (1975)."""
     def ler(padrao):
         arqs = sorted(glob.glob(os.path.join(RAIZ, "dados", padrao)))
         if not arqs:
@@ -680,6 +689,7 @@ def meses_de_importacao():
     if not reservas or not importacoes:
         print("  sem as planilhas do FMI em dados/: fica sem o gráfico de meses de importação")
         return None
+    reservas["Brazil"] = dict(fim_de_trimestre(reservas_brasil), **reservas.get("Brazil", {}))
     series = []
     for pais, (nome, cor) in PAISES.items():
         imp, res = importacoes.get(pais, {}), reservas.get(pais, {})
@@ -719,7 +729,7 @@ def reservas_internacionais(total, partes, total_tab, bruta, pib12, m2, base, do
     pct_m2 = {m: 100 * em_reais[m] / m2[m] for m in meses(em_reais, m2)}
     pct_base = {m: 100 * em_reais[m] / base[m] for m in meses(em_reais, base)}
     pct_pib = {m: 100 * total[m] / pib12[m] for m in meses(total, pib12)}
-    pct_m2, pct_base, pct_pib = ({m: v for m, v in d.items() if m >= INICIO_REAL} for d in (pct_m2, pct_base, pct_pib))
+    pct_m2, pct_base = ({m: v for m, v in d.items() if m >= INICIO_REAL} for d in (pct_m2, pct_base))
 
     return dict(titulo="Reservas internacionais", graficos=[
         grafico("bp-reservas-composicao", "Reservas Internacionais do Brasil: Composição",
@@ -758,19 +768,19 @@ def main():
     print("Baixando câmbio e PIB do SGS…")
     compra, venda = sgs(DOLAR_COMPRA, INICIO_REAL), sgs(DOLAR_VENDA, INICIO_REAL)
     dolar = {m: (compra[m] + venda[m]) / 2 for m in compra if m in venda and m <= ref}
-    pib12, pib_mes = sgs(PIB_12, INICIO_REAL), sgs(PIB_MES, INICIO_REAL)
+    pib12, pib_mes = sgs(PIB_12, "1990-01"), sgs(PIB_MES, "1990-01")
 
     secoes = graficos(s, dolar, pib12, pib_mes)
     print("Baixando a dívida externa do SGS…")
-    d = lambda c: sgs(c, "2000-01")                                  # noqa: E731
+    d = lambda c: sgs(c, "1970-01")                                  # noqa: E731
     secoes.append(divida_externa(d(DIVIDA_BRUTA), d(DIVIDA_LIQUIDA), d(DIVIDA_PUBLICA), d(DIVIDA_PRIVADA),
-                                 d(ATIVOS_RESERVA), [(n, c, d(k)) for k, n, c in CREDORES], pib12))
+                                 d(ATIVOS_RESERVA), d(RESERVAS_TOTAL), [(n, c, d(k)) for k, n, c in CREDORES], pib12))
     print("Baixando as reservas do SGS…")
     partes, total_tab = composicao_reservas(baixar(URL_RESERVAS))
     reservas_sec = reservas_internacionais(
         sgs(RESERVAS_TOTAL, "1970-01"), partes, total_tab,
         sgs(DIVIDA_BRUTA, "1970-01"), pib12, sgs(M2, INICIO_REAL), sgs(BASE_AMPLIADA, INICIO_REAL), dolar,
-        meses_de_importacao())
+        meses_de_importacao(sgs(RESERVAS_TOTAL, "1970-01")))
     print("Baixando a DivExt_T e a Divggp…")
     secoes[-1]["graficos"] += [divida_externa_governo(baixar(URL_DIVGGP)),
                                servico_divida(baixar(URL_DIVEXT, assinatura=b"\xd0\xcf\x11\xe0"), pib12)]
