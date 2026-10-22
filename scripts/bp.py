@@ -125,7 +125,7 @@ ESPECIAIS = "https://www.bcb.gov.br/content/estatisticas/Documents/Tabelas_espec
 URL_TABELA = ESPECIAIS + "BalPagM.xlsx"
 URL_DIVEXT = ESPECIAIS + "DivExt_T.xls"       # só sai em .xls
 URL_DIVGGP = ESPECIAIS + "Divggp.xlsx"
-URL_PII = ESPECIAIS + "PII_T.xlsx"                 # posição internacional de investimento, trimestral
+URL_PII = ESPECIAIS + "PII_T.xlsx"                 # posição de investimento internacional, trimestral
 URL_RESERVAS = ESPECIAIS + "qsreservasp.xlsx"   # template de reservas (FMI/SDDS), mensal
 
 # Onde cada gráfico começa, como no slide.
@@ -609,7 +609,7 @@ def divida_externa(bruta, liquida, publica, privada, reservas, reservas_mes, cre
 
 
 def pii(conteudo, pib12):
-    """Posição internacional de investimento, da tabela especial PII_T.xlsx.
+    """Posição de investimento internacional, da tabela especial PII_T.xlsx.
 
     Duas abas, PII_Ativo_T e PII_Passivo_T, US$ milhões, posição de fim de
     trimestre (dez/2001 e, de 2002 em diante, todo trimestre). A linha 5 traz o
@@ -663,13 +663,13 @@ def pii(conteudo, pib12):
     passivos = [("ID no país", AZUL_ESCURO, pa[PASSIVO[0]]), ("Carteira no país", ROXO, pa[PASSIVO[1]]),
                 ("Derivativos: passivo", "#C9A227", pa[PASSIVO[2]]), ("Outros: passivo", "#77933C", pa[PASSIVO[3]])]
     SUB = "US$ bilhões, fim de trimestre"
-    return dict(titulo="Posição internacional de investimento", graficos=[
-        grafico("bp-pii-ativos-passivos", "Posição Internacional de Investimento: ativos e passivos",
+    return dict(titulo="Posição de investimento internacional", graficos=[
+        grafico("bp-pii-ativos-passivos", "Posição de Investimento Internacional: ativos e passivos",
                 SUB + "; ID é investimento direto; ativos acima de zero, passivos abaixo, e a linha é a PII líquida",
                 [barra(n, c, so(d)) for n, c, d in ativos] + [barra(n, c, so(d, -1)) for n, c, d in passivos]
                 + [serie("PII líquida", BRANCO, so(liquida), rotulo=True)],
                 trimestral=True, barra=1, selecao=True),
-        grafico("bp-pii-liquida-pib", "Posição Internacional de Investimento Líquida em % do PIB",
+        grafico("bp-pii-liquida-pib", "Posição de Investimento Internacional Líquida em % do PIB",
                 "% do PIB acumulado em 12 meses, em US$, fim de trimestre; abaixo de zero, os passivos externos"
                 " superam os ativos",
                 [serie("PII líquida", VERMELHO, {t: 100 * liquida[t] / pib[t] for t in tris if t in pib},
