@@ -419,6 +419,11 @@
     // negativas (sem isto o máximo ficava em −Infinity: criptos em 12 meses)
     Object.keys(pilhaNeg).forEach(function (i) { mn = Math.min(mn, pilhaNeg[i]); mx = Math.max(mx, 0); });
     if (mn === Infinity) { mn = 0; mx = 1; }
+    // o texto de um evento tem de caber na escala: a dada ("y") ou, sem ela,
+    // uma folga em cima para o texto ficar acima das barras
+    var eventosVis = (g.eventos || []).filter(function (ev) { var i = idxDe(g, ev.x); return i >= d0 && i < d1; });
+    eventosVis.forEach(function (ev) { if (ev.y !== undefined && ev.y > mx) mx = ev.y; });
+    if (eventosVis.some(function (ev) { return ev.y === undefined; })) mx *= 1.22;
     var esc = escalaY(mn, mx, g.eixo);
     var escDir = mnD === Infinity ? null : escalaCasada(mnD, mxD, g.eixo2, esc.ticks.length - 1);
     var F2 = escDir ? (UNIDADES[g.unidade2] || F) : F;
@@ -666,6 +671,45 @@
         "stroke-linejoin": "round", "stroke-linecap": s.traco ? "butt" : "round",
         "stroke-dasharray": s.traco === "pontilhado" ? (w * 1.2) + " " + (w * 1.6) : null
       }));
+    });
+
+    // "eventos": um fato marcado no tempo (a falência do Lehman Brothers), com
+    // o texto em cima e uma seta até o topo do gráfico naquele mês. "y" é onde
+    // fica a base do texto, na unidade do gráfico; sem ele, um pouco acima do
+    // topo. "\n" no texto quebra a linha.
+    // topo do gráfico (pilha positiva ou linha mais alta) num índice
+    function topoEm(i) {
+      var t = baseP[i] || 0;
+      g.series.forEach(function (s, k) {
+        if (s.tipo === "barra" || s.dir) return;
+        vis[k].forEach(function (p) { if (p.i === i && p.v > t) t = p.v; });
+      });
+      return t;
+    }
+    eventosVis.forEach(function (ev) {
+      var i = idxDe(g, ev.x);
+      var fs = L.xlab * 0.9, lh = fs * 1.25, linhas = ev.texto.split("\n"), xe = X(i + 0.5), yp = Y(topoEm(i)) - 4;
+      var meia = Math.max.apply(null, linhas.map(function (t) { return largura(t, fs); })) / 2;
+      var xt = Math.min(Math.max(xe, L.x0 + meia), L.x1 - meia);
+      // sem altura dada, o texto fica acima de tudo o que está embaixo dele
+      var alto = 0;
+      for (var j = d0; j < d1; j++) {
+        if (Math.abs(X(j + 0.5) - xt) <= meia + 6) alto = Math.max(alto, topoEm(j));
+      }
+      var base = ev.y !== undefined ? Y(ev.y) : Math.min(yp - fs * 2, Y(alto) - fs * 0.9);
+      base = Math.max(base, L.y0 + lh * (linhas.length - 1) + fs);
+      linhas.forEach(function (t, k) {
+        svg.appendChild(texto(t, {
+          x: xt, y: base - (linhas.length - 1 - k) * lh, "font-size": fs, fill: pal.texto, "text-anchor": "middle"
+        }));
+      });
+      var y1 = base + fs * 0.5;
+      if (yp - y1 > 10) {
+        svg.appendChild(el("line", { x1: xe, x2: xe, y1: y1, y2: yp - 7, stroke: pal.texto, "stroke-width": 1.5 }));
+        svg.appendChild(el("polygon", {
+          points: (xe - 5) + "," + (yp - 9) + " " + (xe + 5) + "," + (yp - 9) + " " + xe + "," + yp, fill: pal.texto
+        }));
+      }
     });
 
     ordem.forEach(function (o) {

@@ -132,6 +132,17 @@ AZUL_ESCURO, AMARELO, BRANCO = "#1F497D", "#FFFF00", "#FFFFFF"
 DOLAR_COMPRA, DOLAR_VENDA = 3697, 3698
 PIB_12, PIB_MES = 4192, 4385
 DIVIDA_BRUTA, DIVIDA_LIQUIDA, DIVIDA_PUBLICA, DIVIDA_PRIVADA, ATIVOS_RESERVA = 3684, 3685, 21523, 21524, 24039
+RESERVAS_TOTAL, M2, BASE_AMPLIADA = 3546, 27842, 1833
+COMPOSICAO = [(3548, "Títulos", AZUL), (3549, "Moeda e depósitos", CIANO),
+              (3550, "Posição no FMI", ROXO), (3551, "DES", VERMELHO),
+              (3552, "Ouro", AMARELO), (3554, "Outros ativos", LARANJA)]
+INICIO_RESERVAS = "2001-01"   # a composição começa aqui no SGS
+INICIO_REAL = "1994-07"       # o que passa por reais (M2, base, PIB) começa no Plano Real
+EVENTOS_RESERVAS = [
+    dict(x="2008-09", texto="Falência do\nLehman Brothers"),
+    dict(x="2010-05", texto="1º auxílio do FMI\nà Grécia"),
+    dict(x="2021-08", texto="FMI distribui US$ 650 bi em DES\nno mundo, US$ 15 bi para o Brasil"),
+]
 CREDORES = [(21530, "Organismos multilaterais", AZUL), (21531, "Agências governamentais", VERDE),
             (21532, "Bancos", LARANJA), (21533, "Detentores de títulos", CIANO), (21534, "Outros credores", ROXO)]
 INICIO_DIVIDA = "2000-Q1"     # antes disso o BC só compilou alguns trimestres
@@ -610,6 +621,52 @@ def divida_externa_governo(conteudo):
                    unidade="%", barra=1)
 
 
+def reservas_internacionais(total, partes, bruta, pib12, m2, base, dolar):
+    """Seção das reservas do Brasil, toda do SGS. `partes` é [(nome, cor, {mês: US$ mi})]."""
+    confere("composição das reservas", [d for _, _, d in partes], total, folga=2)
+    so = lambda d, ini=INICIO_RESERVAS: {m: v / 1000 for m, v in d.items() if m >= ini}   # noqa: E731
+    comp = [barra(n, c, so(d)) for n, c, d in partes]
+    linha_total = serie("Total", BRANCO, so({m: v for m, v in total.items() if m in partes[0][2]}), rotulo=True)
+
+    # reservas sobre a dívida bruta: a 3684 é anual (dezembro) até 1999 e
+    # trimestral depois; as reservas, no último mês de cada ponto
+    bruta = trimestre(bruta)
+    tot_tri = fim_de_trimestre(total)
+    razao = {t: 100 * tot_tri[t] / bruta[t] for t in bruta if t in tot_tri}
+    cem = {t: 100 for t in razao}
+
+    meses = lambda *ds: sorted(set.intersection(*(set(d) for d in ds)))       # noqa: E731
+    em_reais = {m: total[m] * dolar[m] * 1e3 for m in meses(total, dolar)}   # US$ mi -> R$ mil (M2 e base)
+    pct_m2 = {m: 100 * em_reais[m] / m2[m] for m in meses(em_reais, m2)}
+    pct_base = {m: 100 * em_reais[m] / base[m] for m in meses(em_reais, base)}
+    pct_pib = {m: 100 * total[m] / pib12[m] for m in meses(total, pib12)}
+    pct_m2, pct_base, pct_pib = ({m: v for m, v in d.items() if m >= INICIO_REAL} for d in (pct_m2, pct_base, pct_pib))
+
+    return dict(titulo="Reservas internacionais", graficos=[
+        grafico("bp-reservas-composicao", "Reservas Internacionais do Brasil: Composição",
+                "US$ bilhões, fim de mês, conceito liquidez", [], barra=1, eixo=dict(min=0), variantes=[
+                    dict(rot="Total", series=comp + [linha_total]),
+                    dict(rot="Sem títulos", series=comp[1:], eventos=EVENTOS_RESERVAS),
+                ]),
+        grafico("bp-reservas-divida", "Reservas Internacionais em % da Dívida Externa Bruta",
+                "Fim de período; anual até 1999, trimestral depois",
+                [serie("Reservas internacionais / dívida externa bruta", AZUL, razao, casas=1, area=True,
+                       opacidadeArea=0.85, rotulo=True),
+                 serie("100%", BRANCO, cem, legenda=False)],
+                unidade="%", trimestral=True, buracoMax=4),
+        grafico("bp-reservas-moeda", "Reservas Internacionais em % do M2 e da Base Monetária",
+                "Reservas convertidas em reais pelo dólar médio do mês; base monetária ampliada; fim de mês",
+                [serie("% do M2", AZUL, pct_m2, rotulo=True),
+                 serie("% da base monetária ampliada", LARANJA, pct_base, rotulo=True)],
+                unidade="%"),
+        grafico("bp-reservas-pib", "Reservas Internacionais em % do PIB",
+                "% do PIB acumulado em 12 meses, em US$; fim de mês",
+                [serie("Reservas internacionais", AZUL, pct_pib,
+                       area=True, opacidadeArea=0.85, rotulo=True)],
+                unidade="%"),
+    ])
+
+
 def main():
     print("Baixando a tabela do BC…")
     s = ler_tabela(baixar(URL_TABELA))
@@ -620,18 +677,23 @@ def main():
     print("  %d linhas com código SGS, último mês %s" % (len(s), ref))
 
     print("Baixando câmbio e PIB do SGS…")
-    compra, venda = sgs(DOLAR_COMPRA, "1995-01"), sgs(DOLAR_VENDA, "1995-01")
+    compra, venda = sgs(DOLAR_COMPRA, INICIO_REAL), sgs(DOLAR_VENDA, INICIO_REAL)
     dolar = {m: (compra[m] + venda[m]) / 2 for m in compra if m in venda and m <= ref}
-    pib12, pib_mes = sgs(PIB_12, "1995-01"), sgs(PIB_MES, "1995-01")
+    pib12, pib_mes = sgs(PIB_12, INICIO_REAL), sgs(PIB_MES, INICIO_REAL)
 
     secoes = graficos(s, dolar, pib12, pib_mes)
     print("Baixando a dívida externa do SGS…")
     d = lambda c: sgs(c, "2000-01")                                  # noqa: E731
     secoes.append(divida_externa(d(DIVIDA_BRUTA), d(DIVIDA_LIQUIDA), d(DIVIDA_PUBLICA), d(DIVIDA_PRIVADA),
                                  d(ATIVOS_RESERVA), [(n, c, d(k)) for k, n, c in CREDORES], pib12))
+    print("Baixando as reservas do SGS…")
+    reservas_sec = reservas_internacionais(
+        sgs(RESERVAS_TOTAL, "1970-01"), [(n, c, sgs(k, INICIO_RESERVAS)) for k, n, c in COMPOSICAO],
+        sgs(DIVIDA_BRUTA, "1970-01"), pib12, sgs(M2, INICIO_REAL), sgs(BASE_AMPLIADA, INICIO_REAL), dolar)
     print("Baixando a DivExt_T e a Divggp…")
     secoes[-1]["graficos"] += [divida_externa_governo(baixar(URL_DIVGGP)),
                                servico_divida(baixar(URL_DIVEXT, assinatura=b"\xd0\xcf\x11\xe0"), pib12)]
+    secoes.append(reservas_sec)
     doc = dict(
         atualizado=datetime.date.today().isoformat(),
         referencia=ref,
