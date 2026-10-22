@@ -178,6 +178,8 @@
            valor: function (v) { return pct(v, 2); } },
     bi: { eixo: function (v, passo) { return nf(casasDoPasso(passo)).format(v); },
           valor: function (v) { return "R$ " + nf(1).format(v) + " bi"; } },
+    meses: { eixo: function (v, passo) { return nf(casasDoPasso(passo)).format(v); },
+             valor: function (v) { return nf(1).format(v) + " meses"; } },
     anos: { eixo: function (v, passo) { return nf(Math.max(1, casasDoPasso(passo))).format(v); },
             valor: function (v) { return nf(2).format(v) + " anos"; } },
     // reservas internacionais: estoque em trilhões de dólares, preço do ouro

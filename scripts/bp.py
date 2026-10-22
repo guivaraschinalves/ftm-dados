@@ -82,10 +82,28 @@ O BC não publica mais os haveres de bancos e os créditos no exterior em
 separado. Os "outros ativos" saem por diferença: bruta − líquida − reservas
 (2º tri/2026: 407.103 − 5.083 − 367.558 = 34.461).
 
+AS RESERVAS INTERNACIONAIS
+
+A seção "Reservas internacionais" usa:
+
+  - **qsreservasp.xlsx** (tabelas especiais do BC, aba "Seção I"): o template
+    de reservas do FMI, mensal desde dez/2000, com a moeda e depósitos aberta
+    em outros bancos centrais/BIS/FMI, bancos no Brasil e bancos no exterior.
+    A soma das partes é o "A. Ativos de reservas oficiais", igual à 3546.
+  - **3546** com a **3684** (reservas sobre a dívida bruta, desde 1972), o
+    **27842** (M2) e a **1833** (base ampliada), ambos em R$ mil, convertidos
+    pelo dólar médio do mês; o que passa por reais começa em jul/1994.
+  - **Planilhas do FMI** em dados/, baixadas à mão do portal de dados do FMI:
+    IRFCL (reservas) e BOP (importação de bens e serviços, débito), por país e
+    trimestre. Vale a mais nova de cada; sem elas, o gráfico de meses de
+    importação fica de fora e o resto sai normal.
+
 Os acumulados são somas móveis dos meses (3 ou 12), datadas no último mês da
 janela. Cada gráfico começa onde o slide começa (`INICIO_*`).
 """
+import csv
 import datetime
+import glob
 import io
 import json
 import os
@@ -107,6 +125,7 @@ ESPECIAIS = "https://www.bcb.gov.br/content/estatisticas/Documents/Tabelas_espec
 URL_TABELA = ESPECIAIS + "BalPagM.xlsx"
 URL_DIVEXT = ESPECIAIS + "DivExt_T.xls"       # só sai em .xls
 URL_DIVGGP = ESPECIAIS + "Divggp.xlsx"
+URL_RESERVAS = ESPECIAIS + "qsreservasp.xlsx"   # template de reservas (FMI/SDDS), mensal
 
 # Onde cada gráfico começa, como no slide.
 INICIO = "1995-12"            # a maioria: primeiro mês com 12 meses de dado
@@ -133,10 +152,24 @@ DOLAR_COMPRA, DOLAR_VENDA = 3697, 3698
 PIB_12, PIB_MES = 4192, 4385
 DIVIDA_BRUTA, DIVIDA_LIQUIDA, DIVIDA_PUBLICA, DIVIDA_PRIVADA, ATIVOS_RESERVA = 3684, 3685, 21523, 21524, 24039
 RESERVAS_TOTAL, M2, BASE_AMPLIADA = 3546, 27842, 1833
-COMPOSICAO = [(3548, "Títulos", AZUL), (3549, "Moeda e depósitos", CIANO),
-              (3550, "Posição no FMI", ROXO), (3551, "DES", VERMELHO),
-              (3552, "Ouro", AMARELO), (3554, "Outros ativos", LARANJA)]
-INICIO_RESERVAS = "2001-01"   # a composição começa aqui no SGS
+# linhas da aba "Seção I" da qsreservasp, pelo começo do rótulo
+COMPOSICAO = [("a) Títulos", "Títulos", AZUL),
+              ("i) Outros bancos centrais", "Outros BCs, BIS e FMI", CIANO),
+              ("ii) Bancos sediados no Brasil", "Bancos no Brasil", VERDE),
+              ("iii) Bancos sediados no exterior", "Bancos no exterior", AZUL_ESCURO),
+              ("2. Posição de reserva no FMI", "Posição no FMI", ROXO),
+              ("3. DES", "DES", VERMELHO), ("4. Ouro", "Ouro", AMARELO),
+              ("5. Outros ativos de reserva", "Outros ativos", LARANJA)]
+INICIO_RESERVAS = "2000-12"   # a composição começa aqui na qsreservasp
+# meses de importação: planilhas do FMI baixadas à mão para dados/ (vale a
+# mais nova de cada); reservas do IRFCL e importações de bens e serviços do BOP
+FMI_RESERVAS, FMI_IMPORTACOES = "*IMF.STA_IRFCL*.csv", "*IMF.STA_BOP_*.csv"
+PAISES = {"Brazil": ("Brasil", AMARELO), "China, People's Republic of": ("China", VERMELHO),
+          "India": ("Índia", LARANJA), "Mexico": ("México", VERDE), "Korea, Republic of": ("Coreia do Sul", CIANO),
+          "Thailand": ("Tailândia", ROXO), "Argentina": ("Argentina", "#8EB4E3"),
+          "United States": ("Estados Unidos", BRANCO), "Japan": ("Japão", "#D99694"),
+          "Euro Area (EA)": ("Zona do Euro", AZUL), "United Kingdom": ("Reino Unido", "#B3A2C7"),
+          "Australia": ("Austrália", "#C3D69B")}
 INICIO_REAL = "1994-07"       # o que passa por reais (M2, base, PIB) começa no Plano Real
 EVENTOS_RESERVAS = [
     dict(x="2008-09", texto="Falência do\nLehman Brothers"),
@@ -621,12 +654,58 @@ def divida_externa_governo(conteudo):
                    unidade="%", barra=1)
 
 
-def reservas_internacionais(total, partes, bruta, pib12, m2, base, dolar):
-    """Seção das reservas do Brasil, toda do SGS. `partes` é [(nome, cor, {mês: US$ mi})]."""
-    confere("composição das reservas", [d for _, _, d in partes], total, folga=2)
+def composicao_reservas(conteudo):
+    """[(nome, cor, {mês: US$ mi})] e o total ("A. Ativos de reservas oficiais")."""
+    linhas = celulas_xlsx(conteudo, "Seção I")
+    meses, _ = colunas_de_mes(linhas)
+    r_total = achar(linhas, "A. Ativos de reservas oficiais")
+    partes = [(nome, cor, linha_numerica(linhas[achar(linhas, rot, r_total)], meses)) for rot, nome, cor in COMPOSICAO]
+    return partes, linha_numerica(linhas[r_total], meses)
+
+
+def meses_de_importacao():
+    """Reservas sobre a importação média mensal de bens e serviços dos últimos
+    quatro trimestres, por país. None se as planilhas do FMI não estão em dados/."""
+    def ler(padrao):
+        arqs = sorted(glob.glob(os.path.join(RAIZ, "dados", padrao)))
+        if not arqs:
+            return None
+        out = {}
+        with open(arqs[-1], encoding="utf-8-sig") as f:
+            for lin in csv.DictReader(f):
+                if lin["COUNTRY"] in PAISES:
+                    out[lin["COUNTRY"]] = {k: float(v) for k, v in lin.items() if re.match(r"\d{4}-Q\d$", k) and v.strip()}
+        return out
+    reservas, importacoes = ler(FMI_RESERVAS), ler(FMI_IMPORTACOES)
+    if not reservas or not importacoes:
+        print("  sem as planilhas do FMI em dados/: fica sem o gráfico de meses de importação")
+        return None
+    series = []
+    for pais, (nome, cor) in PAISES.items():
+        imp, res = importacoes.get(pais, {}), reservas.get(pais, {})
+        idx = lambda t: int(t[:4]) * 4 + int(t[-1]) - 1                     # noqa: E731
+        ano = {}
+        for t in imp:
+            janela = [t2 for t2 in imp if 0 <= idx(t) - idx(t2) < 4]
+            if len(janela) == 4 and t in res:
+                ano[t] = res[t] / (sum(imp[t2] for t2 in janela) / 12)
+        if ano:
+            series.append(serie(nome, cor, ano, casas=1, rotulo=pais == "Brazil",
+                                largura=6 if pais == "Brazil" else None))
+    series = [{k: v for k, v in x.items() if v is not None} for x in series]
+    return grafico("bp-reservas-importacoes", "Reservas Internacionais em Meses de Importação",
+                   "Reservas sobre a importação média mensal de bens e serviços dos últimos 4 trimestres; "
+                   "fim de trimestre", series, unidade="meses", trimestral=True, selecao=True)
+
+
+def reservas_internacionais(total, partes, total_tab, bruta, pib12, m2, base, dolar, importacao):
+    """Seção das reservas do Brasil. `partes` é [(nome, cor, {mês: US$ mi})] da
+    qsreservasp, que soma `total_tab`; o resto é do SGS (`total` é a 3546)."""
+    confere("composição das reservas", [d for _, _, d in partes], total_tab, folga=2)
+    confere("qsreservasp contra a 3546", [total_tab], {m: v for m, v in total.items() if m in total_tab}, folga=2)
     so = lambda d, ini=INICIO_RESERVAS: {m: v / 1000 for m, v in d.items() if m >= ini}   # noqa: E731
     comp = [barra(n, c, so(d)) for n, c, d in partes]
-    linha_total = serie("Total", BRANCO, so({m: v for m, v in total.items() if m in partes[0][2]}), rotulo=True)
+    linha_total = serie("Total", BRANCO, so(total_tab), rotulo=True)
 
     # reservas sobre a dívida bruta: a 3684 é anual (dezembro) até 1999 e
     # trimestral depois; as reservas, no último mês de cada ponto
@@ -644,7 +723,7 @@ def reservas_internacionais(total, partes, bruta, pib12, m2, base, dolar):
 
     return dict(titulo="Reservas internacionais", graficos=[
         grafico("bp-reservas-composicao", "Reservas Internacionais do Brasil: Composição",
-                "US$ bilhões, fim de mês, conceito liquidez", [], barra=1, eixo=dict(min=0), variantes=[
+                "US$ bilhões, fim de mês; outros BCs, BIS e FMI e bancos são moeda e depósitos", [], barra=1, eixo=dict(min=0), variantes=[
                     dict(rot="Total", series=comp + [linha_total]),
                     dict(rot="Sem títulos", series=comp[1:], eventos=EVENTOS_RESERVAS),
                 ]),
@@ -664,7 +743,7 @@ def reservas_internacionais(total, partes, bruta, pib12, m2, base, dolar):
                 [serie("Reservas internacionais", AZUL, pct_pib,
                        area=True, opacidadeArea=0.85, rotulo=True)],
                 unidade="%"),
-    ])
+    ] + ([importacao] if importacao else []))
 
 
 def main():
@@ -687,9 +766,11 @@ def main():
     secoes.append(divida_externa(d(DIVIDA_BRUTA), d(DIVIDA_LIQUIDA), d(DIVIDA_PUBLICA), d(DIVIDA_PRIVADA),
                                  d(ATIVOS_RESERVA), [(n, c, d(k)) for k, n, c in CREDORES], pib12))
     print("Baixando as reservas do SGS…")
+    partes, total_tab = composicao_reservas(baixar(URL_RESERVAS))
     reservas_sec = reservas_internacionais(
-        sgs(RESERVAS_TOTAL, "1970-01"), [(n, c, sgs(k, INICIO_RESERVAS)) for k, n, c in COMPOSICAO],
-        sgs(DIVIDA_BRUTA, "1970-01"), pib12, sgs(M2, INICIO_REAL), sgs(BASE_AMPLIADA, INICIO_REAL), dolar)
+        sgs(RESERVAS_TOTAL, "1970-01"), partes, total_tab,
+        sgs(DIVIDA_BRUTA, "1970-01"), pib12, sgs(M2, INICIO_REAL), sgs(BASE_AMPLIADA, INICIO_REAL), dolar,
+        meses_de_importacao())
     print("Baixando a DivExt_T e a Divggp…")
     secoes[-1]["graficos"] += [divida_externa_governo(baixar(URL_DIVGGP)),
                                servico_divida(baixar(URL_DIVEXT, assinatura=b"\xd0\xcf\x11\xe0"), pib12)]
