@@ -52,22 +52,25 @@ A necessidade de capital de curto prazo é −(conta corrente + ID no país), em
 
 A DÍVIDA EXTERNA
 
-A seção "Dívida externa" é trimestral e vem do SGS, fora da tabela:
+A seção "Dívida externa" é trimestral e vem do SGS, fora da tabela. O SGS
+data o trimestre no primeiro mês: "01/04/2026" é o 2º trimestre, posição de
+fim de junho. Tudo em US$ milhões:
 
-  - **3684** — dívida externa bruta, US$ milhões (o SGS data o trimestre no
-    primeiro mês: "01/04/2026" é o 2º trimestre, posição de fim de junho).
-  - **3685** — dívida externa líquida: a bruta menos as reservas, os haveres
-    de bancos comerciais no exterior (Cosif) e os créditos brasileiros no
-    exterior (Banco do Brasil).
-  - **3546** — reservas internacionais, conceito liquidez, mensal; vale o
-    último mês do trimestre (jun/2026: 367.558, igual aos ativos de reserva
-    da posição de investimento internacional).
+  - **3684 / 3685** — dívida externa bruta e líquida. A líquida é a bruta
+    menos as reservas, os haveres de bancos comerciais no exterior (Cosif) e
+    os créditos brasileiros no exterior (Banco do Brasil).
+  - **21523 / 21524** — a bruta por devedor: pública (com a privada que tem
+    garantia do setor público) e privada (sem ela). Somam a 3684.
+  - **21530 a 21534** — a bruta por credor: organismos multilaterais,
+    agências governamentais, bancos, detentores de títulos e outros. Somam a
+    3684; começam no 4º tri/2007.
+  - **24039** — ativos de reserva (estoque); igual à 3546 no último mês do
+    trimestre. Começa em 2002.
+  - **4192** — PIB acumulado em 12 meses em US$, no último mês do trimestre.
 
 O BC não publica mais os haveres de bancos e os créditos no exterior em
-separado (nem no SGS, nem nas tabelas especiais). A soma dos dois sai por
-diferença: bruta − líquida − reservas (2º tri/2026: 407.103 − 5.083 −
-367.558 = 34.461). O SGS revisou a série: 2017 dá 19,5 bi hoje, contra
-12,9 + 1,2 bi no relatório de 2018.
+separado. Os "outros ativos" saem por diferença: bruta − líquida − reservas
+(2º tri/2026: 407.103 − 5.083 − 367.558 = 34.461).
 
 Os acumulados são somas móveis dos meses (3 ou 12), datadas no último mês da
 janela. Cada gráfico começa onde o slide começa (`INICIO_*`).
@@ -108,14 +111,17 @@ COD = dict(
     dom=28869, dom_acoes=28883, dom_titulos=22942,
     cripto=29647, cripto_ck=29641, cripto_cf=29644,
 )
-DOLAR_COMPRA, DOLAR_VENDA = 3697, 3698
-PIB_12, PIB_MES = 4192, 4385
-DIVIDA_BRUTA, DIVIDA_LIQUIDA, RESERVAS_LIQUIDEZ = 3684, 3685, 3546
-INICIO_DIVIDA = "2000-Q1"     # antes disso o BC só compilou alguns trimestres
-
 # Cores do tema do Office, as mesmas dos slides.
 AZUL, VERMELHO, VERDE, ROXO, CIANO, LARANJA = "#4F81BD", "#C0504D", "#9BBB59", "#8064A2", "#4BACC6", "#F79646"
 AZUL_ESCURO, AMARELO, BRANCO = "#1F497D", "#FFFF00", "#FFFFFF"
+
+DOLAR_COMPRA, DOLAR_VENDA = 3697, 3698
+PIB_12, PIB_MES = 4192, 4385
+DIVIDA_BRUTA, DIVIDA_LIQUIDA, DIVIDA_PUBLICA, DIVIDA_PRIVADA, ATIVOS_RESERVA = 3684, 3685, 21523, 21524, 24039
+CREDORES = [(21530, "Organismos multilaterais", AZUL), (21531, "Agências governamentais", VERDE),
+            (21532, "Bancos", LARANJA), (21533, "Detentores de títulos", CIANO), (21534, "Outros credores", ROXO)]
+INICIO_DIVIDA = "2000-Q1"     # antes disso o BC só compilou alguns trimestres
+
 
 MESES = {"jan": 1, "fev": 2, "mar": 3, "abr": 4, "mai": 5, "jun": 6,
          "jul": 7, "ago": 8, "set": 9, "out": 10, "nov": 11, "dez": 12}
@@ -256,7 +262,10 @@ def barra(nome, cor, dados, **extra):
 
 
 def grafico(id_, titulo, subtitulo, series, unidade="usd-bi", **extra):
-    return dict(id=id_, titulo=titulo, subtitulo=subtitulo, unidade=unidade, series=series, **extra)
+    g = dict(id=id_, titulo=titulo, subtitulo=subtitulo, unidade=unidade, series=series, **extra)
+    if g.get("variantes"):
+        del g["series"]          # com variantes, as séries vêm de cada uma
+    return g
 
 
 def superavit_deficit(saldo):
@@ -437,26 +446,66 @@ def fim_de_trimestre(mensal):
     return {"%s-Q%d" % (m[:4], int(m[5:]) // 3): v for m, v in mensal.items() if int(m[5:]) % 3 == 0}
 
 
-def divida_externa(bruta, liquida, reservas):
-    bruta, liquida = trimestre(bruta), trimestre(liquida)
-    reservas = fim_de_trimestre(reservas)
-    tri = [t for t in sorted(bruta) if t >= INICIO_DIVIDA and t in liquida and t in reservas]
-    so = lambda d: {t: d[t] / 1000 for t in tri}                      # noqa: E731
-    outros = {t: bruta[t] - liquida[t] - reservas[t] for t in tri}
+def divida_externa(bruta, liquida, publica, privada, reservas, credores, pib12):
+    bruta, liquida, publica, privada, reservas = map(trimestre, (bruta, liquida, publica, privada, reservas))
+    credores = [(nome, cor, trimestre(d)) for nome, cor, d in credores]
+    pib = fim_de_trimestre(pib12)
+    # as quebras somam a 3684, salvo entre o 3º tri/2017 e o 4º tri/2018, em
+    # que o BC revisou a bruta e não as quebras (até US$ 45 bi de diferença).
+    # Fica o aviso; os % usam a soma das partes, que fecha em 100.
+    def avisa(nome, partes):
+        soma = comb(*[(1, p) for p in partes])
+        fora = ["%s (%+.0f)" % (t, soma[t] - bruta[t]) for t in sorted(soma) if t in bruta and abs(soma[t] - bruta[t]) > 1]
+        print("  dívida por %s: %s" % (nome, "fecha com a bruta" if not fora else "não fecha em " + ", ".join(fora)))
+        return soma
+    devedores = avisa("devedor", [publica, privada])
+    total_cred = avisa("credor", [d for _, _, d in credores])
+
+    tri = [t for t in sorted(bruta) if t >= INICIO_DIVIDA and t in liquida and t in publica and t in privada]
+    tri_at = [t for t in tri if t in reservas]
+    tri_cred = [t for t in tri if all(t in d for _, _, d in credores)]
+    so = lambda d, ts=tri, k=1: {t: k * d[t] / 1000 for t in ts}         # noqa: E731
+    pct = lambda d, base, ts=tri: {t: 100 * d[t] / base[t] for t in ts}  # noqa: E731
+    outros = {t: bruta[t] - liquida[t] - reservas[t] for t in tri_at}
+    ativos = {t: bruta[t] - liquida[t] for t in tri_at}
+
     SUB = "US$ bilhões, fim de trimestre"
+    PUB, PRI, RES, OUT = "Dívida pública", "Dívida privada", "Reservas internacionais", "Outros ativos"
+    passivos = [barra(PUB, AZUL, so(publica)), barra(PRI, CIANO, so(privada))]
     return dict(titulo="Dívida externa", graficos=[
-        grafico("bp-divida-externa", "Dívida Externa do Brasil",
-                SUB + "; líquida = bruta − reservas − haveres de bancos no exterior − créditos brasileiros no exterior",
-                [serie("Dívida externa bruta", VERMELHO, so(bruta), rotulo=True),
-                 serie("Reservas internacionais", LARANJA, so(reservas), rotulo=True),
-                 serie("Dívida externa líquida", BRANCO, so(liquida), rotulo=True)],
+        grafico("bp-divida-externa-liquida", "Dívida Externa Líquida do Brasil",
+                SUB + "; abaixo de zero, os ativos externos superam a dívida bruta",
+                [barra("Dívida externa líquida", VERMELHO, so(liquida), rotulo=True)],
                 trimestral=True),
-        grafico("bp-divida-externa-ativos", "Ativos Deduzidos da Dívida Externa Bruta",
-                SUB + "; haveres de bancos e créditos no exterior = bruta − líquida − reservas",
-                [barra("Reservas internacionais", LARANJA, so(reservas)),
-                 barra("Haveres de bancos e créditos no exterior", AZUL, so(outros), rotulo=True),
-                 serie("Dívida externa bruta", VERMELHO, so(bruta), rotulo=True)],
-                trimestral=True, barra=1),
+        grafico("bp-divida-externa-ativos-passivos", "Ativos e Passivos da Dívida Externa",
+                SUB + "; a pública inclui a privada com garantia pública; outros ativos são haveres de"
+                " bancos e créditos no exterior", [],
+                trimestral=True, barra=1, variantes=[
+                    dict(rot="Passivos", series=passivos + [
+                        serie("Dívida externa bruta", BRANCO, so(bruta), rotulo=True)]),
+                    dict(rot="Ativos", series=[
+                        barra(RES, LARANJA, so(reservas, tri_at)), barra(OUT, VERDE, so(outros, tri_at)),
+                        serie("Ativos totais", BRANCO, so(ativos, tri_at), rotulo=True)]),
+                    dict(rot="Ativos e passivos", series=[
+                        barra(RES, LARANJA, so(reservas, tri_at)), barra(OUT, VERDE, so(outros, tri_at)),
+                        barra(PUB, AZUL, so(publica, tri_at, -1)), barra(PRI, CIANO, so(privada, tri_at, -1)),
+                        serie("Ativos menos passivos", BRANCO, so(liquida, tri_at, -1), rotulo=True)]),
+                ]),
+        grafico("bp-divida-externa-publica-pct", "Dívida Externa Pública",
+                "% da dívida externa bruta; inclui a dívida privada com garantia do setor público",
+                [serie("Dívida externa pública", AZUL, pct(publica, devedores), rotulo=True)],
+                unidade="%", trimestral=True),
+        grafico("bp-divida-externa-pib", "Dívida Externa em % do PIB",
+                "% do PIB acumulado em 12 meses, em US$, fim de trimestre",
+                [serie("Dívida externa bruta", VERMELHO, pct(bruta, pib), rotulo=True),
+                 serie("Dívida externa líquida", BRANCO, pct(liquida, pib), rotulo=True)],
+                unidade="%", trimestral=True),
+        grafico("bp-divida-externa-credores", "Dívida Externa Bruta por Credor", "Fim de trimestre", [],
+                trimestral=True, barra=1, variantes=[
+                    dict(rot="US$ bilhões", series=[barra(n, c, so(d, tri_cred)) for n, c, d in credores]),
+                    dict(rot="% do total", unidade="%", eixo=dict(max=100),
+                         series=[barra(n, c, pct(d, total_cred, tri_cred)) for n, c, d in credores]),
+                ]),
     ])
 
 
@@ -476,8 +525,9 @@ def main():
 
     secoes = graficos(s, dolar, pib12, pib_mes)
     print("Baixando a dívida externa do SGS…")
-    secoes.append(divida_externa(sgs(DIVIDA_BRUTA, "2000-01"), sgs(DIVIDA_LIQUIDA, "2000-01"),
-                                 sgs(RESERVAS_LIQUIDEZ, "2000-01")))
+    d = lambda c: sgs(c, "2000-01")                                  # noqa: E731
+    secoes.append(divida_externa(d(DIVIDA_BRUTA), d(DIVIDA_LIQUIDA), d(DIVIDA_PUBLICA), d(DIVIDA_PRIVADA),
+                                 d(ATIVOS_RESERVA), [(n, c, d(k)) for k, n, c in CREDORES], pib12))
     doc = dict(
         atualizado=datetime.date.today().isoformat(),
         referencia=ref,
@@ -493,8 +543,10 @@ def main():
     for sec in secoes:
         print("  %-28s %s" % (sec["titulo"] + ":", ", ".join(g["id"] for g in sec["graficos"])))
         for g in sec["graficos"]:
-            ult = ["%s=%s" % (x["nome"][:22], x["dados"][-1][1]) for x in g["series"] if x["dados"]]
-            print("      %-30s %s %s" % (g["id"], g["series"][0]["dados"][-1][0], "; ".join(ult)))
+            for v in g.get("variantes") or [g]:
+                ult = ["%s=%s" % (x["nome"][:22], x["dados"][-1][1]) for x in v["series"] if x["dados"]]
+                print("      %-30s %s %s" % ((g["id"] + " " + v.get("rot", ""))[:30], v["series"][0]["dados"][-1][0],
+                                            "; ".join(ult)))
 
 
 if __name__ == "__main__":
