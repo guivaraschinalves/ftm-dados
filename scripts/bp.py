@@ -68,6 +68,16 @@ fim de junho. Tudo em US$ milhões:
     trimestre. Começa em 2002.
   - **4192** — PIB acumulado em 12 meses em US$, no último mês do trimestre.
 
+Duas tabelas especiais completam a seção:
+
+  - **DivExt_T.xls**, aba "Dívida Externa - Prazo Residual": principal e juros
+    que vencem em até 12 meses, por setor. O serviço do gráfico é o total
+    menos a linha "Investimento direto: operações intercompanhia". Só sai em
+    .xls; quem lê é o scripts/xls.py, sem biblioteca de fora.
+  - **Divggp.xlsx**, aba "R$ milhões": a dívida externa do governo geral
+    (contratada lá fora + títulos do mercado doméstico com não residentes)
+    sobre a dívida bruta do governo geral.
+
 O BC não publica mais os haveres de bancos e os créditos no exterior em
 separado. Os "outros ativos" saem por diferença: bruta − líquida − reservas
 (2º tri/2026: 407.103 − 5.083 − 367.558 = 34.461).
@@ -88,11 +98,15 @@ from xml.etree import ElementTree as ET
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from atualizar import sgs                                    # noqa: E402
+from xls import abas as abas_xls                             # noqa: E402
 
 RAIZ = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 SAIDA = os.path.join(RAIZ, "dados", "bp.json")
 
-URL_TABELA = "https://www.bcb.gov.br/content/estatisticas/Documents/Tabelas_especiais/BalPagM.xlsx"
+ESPECIAIS = "https://www.bcb.gov.br/content/estatisticas/Documents/Tabelas_especiais/"
+URL_TABELA = ESPECIAIS + "BalPagM.xlsx"
+URL_DIVEXT = ESPECIAIS + "DivExt_T.xls"       # só sai em .xls
+URL_DIVGGP = ESPECIAIS + "Divggp.xlsx"
 
 # Onde cada gráfico começa, como no slide.
 INICIO = "1995-12"            # a maioria: primeiro mês com 12 meses de dado
@@ -134,15 +148,15 @@ RNS = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
 # a tabela do BC
 # --------------------------------------------------------------------------
 
-def baixar(url, tentativas=5):
+def baixar(url, tentativas=5, assinatura=b"PK"):
     ultimo = None
     for i in range(tentativas):
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (ftm-dados)"})
             with urllib.request.urlopen(req, timeout=180) as r:
                 corpo = r.read()
-            if not corpo.startswith(b"PK"):          # página de erro no lugar do .xlsx
-                raise RuntimeError("a resposta não é um .xlsx (%d bytes)" % len(corpo))
+            if not corpo.startswith(assinatura):     # página de erro no lugar da planilha
+                raise RuntimeError("a resposta não é a planilha (%d bytes)" % len(corpo))
             return corpo
         except Exception as e:                    # noqa: BLE001
             ultimo = e
@@ -157,18 +171,16 @@ def coluna(ref):
     return n
 
 
-def ler_tabela(conteudo):
-    """{código SGS: {"aaaa-mm": valor em US$ milhões}} da primeira aba.
-
-    O cabeçalho tem o ano na linha 6 (só na primeira coluna de cada ano) e o
-    mês na 7; a coluna "Código no SGS" é procurada pelo texto."""
+def celulas_xlsx(conteudo, nome_aba=None):
+    """{linha: {coluna: valor}} de uma aba do .xlsx (a primeira, se não disser)."""
     z = zipfile.ZipFile(io.BytesIO(conteudo))
     textos = []
     if "xl/sharedStrings.xml" in z.namelist():
         for si in ET.fromstring(z.read("xl/sharedStrings.xml")):
             textos.append("".join(t.text or "" for t in si.iter(NS + "t")))
     rels = {r.get("Id"): r.get("Target") for r in ET.fromstring(z.read("xl/_rels/workbook.xml.rels"))}
-    aba = next(ET.fromstring(z.read("xl/workbook.xml")).iter(NS + "sheet"))
+    aba = next(a for a in ET.fromstring(z.read("xl/workbook.xml")).iter(NS + "sheet")
+               if nome_aba is None or a.get("name") == nome_aba)
     alvo = rels[aba.get(RNS + "id")].lstrip("/")
     alvo = alvo if alvo.startswith("xl/") else "xl/" + alvo
 
@@ -180,16 +192,46 @@ def ler_tabela(conteudo):
         val = textos[int(v.text)] if c.get("t") == "s" else v.text
         r = int(re.search(r"\d+", c.get("r")).group(0))
         linhas.setdefault(r, {})[coluna(c.get("r"))] = val
+    return linhas
 
-    # cabeçalho: acha a linha dos meses (a que tem "Jan") e a do ano, logo acima
-    lm = next(r for r in sorted(linhas) if "Jan" in linhas[r].values())
-    ano, meses = None, {}
+
+def colunas_de_mes(linhas):
+    """{coluna: "aaaa-mm"} pelo cabeçalho: a linha dos meses ("Jan", "Março",
+    "Dez"…) e, logo acima, a do ano, que só aparece na primeira coluna de cada
+    ano. Devolve também o número da linha dos meses."""
+    def mes(v):
+        return MESES.get(str(v).strip().lower()[:3])
+    lm = next(r for r in sorted(linhas) if sum(1 for v in linhas[r].values() if mes(v)) >= 3)
+    def ano(v):
+        try:
+            a = int(float(str(v).strip()))
+        except ValueError:
+            return None
+        return a if 1900 < a < 2200 else None
+    la = next(r for r in range(lm - 1, lm - 4, -1) if any(ano(v) for v in linhas.get(r, {}).values()))
+    a, meses = None, {}
     for col in sorted(linhas[lm]):
-        if str(linhas.get(lm - 1, {}).get(col, "")).strip().isdigit():
-            ano = int(str(linhas[lm - 1][col]).strip())
-        m = MESES.get(str(linhas[lm][col]).strip().lower()[:3])
-        if m and ano:
-            meses[col] = "%04d-%02d" % (ano, m)
+        a = ano(linhas[la].get(col, "")) or a
+        if mes(linhas[lm][col]) and a:
+            meses[col] = "%04d-%02d" % (a, mes(linhas[lm][col]))
+    return meses, lm
+
+
+def linha_numerica(cel, meses):
+    d = {}
+    for col, m in meses.items():
+        try:
+            d[m] = float(cel[col])
+        except (KeyError, ValueError, TypeError):
+            pass
+    return d
+
+
+def ler_tabela(conteudo):
+    """{código SGS: {"aaaa-mm": valor em US$ milhões}} da primeira aba.
+    A coluna "Código no SGS" é procurada pelo texto."""
+    linhas = celulas_xlsx(conteudo)
+    meses, lm = colunas_de_mes(linhas)
     col_cod = next(col for r in (lm - 1, lm) for col, t in linhas.get(r, {}).items()
                    if "digo no SGS" in str(t))
 
@@ -198,13 +240,7 @@ def ler_tabela(conteudo):
         cod = str(cel.get(col_cod, "")).strip()
         if not cod.isdigit():
             continue
-        d = {}
-        for col, mes in meses.items():
-            try:
-                d[mes] = float(cel[col])
-            except (KeyError, ValueError):
-                pass
-        series.setdefault(int(cod), d)       # código repetido: vale a 1ª linha
+        series.setdefault(int(cod), linha_numerica(cel, meses))       # código repetido: vale a 1ª linha
     return series
 
 
@@ -509,6 +545,66 @@ def divida_externa(bruta, liquida, publica, privada, reservas, credores, pib12):
     ])
 
 
+def achar(linhas, prefixo, depois=0):
+    """Número da 1ª linha, depois de `depois`, cujo rótulo começa com `prefixo`."""
+    for r in sorted(linhas):
+        if r > depois:
+            rot = next((str(v).strip() for _, v in sorted(linhas[r].items()) if str(v).strip()), "")
+            if rot.startswith(prefixo):
+                return r
+    raise RuntimeError("a tabela não tem a linha %r" % prefixo)
+
+
+def servico_divida(conteudo, pib12):
+    """Principal e juros vencendo em 12 meses (prazo residual), sem as operações
+    intercompanhia, em % do PIB em US$. Aba "Dívida Externa - Prazo Residual"
+    da DivExt_T: cada setor tem a linha do total e, logo abaixo, principal e juros."""
+    cel = abas_xls(conteudo)["Dívida Externa - Prazo Residual"]
+    linhas = {}
+    for (r, c), v in cel.items():
+        linhas.setdefault(r, {})[c] = v
+    meses, _ = colunas_de_mes(linhas)
+    ler = lambda r: fim_de_trimestre(linha_numerica(linhas[r], meses))   # noqa: E731
+    total, interco = achar(linhas, "Serviço da dívida externa total"), achar(linhas, "Investimento direto")
+    for r, rot in ((total + 1, "Principal"), (total + 2, "Juros"), (interco + 1, "Principal"), (interco + 2, "Juros")):
+        if not str(linhas[r].get(min(linhas[r]), "")).strip().startswith(rot):
+            raise RuntimeError("DivExt_T: esperava %r na linha %d" % (rot, r + 1))
+    setores = [achar(linhas, n) for n in ("Governo geral", "Banco Central", "Bancos", "Outros setores")]
+    confere("serviço da dívida por setor", [ler(r) for r in setores + [interco]], ler(total), folga=1)
+
+    pib = fim_de_trimestre(pib12)
+    principal = comb((1, ler(total + 1)), (-1, ler(interco + 1)))
+    juros = comb((1, ler(total + 2)), (-1, ler(interco + 2)))
+    tri = [t for t in sorted(principal) if t in juros and t in pib]
+    pct = lambda d: {t: 100 * d[t] / pib[t] for t in tri}               # noqa: E731
+    return grafico("bp-divida-externa-servico", "Serviço da Dívida Externa em % do PIB",
+                   "Principal e juros que vencem em até 12 meses, sem operações intercompanhia; "
+                   "% do PIB acumulado em 12 meses, em US$",
+                   [barra("Principal", AZUL, pct(principal)), barra("Juros", LARANJA, pct(juros)),
+                    serie("Serviço da dívida", BRANCO, pct({t: principal[t] + juros[t] for t in tri}), rotulo=True)],
+                   unidade="%", trimestral=True, barra=1)
+
+
+def divida_externa_governo(conteudo):
+    """A dívida externa do governo geral em % da dívida bruta dele (DBGG), da
+    aba "R$ milhões" da Divggp. A externa inclui os títulos do mercado
+    doméstico em poder de não residentes; o resto é dívida contratada lá fora."""
+    linhas = celulas_xlsx(conteudo, "R$ milhões")
+    meses, _ = colunas_de_mes(linhas)
+    ler = lambda r: linha_numerica(linhas[r], meses)                     # noqa: E731
+    externa = achar(linhas, "Dívida externa")
+    bruta, ext = ler(achar(linhas, "Dívida bruta do governo geral")), ler(externa)
+    titulos = ler(achar(linhas, "Títulos de div. negociados no mercado doméstico", externa))
+    ms = [m for m in sorted(ext) if m in bruta and m in titulos]
+    pct = lambda f: {m: 100 * f(m) / bruta[m] for m in ms}             # noqa: E731
+    return grafico("bp-divida-externa-dbgg", "Dívida Externa do Governo Geral em % da Dívida Bruta",
+                   "% da dívida bruta do governo geral (DBGG), fim de mês",
+                   [barra("Contratada no exterior", AZUL, pct(lambda m: ext[m] - titulos[m])),
+                    barra("Títulos do mercado doméstico com não residentes", CIANO, pct(lambda m: titulos[m])),
+                    serie("Dívida externa", BRANCO, pct(lambda m: ext[m]), rotulo=True)],
+                   unidade="%", barra=1)
+
+
 def main():
     print("Baixando a tabela do BC…")
     s = ler_tabela(baixar(URL_TABELA))
@@ -528,6 +624,9 @@ def main():
     d = lambda c: sgs(c, "2000-01")                                  # noqa: E731
     secoes.append(divida_externa(d(DIVIDA_BRUTA), d(DIVIDA_LIQUIDA), d(DIVIDA_PUBLICA), d(DIVIDA_PRIVADA),
                                  d(ATIVOS_RESERVA), [(n, c, d(k)) for k, n, c in CREDORES], pib12))
+    print("Baixando a DivExt_T e a Divggp…")
+    secoes[-1]["graficos"] += [divida_externa_governo(baixar(URL_DIVGGP)),
+                               servico_divida(baixar(URL_DIVEXT, assinatura=b"\xd0\xcf\x11\xe0"), pib12)]
     doc = dict(
         atualizado=datetime.date.today().isoformat(),
         referencia=ref,
