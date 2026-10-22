@@ -525,6 +525,12 @@ def fim_de_trimestre(mensal):
     return {"%s-Q%d" % (m[:4], int(m[5:]) // 3): v for m, v in mensal.items() if int(m[5:]) % 3 == 0}
 
 
+def crescimento(d):
+    """Variação em % sobre o mesmo trimestre do ano anterior ({"aaaa-Qn": v})."""
+    return {t: 100 * (v / d["%d-Q%s" % (int(t[:4]) - 1, t[-1])] - 1)
+            for t, v in d.items() if d.get("%d-Q%s" % (int(t[:4]) - 1, t[-1]))}
+
+
 def divida_externa(bruta, liquida, publica, privada, reservas, reservas_mes, credores, pib12):
     bruta, liquida, publica, privada, reservas = map(trimestre, (bruta, liquida, publica, privada, reservas))
     # antes de 2002 (onde a 24039 começa), as reservas da 3546 no fim do trimestre: as duas são iguais
@@ -561,10 +567,7 @@ def divida_externa(bruta, liquida, publica, privada, reservas, reservas_mes, cre
     return dict(titulo="Dívida externa", graficos=[
         grafico("bp-divida-externa-liquida", "Dívida Externa Líquida do Brasil",
                 SUB + "; acima de zero, o Brasil é devedor externo líquido",
-                [barra("Devedor externo líquido", VERMELHO, {t: max(v, 0) for t, v in liq.items()},
-                       rotulo=liquida[tri_liq[-1]] >= 0),
-                 barra("Credor externo líquido", AZUL, {t: min(v, 0) for t, v in liq.items()},
-                       rotulo=liquida[tri_liq[-1]] < 0)],
+                [serie("Dívida externa líquida", VERMELHO, liq, corNegativa=VERDE, rotulo=True)],
                 trimestral=True, buracoMax=4),
         grafico("bp-divida-externa-ativos-passivos", "Ativos e Passivos da Dívida Externa",
                 SUB + "; a pública inclui a privada com garantia pública; outros ativos são haveres de"
@@ -585,13 +588,16 @@ def divida_externa(bruta, liquida, publica, privada, reservas, reservas_mes, cre
                 [serie("Dívida externa pública", AZUL, pct(publica, devedores, tri_dev), rotulo=True)],
                 unidade="%", trimestral=True, buracoMax=4),
         grafico("bp-divida-externa-pib", "Dívida Externa em % do PIB",
-                "% do PIB acumulado em 12 meses, em US$, fim de trimestre", [],
-                unidade="%", trimestral=True, buracoMax=4, variantes=[
-                    dict(rot="Bruta", series=[serie("Dívida externa bruta", VERMELHO, pct(bruta, pib, sorted(bruta)),
-                                                    rotulo=True)]),
-                    dict(rot="Líquida", series=[
-                        barra("Dívida externa líquida", VERMELHO, pct(liquida, pib, tri_liq), rotulo=True)]),
-                ]),
+                "% do PIB acumulado em 12 meses, em US$, fim de trimestre",
+                [serie("Dívida externa bruta", VERMELHO, pct(bruta, pib, sorted(bruta)), rotulo=True),
+                 serie("Dívida externa líquida", BRANCO, pct(liquida, pib, tri_liq), rotulo=True)],
+                unidade="%", trimestral=True, buracoMax=4, selecao=True),
+        grafico("bp-divida-externa-crescimento", "Crescimento da Dívida Externa Bruta",
+                "Variação em 4 trimestres, em US$; até 1999, de um ano para o outro onde só há o dado anual",
+                [serie("Dívida externa bruta", BRANCO, crescimento(bruta), rotulo=True),
+                 serie("Dívida pública", AZUL, crescimento(publica), rotulo=True),
+                 serie("Dívida privada", LARANJA, crescimento(privada), rotulo=True)],
+                unidade="%", trimestral=True, buracoMax=4, selecao=True),
         grafico("bp-divida-externa-credores", "Dívida Externa Bruta por Credor", "Fim de trimestre", [],
                 trimestral=True, barra=1, variantes=[
                     dict(rot="US$ bilhões", series=[barra(n, c, so(d, tri_cred)) for n, c, d in credores]),

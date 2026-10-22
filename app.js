@@ -676,11 +676,27 @@
         }
       }
       var w = s.largura || L.linha, op = s.opacidade || null;
-      area.appendChild(el("path", {
-        d: d, fill: "none", stroke: corNoTema(s.cor, pal), "stroke-width": w, opacity: op,
-        "stroke-linejoin": "round", "stroke-linecap": s.traco ? "butt" : "round",
-        "stroke-dasharray": s.traco === "pontilhado" ? (w * 1.2) + " " + (w * 1.6) : null
-      }));
+      var traco = function (cor, clip) {
+        area.appendChild(el("path", {
+          d: d, fill: "none", stroke: corNoTema(cor, pal), "stroke-width": w, opacity: op,
+          "stroke-linejoin": "round", "stroke-linecap": s.traco ? "butt" : "round",
+          "stroke-dasharray": s.traco === "pontilhado" ? (w * 1.2) + " " + (w * 1.6) : null,
+          "clip-path": clip ? "url(#" + clip + ")" : null
+        }));
+      };
+      if (s.corNegativa) {
+        // "corNegativa": a mesma linha, cortada no zero, numa cor acima e
+        // noutra abaixo (dívida externa líquida: devedor e credor)
+        var yz0 = YS(0), idA = idClip + "-acima-" + k, idB = idClip + "-abaixo-" + k;
+        svg.insertBefore(el("defs", {}, [
+          el("clipPath", { id: idA }, [el("rect", { x: L.x0, y: L.y0 - 10, width: pw, height: Math.max(0, yz0 - L.y0 + 10) })]),
+          el("clipPath", { id: idB }, [el("rect", { x: L.x0, y: yz0, width: pw, height: Math.max(0, L.y1 - yz0 + 10) })])
+        ]), svg.firstChild);
+        traco(s.cor, idA);
+        traco(s.corNegativa, idB);
+      } else {
+        traco(s.cor, null);
+      }
     });
 
     // "eventos": um fato marcado no tempo (a falência do Lehman Brothers), com
@@ -723,7 +739,7 @@
     });
 
     ordem.forEach(function (o) {
-      var cor = corNoTema(o.r.s.cor, pal);
+      var cor = corNoTema(o.r.s.corNegativa && o.r.p.v < 0 ? o.r.s.corNegativa : o.r.s.cor, pal);
       var px = X(o.r.p.i + 0.5), py = yDe(o.r.s)(o.r.p.v), lx = L.x1 + L.rotuloX;
       svg.appendChild(el("polyline", {
         points: px + "," + py + " " + (lx - 4) + "," + o.y, fill: "none", stroke: cor,
