@@ -390,6 +390,24 @@ body::after {
 }
 .fav-tirar:hover { background: var(--hover); color: var(--ink); }
 
+/* a estrela do cabeçalho acesa: a aba dos favoritos está aberta */
+#favoritos[aria-pressed="true"] { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; }
+#favoritos[aria-pressed="true"] svg path { fill: currentColor; }
+#favoritos[aria-pressed="true"] .favoritos-conta { background: #fff; color: var(--accent-fill); }
+/* a aba dos favoritos: o título como o de um tema, e os gráficos abertos */
+.fav-vista-cabeca {
+  display: flex; align-items: baseline; gap: 12px; padding: 22px 0 12px;
+  border-top: 1px solid var(--border-soft);
+}
+.fav-vista-titulo {
+  flex: 1 1 auto; margin: 0; font-family: var(--font-editorial); font-weight: 400;
+  font-variation-settings: "opsz" 72; font-size: clamp(1.625rem, 2.5vw, 2.125rem); line-height: 1.1;
+}
+.fav-vazio { margin: 0; padding: 8px 0 24px; color: var(--ink-2); font-weight: 300; }
+.fav-vazio[hidden] { display: none; }
+.fav-graficos { padding-top: 4px; }
+.aba-fav .card { scroll-margin-top: 84px; }
+
 /* estrela do cartão: na ponta direita da linha do título */
 .card-titulos { flex: 1 1 auto; min-width: 0; }
 .card-fav {

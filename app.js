@@ -2942,6 +2942,18 @@
         esquerda.appendChild(ul);
       }
     });
+    // a aba dos favoritos: não tem botão na barra (quem a abre é a estrela do
+    // cabeçalho); os cartões entram nela emprestados, ver montarVistaFavoritos
+    var pf = html("div", { "class": "aba aba-fav", role: "tabpanel", id: ID_FAV, "aria-label": "Favoritos", hidden: "" });
+    var cabeca = html("div", { "class": "fav-vista-cabeca" });
+    cabeca.appendChild(html("h2", { "class": "fav-vista-titulo", texto: "Favoritos" }));
+    cabeca.appendChild(html("span", { "class": "fav-vista-conta categoria-conta" }));
+    pf.appendChild(cabeca);
+    pf.appendChild(html("p", { "class": "fav-vazio",
+      texto: "Nenhum favorito ainda. Toque na estrela de um gráfico para guardá-lo aqui." }));
+    pf.appendChild(html("div", { "class": "secao-graficos fav-graficos" }));
+    host.appendChild(pf);
+    if (esquerda) esquerda.appendChild(html("ul", { "class": "temas-lista", "data-aba": ID_FAV, "aria-label": "Favoritos" }));
     // ← e → trocam de aba com o foco na barra, como numa lista de abas
     barra.addEventListener("keydown", function (ev) {
       if (ev.key !== "ArrowLeft" && ev.key !== "ArrowRight") return;
@@ -2956,8 +2968,58 @@
     try { salva = localStorage.getItem("ftm_dados_aba"); } catch (e) {}
     mostrarAba(salva && document.getElementById(salva) ? salva : idAba(abas[0].nome), true);
   }
+  // ---------- a aba dos favoritos ----------
+  // Os cartões não são copiados: o cartão de cada favorito sai do seu tema e
+  // vai para a aba dos favoritos, e um marcador fica no lugar dele. Ao trocar
+  // de aba, cada um volta para o marcador, aberto ou fechado como estava.
+  // Assim o gráfico é um só (mesmo id, mesmo estado, mesmo link).
+  var ID_FAV = "aba-favoritos", emprestados = [], abaAntesDosFav = null;
+  function devolverCartoes() {
+    emprestados.forEach(function (e) {
+      e.marcador.parentNode.insertBefore(e.cartao.raiz, e.marcador);
+      e.marcador.parentNode.removeChild(e.marcador);
+      e.cartao.raiz.open = e.aberto;
+    });
+    emprestados = [];
+  }
+  function montarVistaFavoritos() {
+    var painel = document.getElementById(ID_FAV);
+    if (!painel) return;
+    devolverCartoes();
+    var lista = painel.querySelector(".fav-graficos");
+    var favs = lerFavoritos().map(cartaoPorId).filter(Boolean);
+    painel.querySelector(".fav-vazio").hidden = favs.length > 0;
+    painel.querySelector(".fav-vista-conta").textContent = favs.length ? favs.length + (favs.length > 1 ? " gráficos" : " gráfico") : "";
+    favs.forEach(function (c) {
+      var marcador = document.createComment("favorito: " + c.grafico.id);
+      c.raiz.parentNode.insertBefore(marcador, c.raiz);
+      emprestados.push({ cartao: c, marcador: marcador, aberto: c.raiz.open });
+      c.raiz.open = true;
+      lista.appendChild(c.raiz);
+    });
+    // no computador, a coluna da esquerda lista os favoritos; o clique leva ao gráfico
+    var esq = document.querySelector('.temas-lista[data-aba="' + ID_FAV + '"]');
+    if (esq) {
+      esq.innerHTML = "";
+      favs.forEach(function (c) {
+        var bt = html("button", { type: "button", "class": "tema-item", "aria-current": "false" });
+        bt.appendChild(html("span", { "class": "tema-nome", texto: c.grafico.titulo }));
+        bt.addEventListener("click", function () { c.raiz.scrollIntoView({ block: "start" }); });
+        esq.appendChild(html("li", {}, [bt]));
+      });
+    }
+    favs.forEach(function (c) { desenhar(c, true); });
+  }
+  function favoritosAbertos() {
+    var p = document.getElementById(ID_FAV);
+    return !!p && !p.hidden;
+  }
+
   // mostra uma aba e esconde as outras; a escolha fica guardada no navegador
   function mostrarAba(id, semGuardar) {
+    if (id !== ID_FAV) { devolverCartoes(); abaAntesDosFav = id; }
+    var estrelaTopo = document.getElementById("favoritos");
+    if (estrelaTopo) estrelaTopo.setAttribute("aria-pressed", String(id === ID_FAV));
     Array.prototype.forEach.call(document.querySelectorAll(".aba"), function (p) { p.hidden = p.id !== id; });
     Array.prototype.forEach.call(document.querySelectorAll(".aba-botao"), function (b) {
       var ativa = b.getAttribute("aria-controls") === id;
@@ -2968,6 +3030,7 @@
       l.hidden = l.getAttribute("data-aba") !== id;
     });
     if (!semGuardar) { try { localStorage.setItem("ftm_dados_aba", id); } catch (e) {} }
+    if (id === ID_FAV) montarVistaFavoritos();
     var t = temaDaAba(id);
     if (t) selecionarTema(t);
     cartoes.forEach(function (c) { desenhar(c, false); });
@@ -3064,6 +3127,7 @@
     });
     var conta = document.getElementById("favoritos-conta");
     if (conta) { conta.textContent = String(l.length); conta.hidden = !l.length; }
+    if (favoritosAbertos()) montarVistaFavoritos();
     var lista = document.getElementById("favoritos-lista");
     if (!lista) return;
     lista.innerHTML = "";
@@ -3103,7 +3167,17 @@
   function ligarFavoritos() {
     var btn = document.getElementById("favoritos");
     if (!btn) return;
-    btn.addEventListener("click", function () { abrirFavoritos(btn.getAttribute("aria-expanded") !== "true"); });
+    btn.addEventListener("click", function () {
+      abrirTemas(false);
+      if (favoritosAbertos()) {
+        var volta = abaAntesDosFav && document.getElementById(abaAntesDosFav) ? abaAntesDosFav
+          : document.querySelector(".aba:not(.aba-fav)").id;
+        mostrarAba(volta);
+      } else {
+        mostrarAba(ID_FAV);
+      }
+      window.scrollTo({ top: 0 });
+    });
     document.addEventListener("keydown", function (ev) {
       if (ev.key === "Escape" && btn.getAttribute("aria-expanded") === "true") { abrirFavoritos(false); btn.focus(); }
     });
