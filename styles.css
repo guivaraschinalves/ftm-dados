@@ -305,12 +305,14 @@ body::after {
     position: sticky; top: 72px; max-height: calc(100vh - 72px); overflow-y: auto;
     scrollbar-width: thin; padding: 0 6px 32px 0;
   }
-  .esquerda .abertura { padding: 32px 0 22px; }
-  .esquerda .titulo-pagina { font-size: 2.25rem; margin-bottom: 0; }
-  .esquerda .resumo { margin-top: 20px; }
-  .esquerda .resumo li { padding: 0 16px; }
-  .esquerda .resumo li:first-child { padding-left: 0; }
-  .esquerda .resumo strong { font-size: 1.375rem; }
+  /* a abertura é uma faixa no topo, por cima das duas colunas: o título à
+     esquerda e os números à direita */
+  .abertura {
+    grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+    gap: 16px 40px; padding: 34px 0 26px;
+  }
+  .abertura .titulo-pagina { font-size: 2.75rem; margin: 0; }
+  .abertura .resumo { margin: 0; }
   .esquerda .abas { overflow: visible; gap: 6px; margin-bottom: 14px; }
   .esquerda .aba-botao {
     flex: 1 1 0; min-width: 0; justify-content: center; align-items: center; text-align: center;
@@ -329,7 +331,11 @@ body::after {
   .tema-item[aria-current="true"] { color: var(--ink); background: var(--hover); box-shadow: inset 3px 0 0 var(--accent); }
   .tema-nome { flex: 1 1 auto; min-width: 0; }
   .tema-conta { font-family: var(--font); font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-  .direita { padding-top: 26px; min-width: 0; }
+  .direita { min-width: 0; }
+  .esquerda .abas { margin-top: 4px; }
+  /* os gráficos 30% menores que a coluna (pedido do Gui, 23/10/2026): o
+     cartão inteiro encolhe, e o gráfico, que é 16:9, encolhe junto */
+  body.lado .direita .card { width: 70%; min-width: min(100%, 520px); }
   /* à direita, só o tema escolhido; o nome dele é o título da coluna */
   body.lado .aba .categoria:not(.tema-escolhido) { display: none; }
   body.lado .categoria { border: 0; }
