@@ -2309,6 +2309,13 @@
     cartao.botaoTelaCheia = btnFs;
     // sem a API (o Safari do iPhone, por exemplo), fica só o Zoom
     if (!fullscreenSuportado(document.documentElement)) btnFs.hidden = true;
+    // estrela na barra: no lado a lado o cabeçalho do cartão (onde fica a
+    // outra) não aparece, e o gráfico precisa continuar marcável
+    var fav2 = html("button", { type: "button", "class": "btn card-fav card-fav-acao" });
+    fav2.appendChild(estrela(17));
+    fav2.addEventListener("click", function () { alternarFavorito(g.id); });
+    cartao.botaoFav2 = fav2;
+    acoes.appendChild(fav2);
     acoes.appendChild(btnZoom);
     acoes.appendChild(btnFs);
     acoes.appendChild(menuCompartilhar(cartao));
@@ -2854,47 +2861,57 @@
   // página é a lista de sempre, um tema embaixo do outro. A troca é pela
   // classe "lado" no <body>, que o CSS usa; o mesmo DOM serve aos dois.
   var LADO = window.matchMedia ? window.matchMedia("(min-width: 1024px)") : { matches: false };
-  var CHAVE_TEMAS = "ftm_dados_temas";            // {id da aba: id do tema escolhido}
+  // à direita, um gráfico só: o último escolhido em cada aba
+  var CHAVE_GRAF = "ftm_dados_graficos";            // {id da aba: id do gráfico}
   function modoLado() { return document.body.classList.contains("lado"); }
-  function temasEscolhidos() {
-    try { return JSON.parse(localStorage.getItem(CHAVE_TEMAS) || "{}") || {}; } catch (e) { return {}; }
+  function graficosEscolhidos() {
+    try { return JSON.parse(localStorage.getItem(CHAVE_GRAF) || "{}") || {}; } catch (e) { return {}; }
   }
-  function selecionarTema(catId, doTopo) {
-    var cat = document.getElementById(catId), aba = cat && cat.closest(".aba");
-    if (!cat || !aba) return;
+  // Põe o gráfico à direita: só o cartão dele aparece, aberto, e o tema dele
+  // fica aceso e aberto na árvore da esquerda. No celular só guarda a escolha.
+  function selecionarGrafico(id, doTopo) {
+    var card = document.getElementById(id), aba = card && card.closest(".aba");
+    if (!card || !aba) return;
+    var cat = card.closest(".categoria");
     Array.prototype.forEach.call(aba.querySelectorAll(".categoria"), function (c) {
       c.classList.toggle("tema-escolhido", c === cat);
     });
-    Array.prototype.forEach.call(document.querySelectorAll('.tema-item'), function (b) {
-      if (b.closest(".temas-lista").getAttribute("data-aba") === aba.id) {
-        b.setAttribute("aria-current", String(b.getAttribute("data-cat") === catId));
-      }
+    Array.prototype.forEach.call(aba.querySelectorAll(".card"), function (c) {
+      c.classList.toggle("grafico-escolhido", c === card);
     });
-    var esc = temasEscolhidos();
-    esc[aba.id] = catId;
-    try { localStorage.setItem(CHAVE_TEMAS, JSON.stringify(esc)); } catch (e) {}
+    var arv = document.querySelector('.temas-lista[data-aba="' + aba.id + '"]');
+    if (arv) {
+      // só o tema do gráfico fica aberto na árvore
+      Array.prototype.forEach.call(arv.querySelectorAll(".nav-grupo"), function (gr) {
+        if (!gr.querySelector('a[href="#' + id + '"]')) gr.open = false;
+      });
+      Array.prototype.forEach.call(arv.querySelectorAll("a"), function (a) {
+        var este = a.getAttribute("href") === "#" + id;
+        a.setAttribute("aria-current", String(este));
+        if (este) for (var n = a.parentElement; n && n !== arv; n = n.parentElement) if (n.tagName === "DETAILS") n.open = true;
+      });
+    }
+    var esc = graficosEscolhidos();
+    esc[aba.id] = id;
+    try { localStorage.setItem(CHAVE_GRAF, JSON.stringify(esc)); } catch (e) {}
     if (modoLado()) {
-      // à direita o tema chega aberto, com as seções abertas: o que se vê é a
-      // lista dos gráficos, e cada um abre no seu cartão
-      if (!cat.open) {
-        cat.open = true;
-        Array.prototype.forEach.call(cat.querySelectorAll("details.secao"), function (d) { d.open = true; });
-      }
+      for (var m = card; m; m = m.parentElement) if (m.tagName === "DETAILS") m.open = true;
       if (doTopo) window.scrollTo({ top: 0 });
     }
     cartoes.forEach(function (c) { desenhar(c, false); });
   }
-  // o tema que a aba mostra à direita: o último escolhido nela, ou o primeiro
-  function temaDaAba(abaId) {
-    var guardado = temasEscolhidos()[abaId], painel = document.getElementById(abaId);
-    if (guardado && document.getElementById(guardado)) return guardado;
-    var primeira = painel && painel.querySelector(".categoria");
-    return primeira ? primeira.id : null;
+  // o gráfico que a aba mostra: o último escolhido nela, ou o primeiro
+  function graficoDaAba(abaId) {
+    var guardado = graficosEscolhidos()[abaId], painel = document.getElementById(abaId);
+    var g = guardado && document.getElementById(guardado);
+    if (g && painel && painel.contains(g)) return guardado;
+    var primeiro = painel && painel.querySelector(".card");
+    return primeiro ? primeiro.id : null;
   }
   function aplicarModo() {
     document.body.classList.toggle("lado", !!LADO.matches);
     var aberta = document.querySelector(".aba:not([hidden])");
-    if (LADO.matches && aberta) { var t = temaDaAba(aberta.id); if (t) selecionarTema(t); }
+    if (LADO.matches && aberta) { var g = graficoDaAba(aberta.id); if (g) selecionarGrafico(g); }
   }
   if (LADO.addEventListener) LADO.addEventListener("change", aplicarModo);
   else if (LADO.addListener) LADO.addListener(aplicarModo);
@@ -2918,18 +2935,12 @@
       host.appendChild(painel);
       nav.appendChild(html("p", { "class": "nav-aba", texto: aba.nome }));
       aba.temas.forEach(function (t) { montarNav(t, nav); });
-      // a lista da coluna da esquerda: um botão por tema, com a contagem
+      // a coluna da esquerda: a mesma árvore do menu Temas (tema › seção ›
+      // gráfico), só desta aba; o link de um gráfico o põe à direita
       if (esquerda) {
-        var ul = html("ul", { "class": "temas-lista", "data-aba": id, "aria-label": "Temas de " + aba.nome });
-        aba.temas.forEach(function (t) {
-          var cid = idCategoria(t);
-          var bt = html("button", { type: "button", "class": "tema-item", "data-cat": cid, "aria-current": "false" });
-          bt.appendChild(html("span", { "class": "tema-nome", texto: t.categoria }));
-          bt.appendChild(html("span", { "class": "tema-conta", texto: String(contarGraficos(t)) }));
-          bt.addEventListener("click", function () { selecionarTema(cid, true); });
-          ul.appendChild(html("li", {}, [bt]));
-        });
-        esquerda.appendChild(ul);
+        var arv = html("nav", { "class": "nav temas-lista", "data-aba": id, "aria-label": "Gráficos de " + aba.nome });
+        aba.temas.forEach(function (t) { montarNav(t, arv); });
+        esquerda.appendChild(arv);
       }
     });
     // ← e → trocam de aba com o foco na barra, como numa lista de abas
@@ -2958,8 +2969,8 @@
       l.hidden = l.getAttribute("data-aba") !== id;
     });
     if (!semGuardar) { try { localStorage.setItem("ftm_dados_aba", id); } catch (e) {} }
-    var t = temaDaAba(id);
-    if (t) selecionarTema(t);
+    var g = graficoDaAba(id);
+    if (g) selecionarGrafico(g);
     cartoes.forEach(function (c) { desenhar(c, false); });
   }
 
@@ -3045,12 +3056,14 @@
       if (vivos.length !== l.length) { l = vivos; gravarFavoritos(l); }
     }
     cartoes.forEach(function (c) {
-      if (!c.botaoFav) return;
       var marcado = l.indexOf(c.grafico.id) >= 0;
-      c.botaoFav.setAttribute("aria-pressed", String(marcado));
       var rot = marcado ? "Tirar dos favoritos" : "Adicionar aos favoritos";
-      c.botaoFav.setAttribute("aria-label", rot + ": " + c.grafico.titulo);
-      c.botaoFav.title = rot;
+      [c.botaoFav, c.botaoFav2].forEach(function (b) {
+        if (!b) return;
+        b.setAttribute("aria-pressed", String(marcado));
+        b.setAttribute("aria-label", rot + ": " + c.grafico.titulo);
+        b.title = rot;
+      });
     });
     var conta = document.getElementById("favoritos-conta");
     if (conta) { conta.textContent = String(l.length); conta.hidden = !l.length; }
@@ -3109,11 +3122,11 @@
     abrirTemas(false);
     var aba = alvo.closest ? alvo.closest(".aba") : null;
     if (aba && aba.hidden) mostrarAba(aba.id);
-    var catAlvo = alvo.closest ? alvo.closest(".categoria") : null;
-    if (catAlvo && catAlvo !== alvo) selecionarTema(catAlvo.id);
+    if (alvo.classList.contains("card")) selecionarGrafico(id);
     for (var n = alvo; n; n = n.parentElement) if (n.tagName === "DETAILS") n.open = true;
     cartoes.forEach(function (c) { desenhar(c, false); });
-    alvo.scrollIntoView({ block: "start" });
+    // lado a lado, o gráfico é a coluna da direita inteira: volta ao topo
+    if (modoLado()) window.scrollTo({ top: 0 }); else alvo.scrollIntoView({ block: "start" });
     try { history.replaceState(null, "", "#" + id); } catch (e) {}
   }
 

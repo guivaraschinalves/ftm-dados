@@ -319,23 +319,35 @@ body::after {
     padding: 7px 8px; border-radius: 14px; font-size: 13.5px; line-height: 1.2;
   }
   .esquerda .aba-conta { display: none; }
-  .temas-lista { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--border-soft); }
+  /* a árvore da esquerda: a mesma do menu Temas (tema › seção › gráfico),
+     toda na fonte editorial da coluna, um degrau menor a cada nível */
+  .temas-lista { display: flex; flex-direction: column; gap: 2px; border-top: 1px solid var(--border-soft); padding-top: 8px; }
   .temas-lista[hidden] { display: none; }
-  .tema-item {
-    width: 100%; display: flex; align-items: baseline; gap: 10px; padding: 11px 10px;
-    border: 0; border-bottom: 1px solid var(--border-soft); background: none; cursor: pointer; text-align: left;
-    color: var(--ink-2); font-family: var(--font-editorial); font-size: 1.25rem; line-height: 1.2;
-    font-variation-settings: "opsz" 72; transition: background-color .15s, color .15s;
+  .temas-lista .nav-rotulo, .temas-lista .nav-sub-rotulo, .temas-lista a {
+    font-family: var(--font-editorial); font-variation-settings: "opsz" 72; letter-spacing: 0;
   }
-  .tema-item:hover { color: var(--ink); background: var(--hover); }
-  .tema-item[aria-current="true"] { color: var(--ink); background: var(--hover); box-shadow: inset 3px 0 0 var(--accent); }
-  .tema-nome { flex: 1 1 auto; min-width: 0; }
-  .tema-conta { font-family: var(--font); font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .temas-lista .nav-rotulo { font-size: 1.2rem; font-weight: 400; line-height: 1.2; padding: 8px 6px; }
+  .temas-lista .nav-rotulo .nav-conta { font-family: var(--font); font-size: 12px; }
+  .temas-lista .nav-sub-rotulo { font-size: 1.05rem; padding: 6px 6px 6px 22px; }
+  .temas-lista a { font-size: 1rem; font-weight: 400; line-height: 1.3; margin-left: 20px; }
+  .temas-lista .nav-sub a { margin-left: 34px; }
+  .temas-lista .nav-sub .nav-sub > .nav-sub-rotulo { padding-left: 36px; }
+  .temas-lista .nav-sub .nav-sub a { margin-left: 48px; }
+  .temas-lista a[aria-current="true"] { color: var(--ink); border-left-color: var(--accent); background: var(--hover); }
+  .temas-lista .nav-grupo[data-atual="true"] > .nav-rotulo::before { display: none; }
   .direita { min-width: 0; }
   .esquerda .abas { margin-top: 4px; }
   /* os gráficos 30% menores que a coluna (pedido do Gui, 23/10/2026): o
      cartão inteiro encolhe, e o gráfico, que é 16:9, encolhe junto */
   body.lado .direita .card { width: 70%; min-width: min(100%, 520px); }
+  /* à direita, só o gráfico escolhido: sem o nome do tema, sem as seções e
+     sem o cabeçalho do cartão (o título está no próprio gráfico) */
+  body.lado .categoria-rotulo, body.lado .secao-rotulo, body.lado .direita .card > .card-cabecalho { display: none; }
+  body.lado .secao, body.lado .tema-graficos { margin: 0; padding: 0; border: 0; }
+  body.lado .secao-graficos { padding: 0; }
+  body.lado .direita .card:not(.grafico-escolhido) { display: none; }
+  body.lado .direita .card { border-radius: var(--raio-lg); }
+  body.lado .card-fav-acao { display: inline-flex; }
   /* à direita, só o tema escolhido; o nome dele é o título da coluna */
   body.lado .aba .categoria:not(.tema-escolhido) { display: none; }
   body.lado .categoria { border: 0; }
@@ -402,6 +414,8 @@ body::after {
 .card-fav:active { transform: scale(.9); }
 .card-fav[aria-pressed="true"] { color: #F5B301; }
 .card-fav[aria-pressed="true"] svg path { fill: currentColor; }
+/* a estrela da barra de ferramentas só aparece no lado a lado */
+.card-fav-acao { display: none; width: auto; height: auto; margin: 0; border-radius: var(--raio-md); align-self: auto; }
 :root[data-theme="light"] .card-fav[aria-pressed="true"] { color: #D99A00; }
 
 /* ---------- cartão do gráfico (retrátil) ---------- */
