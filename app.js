@@ -2847,9 +2847,63 @@
   }
 
   function idAba(nome) { return "aba-" + slug(nome); }
+
+  // ---------- lado a lado (computador) ----------
+  // Na tela larga a lista de temas fica numa coluna fixa à esquerda e só o
+  // tema escolhido aparece à direita, aberto. No celular nada disso vale: a
+  // página é a lista de sempre, um tema embaixo do outro. A troca é pela
+  // classe "lado" no <body>, que o CSS usa; o mesmo DOM serve aos dois.
+  var LADO = window.matchMedia ? window.matchMedia("(min-width: 1024px)") : { matches: false };
+  var CHAVE_TEMAS = "ftm_dados_temas";            // {id da aba: id do tema escolhido}
+  function modoLado() { return document.body.classList.contains("lado"); }
+  function temasEscolhidos() {
+    try { return JSON.parse(localStorage.getItem(CHAVE_TEMAS) || "{}") || {}; } catch (e) { return {}; }
+  }
+  function selecionarTema(catId, doTopo) {
+    var cat = document.getElementById(catId), aba = cat && cat.closest(".aba");
+    if (!cat || !aba) return;
+    Array.prototype.forEach.call(aba.querySelectorAll(".categoria"), function (c) {
+      c.classList.toggle("tema-escolhido", c === cat);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.tema-item'), function (b) {
+      if (b.closest(".temas-lista").getAttribute("data-aba") === aba.id) {
+        b.setAttribute("aria-current", String(b.getAttribute("data-cat") === catId));
+      }
+    });
+    var esc = temasEscolhidos();
+    esc[aba.id] = catId;
+    try { localStorage.setItem(CHAVE_TEMAS, JSON.stringify(esc)); } catch (e) {}
+    if (modoLado()) {
+      // à direita o tema chega aberto, com as seções abertas: o que se vê é a
+      // lista dos gráficos, e cada um abre no seu cartão
+      if (!cat.open) {
+        cat.open = true;
+        Array.prototype.forEach.call(cat.querySelectorAll("details.secao"), function (d) { d.open = true; });
+      }
+      if (doTopo) window.scrollTo({ top: 0 });
+    }
+    cartoes.forEach(function (c) { desenhar(c, false); });
+  }
+  // o tema que a aba mostra à direita: o último escolhido nela, ou o primeiro
+  function temaDaAba(abaId) {
+    var guardado = temasEscolhidos()[abaId], painel = document.getElementById(abaId);
+    if (guardado && document.getElementById(guardado)) return guardado;
+    var primeira = painel && painel.querySelector(".categoria");
+    return primeira ? primeira.id : null;
+  }
+  function aplicarModo() {
+    document.body.classList.toggle("lado", !!LADO.matches);
+    var aberta = document.querySelector(".aba:not([hidden])");
+    if (LADO.matches && aberta) { var t = temaDaAba(aberta.id); if (t) selecionarTema(t); }
+  }
+  if (LADO.addEventListener) LADO.addEventListener("change", aplicarModo);
+  else if (LADO.addListener) LADO.addListener(aplicarModo);
+
   function montarAbas(abas, host, nav) {
     var barra = html("div", { "class": "abas", role: "tablist", "aria-label": "Abas" });
-    host.appendChild(barra);
+    var esquerda = document.getElementById("lista-temas");
+    document.body.classList.toggle("lado", !!LADO.matches);
+    (esquerda || host).appendChild(barra);
     abas.forEach(function (aba) {
       var id = idAba(aba.nome);
       var total = aba.temas.reduce(function (n, t) { return n + contarGraficos(t); }, 0);
@@ -2864,6 +2918,19 @@
       host.appendChild(painel);
       nav.appendChild(html("p", { "class": "nav-aba", texto: aba.nome }));
       aba.temas.forEach(function (t) { montarNav(t, nav); });
+      // a lista da coluna da esquerda: um botão por tema, com a contagem
+      if (esquerda) {
+        var ul = html("ul", { "class": "temas-lista", "data-aba": id, "aria-label": "Temas de " + aba.nome });
+        aba.temas.forEach(function (t) {
+          var cid = idCategoria(t);
+          var bt = html("button", { type: "button", "class": "tema-item", "data-cat": cid, "aria-current": "false" });
+          bt.appendChild(html("span", { "class": "tema-nome", texto: t.categoria }));
+          bt.appendChild(html("span", { "class": "tema-conta", texto: String(contarGraficos(t)) }));
+          bt.addEventListener("click", function () { selecionarTema(cid, true); });
+          ul.appendChild(html("li", {}, [bt]));
+        });
+        esquerda.appendChild(ul);
+      }
     });
     // ← e → trocam de aba com o foco na barra, como numa lista de abas
     barra.addEventListener("keydown", function (ev) {
@@ -2887,7 +2954,12 @@
       b.setAttribute("aria-selected", String(ativa));
       b.tabIndex = ativa ? 0 : -1;
     });
+    Array.prototype.forEach.call(document.querySelectorAll(".temas-lista"), function (l) {
+      l.hidden = l.getAttribute("data-aba") !== id;
+    });
     if (!semGuardar) { try { localStorage.setItem("ftm_dados_aba", id); } catch (e) {} }
+    var t = temaDaAba(id);
+    if (t) selecionarTema(t);
     cartoes.forEach(function (c) { desenhar(c, false); });
   }
 
@@ -3037,6 +3109,8 @@
     abrirTemas(false);
     var aba = alvo.closest ? alvo.closest(".aba") : null;
     if (aba && aba.hidden) mostrarAba(aba.id);
+    var catAlvo = alvo.closest ? alvo.closest(".categoria") : null;
+    if (catAlvo && catAlvo !== alvo) selecionarTema(catAlvo.id);
     for (var n = alvo; n; n = n.parentElement) if (n.tagName === "DETAILS") n.open = true;
     cartoes.forEach(function (c) { desenhar(c, false); });
     alvo.scrollIntoView({ block: "start" });
@@ -3176,6 +3250,8 @@
     // h2 dentro do summary: o leitor de tela navega pelos temas como títulos
     rotulo.appendChild(html("h2", { "class": "categoria-titulo", texto: dados.categoria }));
     rotulo.appendChild(html("span", { "class": "categoria-conta", texto: contarGraficos(dados) + " gráficos" }));
+    // lado a lado, o nome do tema é o título da coluna da direita: não fecha
+    rotulo.addEventListener("click", function (ev) { if (modoLado()) ev.preventDefault(); });
     cat.appendChild(rotulo);
 
     // seção com "subsecoes" vira uma seção dentro da outra, do mesmo jeito

@@ -40,7 +40,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,700&display=swap">
-  <link rel="stylesheet" href="styles.css?v=46">
+  <link rel="stylesheet" href="styles.css?v=47">
 </head>
 <body>
   <!-- Gate de assinante. Fica escondido e so aparece em ftm.app.br, onde o
@@ -109,17 +109,22 @@
     </aside>
 
     <main class="conteudo" id="topo">
+      <!-- no computador, a coluna da esquerda (fixa): abertura, abas e a lista de
+           temas; os gráficos do tema escolhido abrem à direita -->
+      <div class="esquerda" id="esquerda">
       <header class="abertura">
         <p class="sobrancelha">Dados</p>
         <h1 class="titulo-pagina">A economia em <em>gráficos</em></h1>
         <!-- preenchido pelo app.js com o que veio nos arquivos de dados -->
         <ul class="resumo" id="resumo" hidden></ul>
       </header>
-      <div id="graficos" class="graficos" aria-live="polite">
+      <div class="lista-temas" id="lista-temas"></div>
+      </div>
+      <div id="graficos" class="graficos direita" aria-live="polite">
         <p class="estado">Carregando gráficos…</p>
       </div>
     </main>
   </div>
-  <script src="app.js?v=57"></script>
+  <script src="app.js?v=58"></script>
 </body>
 </html>

@@ -169,21 +169,20 @@ details[open] > summary > .seta, details[open] > .nav-rotulo > .seta, details[op
 /* Abertura: a atmosfera dos sites (brilho azul nas bordas e grão de filme)
    atrás do título editorial. O brilho sangra até as bordas da coluna. */
 .abertura { position: relative; isolation: isolate; padding: 64px 0 44px; }
-.abertura::before {
-  content: ""; position: absolute; inset: 0 -32px; z-index: -2; pointer-events: none;
+/* O degradê vale para a página inteira (pedido do Gui, 23/10/2026): fica
+   preso à janela, atrás de tudo, e o grão vai junto. */
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: -2; pointer-events: none;
   background:
     radial-gradient(46% 70% at 0% 0%, var(--glow-2), transparent 72%),
-    radial-gradient(40% 60% at 100% 0%, var(--glow), transparent 70%),
-    linear-gradient(180deg, transparent 55%, var(--bg));
+    radial-gradient(40% 60% at 100% 0%, var(--glow), transparent 70%);
   animation: respira 9s cubic-bezier(.4, 0, .2, 1) infinite alternate;
 }
-.abertura::after {
-  content: ""; position: absolute; inset: 0 -32px; z-index: -1; pointer-events: none;
+body::after {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
   opacity: var(--grain-opacity); mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
   background-size: 180px 180px;
-  -webkit-mask-image: linear-gradient(180deg, #000 50%, transparent);
-  mask-image: linear-gradient(180deg, #000 50%, transparent);
 }
 @keyframes respira { from { opacity: .8; } to { opacity: 1; } }
 
@@ -293,6 +292,49 @@ details[open] > summary > .seta, details[open] > .nav-rotulo > .seta, details[op
     padding: 8px 10px; border-radius: 14px; font-size: 14px; line-height: 1.2;
   }
   .aba-conta { display: none; }
+}
+
+/* ---------- lado a lado: lista à esquerda, gráficos à direita ---------- */
+.temas-lista { display: none; }
+@media (min-width: 1024px) {
+  .conteudo {
+    max-width: 1680px; display: grid; grid-template-columns: 300px minmax(0, 1fr);
+    column-gap: 44px; align-items: start;
+  }
+  .esquerda {
+    position: sticky; top: 72px; max-height: calc(100vh - 72px); overflow-y: auto;
+    scrollbar-width: thin; padding: 0 6px 32px 0;
+  }
+  .esquerda .abertura { padding: 32px 0 22px; }
+  .esquerda .titulo-pagina { font-size: 2.25rem; margin-bottom: 0; }
+  .esquerda .resumo { margin-top: 20px; }
+  .esquerda .resumo li { padding: 0 16px; }
+  .esquerda .resumo li:first-child { padding-left: 0; }
+  .esquerda .resumo strong { font-size: 1.375rem; }
+  .esquerda .abas { overflow: visible; gap: 6px; margin-bottom: 14px; }
+  .esquerda .aba-botao {
+    flex: 1 1 0; min-width: 0; justify-content: center; align-items: center; text-align: center;
+    padding: 7px 8px; border-radius: 14px; font-size: 13.5px; line-height: 1.2;
+  }
+  .esquerda .aba-conta { display: none; }
+  .temas-lista { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--border-soft); }
+  .temas-lista[hidden] { display: none; }
+  .tema-item {
+    width: 100%; display: flex; align-items: baseline; gap: 10px; padding: 11px 10px;
+    border: 0; border-bottom: 1px solid var(--border-soft); background: none; cursor: pointer; text-align: left;
+    color: var(--ink-2); font-family: var(--font-editorial); font-size: 1.25rem; line-height: 1.2;
+    font-variation-settings: "opsz" 72; transition: background-color .15s, color .15s;
+  }
+  .tema-item:hover { color: var(--ink); background: var(--hover); }
+  .tema-item[aria-current="true"] { color: var(--ink); background: var(--hover); box-shadow: inset 3px 0 0 var(--accent); }
+  .tema-nome { flex: 1 1 auto; min-width: 0; }
+  .tema-conta { font-family: var(--font); font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .direita { padding-top: 26px; min-width: 0; }
+  /* à direita, só o tema escolhido; o nome dele é o título da coluna */
+  body.lado .aba .categoria:not(.tema-escolhido) { display: none; }
+  body.lado .categoria { border: 0; }
+  body.lado .categoria-rotulo { cursor: default; padding-top: 6px; }
+  body.lado .categoria-rotulo > .seta { display: none; }
 }
 
 /* ---------- favoritos ---------- */
@@ -637,7 +679,6 @@ body.visor-aberto { overflow: hidden; }
 @media (max-width: 860px) {
   .conteudo { padding: 0 16px 56px; }
   .abertura { padding: 28px 0 32px; }
-  .abertura::before, .abertura::after { inset: -72px -16px 0; }
   .resumo li { padding: 0 18px; }
   .card-cabecalho { padding: 14px; }
   .card-tools { padding: 0 12px 12px; }
