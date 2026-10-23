@@ -1834,9 +1834,14 @@
 
     var btnFs = html("button", { type: "button", "class": "visor-btn", texto: "Tela cheia", "aria-pressed": "false" });
     btnFs.hidden = !fullscreenSuportado(box);
+    // a tela cheia é a do visor: se a página inteira estiver em tela cheia,
+    // o botão leva o gráfico para a tela cheia, em vez de tirar a página dela
     btnFs.addEventListener("click", function () {
-      if (elFullscreen()) sairFullscreen(); else entrarFullscreen(box);
+      if (elFullscreen() === box) sairFullscreen(); else entrarFullscreen(box);
     });
+    // no Zoom, a saída tem nome: volta à página
+    var btnSairZoom = html("button", { type: "button", "class": "visor-btn", texto: "Sair do Zoom" });
+    btnSairZoom.addEventListener("click", function () { fecharVisor(); });
 
     var desenhando = false;
     function alternarDesenho(ligar) {
@@ -1858,6 +1863,7 @@
     // tela cheia vira o hambúrguer, para dar para trocar sem sair dela
     var recortes = html("div", { "class": "visor-recortes", role: "group", "aria-label": "Recorte do gráfico" });
     barra.appendChild(recortes);
+    inline.appendChild(btnSairZoom);
     inline.appendChild(btnFs);
     inline.appendChild(btnDesenho);
     inline.appendChild(btnDesfazer);
@@ -1965,12 +1971,15 @@
     // "Tela cheia" e "Zoom" são dois modos do visor. Sair da tela cheia (pelo
     // Esc ou pelo botão) volta à página, não ao Zoom: quem quis tela cheia não
     // pediu o zoom. emTelaCheia lembra se o visor chegou a estar em tela cheia.
+    // Exceção: quem abriu o Zoom e de lá foi à tela cheia, ao sair dela volta
+    // ao Zoom (visor.doZoom), que é de onde veio.
     var emTelaCheia = false;
     function sincronizarFs() {
       var ativo = elFullscreen() === box;
-      if (!ativo && emTelaCheia && !box.hidden) { emTelaCheia = false; fecharVisor(); return; }
+      if (!ativo && emTelaCheia && !box.hidden && !visor.doZoom) { emTelaCheia = false; fecharVisor(); return; }
       emTelaCheia = ativo;
       btnFs.textContent = ativo ? "Sair da tela cheia" : "Tela cheia";
+      btnSairZoom.hidden = ativo;
       btnFs.setAttribute("aria-pressed", String(ativo));
       if (!ativo) fecharMenu();   // o hambúrguer nem aparece fora da tela cheia
       mostrarChrome(ativo);
@@ -2078,6 +2087,7 @@
     if (!visor) montarVisor();
     visor.cartao = cartao;
     visor.abertoEm = cartao;
+    visor.doZoom = !comTelaCheia;
     montarRecortesDoVisor();
     atualizarSetas();
     visor.layout = window.innerWidth < 700 ? "narrow" : "wide";
