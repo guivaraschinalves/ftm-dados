@@ -3266,7 +3266,7 @@
     if (abrir) abrirFavoritos(false);
     lateral().setAttribute("data-aberto", String(abrir));
     btn.setAttribute("aria-expanded", String(abrir));
-    btn.setAttribute("aria-label", abrir ? "Fechar a lista de temas" : "Abrir a lista de temas");
+    btn.setAttribute("aria-label", abrir ? "Fechar as fontes" : "Ver as fontes");
   }
   function ligarMenuTemas() {
     var btn = document.getElementById("menu-temas");
@@ -3310,11 +3310,9 @@
   // página.
   function montarRodape(lista) {
     var rodape = document.getElementById("rodape");
-    var caixa = html("details", { "class": "fontes" });
-    var rotulo = html("summary", { "class": "fontes-rotulo" });
-    rotulo.appendChild(seta());
-    rotulo.appendChild(html("span", { texto: "Fontes" }));
-    caixa.appendChild(rotulo);
+    // a gaveta do botão "Fontes" é só isto: a lista já aberta, sem retrátil
+    var caixa = html("div", { "class": "fontes" });
+    caixa.appendChild(html("p", { "class": "lateral-rotulo", texto: "Fontes" }));
     lista.forEach(function (dados) {
       var at = dados.atualizado.split("-"), ref = idxMes(dados.referencia);
       caixa.appendChild(html("p", {

@@ -159,7 +159,12 @@ details[open] > summary > .seta, details[open] > .nav-rotulo > .seta, details[op
 }
 .fontes-rotulo::-webkit-details-marker { display: none; }
 .fontes-rotulo:hover { background: var(--hover); color: var(--ink); }
-.fontes p { margin: 0 0 8px; padding: 0 8px 0 29px; }
+.fontes p { margin: 0 0 10px; padding: 0 8px; }
+/* a gaveta só tem as fontes: sem o fio e o recuo de rodapé, e letra para ler */
+.lateral-rodape { margin-top: 0; padding-top: 0; border-top: 0; font-size: 13.5px; }
+.fontes .lateral-rotulo { margin-bottom: 10px; }
+/* o índice de temas não aparece mais na gaveta (o .nav tem display próprio) */
+.nav[hidden], .lateral-rotulo[hidden] { display: none; }
 .fontes p:last-child { margin-bottom: 4px; }
 
 /* ---------- conteúdo ---------- */
